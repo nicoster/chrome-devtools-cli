@@ -11,6 +11,9 @@
 - **DevTools_Protocol**: Chrome 的调试协议，用于远程控制和检查
 - **Command_Handler**: 处理和执行用户命令的组件
 - **Connection_Manager**: 管理与 Chrome 实例的 WebSocket 连接的组件
+- **Cursor_Command**: Cursor IDE 中的自定义命令，允许在聊天界面中调用外部工具
+- **Claude_Skill**: Claude Code 中的技能配置，提供特定功能的集成接口
+- **IDE_Integration**: 与集成开发环境的连接和交互机制
 
 ## 需求
 
@@ -151,3 +154,45 @@
 3. 当命令返回数据时，CLI_Tool 应确保输出正确转义以供 bash 使用
 4. 当使用静默标志时，CLI_Tool 应抑制非必要的输出消息
 5. 当启用详细模式时，CLI_Tool 应提供关于操作的详细日志信息
+
+### 需求 12: IDE 集成和安装
+
+**用户故事:** 作为开发者，我想要将 Chrome DevTools CLI 集成到我的 IDE 中，以便能够在开发环境中直接控制浏览器，而无需切换到终端。
+
+#### 验收标准
+
+1. 当用户执行 install-cursor-command 命令时，CLI_Tool 应在项目的 .cursor/commands 目录中生成 Markdown 格式的命令文件
+2. 当用户执行 install-claude-skill 命令时，CLI_Tool 应在适当的目录中生成包含 YAML frontmatter 的 SKILL.md 文件
+3. 当 Cursor 命令文件被创建时，用户应能够在 Cursor 聊天界面中通过 / 前缀调用 Chrome 控制功能
+4. 当 Claude 技能被安装时，Claude Code 应能够自动发现并在适当时调用 Chrome 自动化功能
+5. 当 IDE 集成被安装时，CLI_Tool 应提供清晰的使用说明和安装确认信息
+6. 当目标目录不存在时，CLI_Tool 应自动创建必要的目录结构
+7. 当用户在非项目目录中执行安装命令时，CLI_Tool 应提供适当的错误信息和指导
+
+### 需求 13: Cursor IDE 命令集成
+
+**用户故事:** 作为 Cursor 用户，我想要在 Cursor 聊天界面中直接控制 Chrome 浏览器，以便在编码过程中无缝地进行浏览器自动化和测试。
+
+#### 验收标准
+
+1. 当安装 Cursor 命令时，CLI_Tool 应在 .cursor/commands 目录中创建多个 Markdown 文件，每个文件对应一个主要功能
+2. 当用户在 Cursor 中输入 / 时，应显示可用的 Chrome 控制命令（如 /chrome-eval、/chrome-screenshot 等）
+3. 当 Cursor 命令被调用时，应通过 chrome-cdp-cli 执行相应的浏览器操作并返回结果
+4. 当 Cursor 命令执行成功时，结果应以适合聊天界面的格式显示
+5. 当 Cursor 命令执行失败时，错误信息应清晰地显示在聊天界面中
+6. 当 Chrome 实例不可用时，Cursor 命令应提供连接指导信息
+7. 当命令需要复杂参数时，Markdown 文件应包含清晰的参数说明和示例
+
+### 需求 14: Claude Code 技能集成
+
+**用户故事:** 作为 Claude Code 用户，我想要通过 Claude 技能访问 Chrome 自动化功能，以便在 AI 辅助编程过程中进行浏览器操作和测试。
+
+#### 验收标准
+
+1. 当安装 Claude 技能时，CLI_Tool 应创建包含 YAML frontmatter 和 Markdown 内容的 SKILL.md 文件
+2. 当 Claude 技能被安装时，应支持个人技能目录（~/.claude/skills/）和项目技能目录（.claude/skills/）
+3. 当 Claude 需要浏览器自动化时，应能够自动发现并调用相应的 Chrome 技能
+4. 当 Claude 技能执行时，应通过 chrome-cdp-cli 执行浏览器操作并返回结构化结果
+5. 当 Claude 技能的描述字段被设置时，应包含清晰的触发场景和关键术语以便自动匹配
+6. 当 Claude 技能需要限制工具访问时，应支持 allowed-tools 字段配置
+7. 当 Claude 技能包含多个相关文件时，应支持参考文档、示例和脚本的组织结构

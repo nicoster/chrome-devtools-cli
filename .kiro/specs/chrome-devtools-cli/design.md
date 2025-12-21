@@ -21,6 +21,7 @@ Chrome DevTools CLI 是一个命令行工具，通过 Chrome DevTools Protocol (
 │  - 参数解析                          │
 │  - 命令路由                          │
 │  - 输出格式化                        │
+│  - IDE 集成安装                      │
 └──────────────┬──────────────────────┘
                │
 ┌──────────────▼──────────────────────┐
@@ -30,6 +31,8 @@ Chrome DevTools CLI 是一个命令行工具，通过 Chrome DevTools Protocol (
 │  - screenshot                       │
 │  - snapshot                         │
 │  - click, fill, hover...            │
+│  - install-cursor-command           │
+│  - install-claude-skill             │
 └──────────────┬──────────────────────┘
                │
 ┌──────────────▼──────────────────────┐
@@ -43,6 +46,35 @@ Chrome DevTools CLI 是一个命令行工具，通过 Chrome DevTools Protocol (
 ┌──────────────▼──────────────────────┐
 │      Chrome 浏览器 (Chrome)          │
 │  - DevTools Protocol 端点            │
+└─────────────────────────────────────┘
+
+IDE 集成架构：
+
+┌─────────────────────────────────────┐
+│         Cursor IDE                  │
+│  .cursor/commands/                  │
+│  ├── chrome-eval.md                 │
+│  ├── chrome-screenshot.md           │
+│  ├── chrome-snapshot.md             │
+│  ├── chrome-console.md              │
+│  └── chrome-network.md              │
+└──────────────┬──────────────────────┘
+               │ /chrome-cdp-cli
+┌──────────────▼──────────────────────┐
+│       Chrome DevTools CLI           │
+└─────────────────────────────────────┘
+
+┌─────────────────────────────────────┐
+│         Claude Code                 │
+│  ~/.claude/skills/ 或 .claude/skills/│
+│  └── chrome-automation/             │
+│      ├── SKILL.md                   │
+│      ├── examples.md                │
+│      └── reference.md               │
+└──────────────┬──────────────────────┘
+               │ chrome-cdp-cli
+┌──────────────▼──────────────────────┐
+│       Chrome DevTools CLI           │
 └─────────────────────────────────────┘
 ```
 
@@ -181,6 +213,168 @@ class EvaluateScriptHandler implements CommandHandler {
 }
 ```
 
+### 5. IDE 集成处理器 (IDEIntegrationHandlers)
+
+处理 IDE 集成安装和配置。
+
+```typescript
+// Cursor 命令安装处理器
+class InstallCursorCommandHandler implements CommandHandler {
+  name = 'install-cursor-command';
+  
+  async execute(client: CDPClient, args: {
+    targetDirectory?: string;
+    includeExamples?: boolean;
+  }): Promise<CommandResult> {
+    const targetDir = args.targetDirectory || '.cursor/commands';
+    
+    // 创建目录结构
+    await this.ensureDirectory(targetDir);
+    
+    // 生成命令文件
+    const commands = this.generateCursorCommands();
+    
+    for (const command of commands) {
+      const filePath = path.join(targetDir, `${command.name}.md`);
+      await this.writeCommandFile(filePath, command);
+    }
+    
+    return {
+      success: true,
+      data: {
+        installed: commands.length,
+        directory: targetDir,
+        commands: commands.map(c => c.name)
+      }
+    };
+  }
+  
+  private generateCursorCommands(): CursorCommandConfig[] {
+    return [
+      {
+        name: 'chrome-eval',
+        description: '在 Chrome 浏览器中执行 JavaScript 代码',
+        instructions: '执行 JavaScript 代码并返回结果。支持异步代码和 Promise。',
+        examples: [
+          'document.title',
+          'window.location.href',
+          'document.querySelectorAll("a").length'
+        ]
+      },
+      {
+        name: 'chrome-screenshot',
+        description: '捕获 Chrome 浏览器页面截图',
+        instructions: '捕获当前页面的截图并保存到指定文件。',
+        examples: ['screenshot.png', 'fullpage-screenshot.png']
+      },
+      {
+        name: 'chrome-snapshot',
+        description: '捕获完整的 DOM 快照',
+        instructions: '捕获包含 DOM 结构、样式和布局信息的完整快照。',
+        examples: ['dom-snapshot.json']
+      },
+      {
+        name: 'chrome-console',
+        description: '获取 Chrome 控制台消息',
+        instructions: '获取最新的控制台消息或列出所有消息。',
+        examples: ['获取最新消息', '列出所有错误消息']
+      },
+      {
+        name: 'chrome-network',
+        description: '监控 Chrome 网络请求',
+        instructions: '获取最新的网络请求或列出所有请求。',
+        examples: ['获取最新请求', '列出所有 POST 请求']
+      }
+    ];
+  }
+}
+
+// Claude 技能安装处理器
+class InstallClaudeSkillHandler implements CommandHandler {
+  name = 'install-claude-skill';
+  
+  async execute(client: CDPClient, args: {
+    skillType?: 'personal' | 'project';
+    targetDirectory?: string;
+    includeExamples?: boolean;
+    includeReferences?: boolean;
+  }): Promise<CommandResult> {
+    const skillType = args.skillType || 'project';
+    const targetDir = args.targetDirectory || this.getDefaultSkillDirectory(skillType);
+    const skillDir = path.join(targetDir, 'chrome-automation');
+    
+    // 创建技能目录
+    await this.ensureDirectory(skillDir);
+    
+    // 生成 SKILL.md
+    const skillConfig = this.generateClaudeSkill();
+    await this.writeSkillFile(path.join(skillDir, 'SKILL.md'), skillConfig);
+    
+    // 生成可选文件
+    if (args.includeExamples) {
+      await this.writeExamplesFile(path.join(skillDir, 'examples.md'));
+    }
+    
+    if (args.includeReferences) {
+      await this.writeReferenceFile(path.join(skillDir, 'reference.md'));
+    }
+    
+    return {
+      success: true,
+      data: {
+        skillType,
+        directory: skillDir,
+        files: ['SKILL.md', ...(args.includeExamples ? ['examples.md'] : []), ...(args.includeReferences ? ['reference.md'] : [])]
+      }
+    };
+  }
+  
+  private generateClaudeSkill(): ClaudeSkillConfig {
+    return {
+      name: 'chrome-automation',
+      description: 'Chrome browser automation and testing using DevTools Protocol. Use when user needs to control Chrome browser, execute JavaScript, take screenshots, monitor console/network, or perform web automation tasks.',
+      instructions: `
+# Chrome Browser Automation
+
+## Instructions
+Use this skill when the user needs to:
+- Execute JavaScript code in Chrome browser
+- Take screenshots of web pages
+- Capture DOM snapshots with layout information
+- Monitor console messages and network requests
+- Perform web automation and testing
+
+## Available Commands
+1. **eval**: Execute JavaScript code in browser context
+2. **screenshot**: Capture page screenshots
+3. **snapshot**: Capture complete DOM snapshots
+4. **get_console_message**: Get latest console message
+5. **list_console_messages**: List all console messages
+6. **get_network_request**: Get latest network request
+7. **list_network_requests**: List all network requests
+
+## Usage Examples
+- Execute: chrome-cdp-cli eval "document.title"
+- Screenshot: chrome-cdp-cli screenshot --filename page.png
+- Console: chrome-cdp-cli get_console_message
+- Network: chrome-cdp-cli list_network_requests
+
+## Prerequisites
+Chrome browser must be running with DevTools enabled:
+chrome --remote-debugging-port=9222
+      `,
+      allowedTools: ['Execute', 'Read', 'Write']
+    };
+  }
+  
+  private getDefaultSkillDirectory(skillType: 'personal' | 'project'): string {
+    return skillType === 'personal' 
+      ? path.join(os.homedir(), '.claude', 'skills')
+      : '.claude/skills';
+  }
+}
+```
+
 ## 数据模型
 
 ### 页面信息 (PageInfo)
@@ -241,6 +435,34 @@ interface PerformanceMetrics {
     scriptDuration: number;    // 脚本执行时间
     layoutDuration: number;    // 布局时间
   };
+}
+```
+
+### IDE 集成配置 (IDEIntegration)
+
+```typescript
+interface CursorCommandConfig {
+  name: string;               // 命令名称
+  description: string;        // 命令描述
+  instructions: string;       // 使用说明
+  examples: string[];         // 使用示例
+  parameters?: string[];      // 参数说明
+}
+
+interface ClaudeSkillConfig {
+  name: string;               // 技能名称
+  description: string;        // 技能描述，包含触发场景
+  instructions: string;       // 详细使用说明
+  allowedTools?: string[];    // 允许的工具列表
+  examples?: string;          // 示例文档
+  references?: string[];      // 参考文档列表
+}
+
+interface IDEIntegrationOptions {
+  targetDirectory?: string;   // 目标安装目录
+  skillType?: 'personal' | 'project';  // Claude 技能类型
+  includeExamples?: boolean;  // 是否包含示例
+  includeReferences?: boolean; // 是否包含参考文档
 }
 ```
 
@@ -313,6 +535,22 @@ interface PerformanceMetrics {
 ### 属性 16: 错误退出代码
 *对于任何* 导致错误的操作（连接失败、命令执行失败等），工具应该返回非零退出代码以便 bash 脚本正确处理错误情况
 **验证: 需求 9.5**
+
+### 属性 17: Cursor 命令安装完整性
+*对于任何* 有效的安装目录，执行 install-cursor-command 后应该在 .cursor/commands/ 目录下创建所有必需的 Markdown 文件，每个文件都包含正确的命令格式和说明
+**验证: 需求 12.1, 12.2, 12.3**
+
+### 属性 18: Claude 技能安装完整性
+*对于任何* 有效的技能类型（personal/project），执行 install-claude-skill 后应该在相应目录下创建包含正确 YAML frontmatter 的 SKILL.md 文件和可选的示例文档
+**验证: 需求 13.1, 13.2, 13.3**
+
+### 属性 19: IDE 集成文件格式正确性
+*对于任何* 生成的 IDE 集成文件，文件内容应该符合相应 IDE 的规范格式（Cursor 的 Markdown 格式，Claude 的 YAML frontmatter 格式），并且包含所有必需的字段
+**验证: 需求 12.4, 13.4, 14.1**
+
+### 属性 20: IDE 集成目录结构
+*对于任何* IDE 集成安装操作，应该正确创建目标目录结构，处理目录不存在的情况，并且不会覆盖现有的用户配置文件
+**验证: 需求 12.5, 13.5, 14.2**
 
 ## 错误处理
 

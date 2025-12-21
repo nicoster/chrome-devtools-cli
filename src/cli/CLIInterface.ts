@@ -330,6 +330,20 @@ export class CLIInterface implements ICLIInterface {
         if (args[0]) commandArgs.command = args[0];
         break;
 
+      case 'install_cursor_command':
+        if (options['target-directory']) commandArgs.targetDirectory = options['target-directory'];
+        if (options['include-examples'] !== undefined) commandArgs.includeExamples = options['include-examples'] !== 'false';
+        if (options['force']) commandArgs.force = true;
+        break;
+
+      case 'install_claude_skill':
+        if (options['skill-type']) commandArgs.skillType = options['skill-type'];
+        if (options['target-directory']) commandArgs.targetDirectory = options['target-directory'];
+        if (options['include-examples'] !== undefined) commandArgs.includeExamples = options['include-examples'] !== 'false';
+        if (options['include-references'] !== undefined) commandArgs.includeReferences = options['include-references'] !== 'false';
+        if (options['force']) commandArgs.force = true;
+        break;
+
       default:
         // For unknown commands, pass all arguments
         args.forEach((arg, index) => {

@@ -1,6 +1,16 @@
 import { CLIInterface } from './CLIInterface';
 import { ConnectionManager } from '../connection/ConnectionManager';
-import { EvaluateScriptHandler, TakeScreenshotHandler, TakeSnapshotHandler } from '../handlers';
+import { 
+  EvaluateScriptHandler, 
+  TakeScreenshotHandler, 
+  TakeSnapshotHandler,
+  GetConsoleMessageHandler,
+  ListConsoleMessagesHandler,
+  GetNetworkRequestHandler,
+  ListNetworkRequestsHandler,
+  InstallCursorCommandHandler,
+  InstallClaudeSkillHandler
+} from '../handlers';
 import { Logger } from '../utils/logger';
 import { CLICommand, CommandResult, CDPClient } from '../types';
 import { ExitCode } from './CommandRouter';
@@ -29,6 +39,12 @@ export class CLIApplication {
     this.cli.registerHandler(new EvaluateScriptHandler());
     this.cli.registerHandler(new TakeScreenshotHandler());
     this.cli.registerHandler(new TakeSnapshotHandler());
+    this.cli.registerHandler(new GetConsoleMessageHandler());
+    this.cli.registerHandler(new ListConsoleMessagesHandler());
+    this.cli.registerHandler(new GetNetworkRequestHandler());
+    this.cli.registerHandler(new ListNetworkRequestsHandler());
+    this.cli.registerHandler(new InstallCursorCommandHandler());
+    this.cli.registerHandler(new InstallClaudeSkillHandler());
     
     // TODO: Register other handlers as they are implemented
     // this.cli.registerHandler(new NavigatePageHandler());
@@ -73,7 +89,13 @@ export class CLIApplication {
    * Check if command needs a CDP connection
    */
   private needsConnection(commandName: string): boolean {
-    const noConnectionCommands = ['help', 'connect', 'disconnect'];
+    const noConnectionCommands = [
+      'help', 
+      'connect', 
+      'disconnect', 
+      'install_cursor_command', 
+      'install_claude_skill'
+    ];
     return !noConnectionCommands.includes(commandName);
   }
 

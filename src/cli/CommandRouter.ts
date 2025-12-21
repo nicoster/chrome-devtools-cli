@@ -108,7 +108,13 @@ export class CommandRouter {
    * Check if command is a special command that doesn't require CDP client
    */
   private isSpecialCommand(commandName: string): boolean {
-    const specialCommands = ['help', 'connect', 'disconnect'];
+    const specialCommands = [
+      'help', 
+      'connect', 
+      'disconnect', 
+      'install_cursor_command', 
+      'install_claude_skill'
+    ];
     return specialCommands.includes(commandName);
   }
 
@@ -125,6 +131,21 @@ export class CommandRouter {
       
       case 'disconnect':
         return this.executeDisconnectCommand();
+      
+      case 'install_cursor_command':
+      case 'install_claude_skill':
+        // These commands have their own handlers, execute them directly
+        const handler = this.registry.get(command.name);
+        if (!handler) {
+          return {
+            success: false,
+            error: `Handler not found for command: ${command.name}`,
+            exitCode: ExitCode.INVALID_COMMAND
+          };
+        }
+        
+        // Execute without CDP client (pass null)
+        return await handler.execute(null as any, command.args);
       
       default:
         return {
@@ -315,6 +336,8 @@ For more information about a specific command, use:
       'snapshot': 'Capture DOM snapshot with structure and styles',
       'console-messages': 'Get console messages',
       'network-requests': 'Get network requests',
+      'install_cursor_command': 'Install Cursor IDE commands for Chrome automation',
+      'install_claude_skill': 'Install Claude Code skill for Chrome automation',
       'help': 'Show help information'
     };
 

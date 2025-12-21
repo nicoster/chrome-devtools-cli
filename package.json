@@ -1,7 +1,7 @@
 {
   "name": "chrome-cdp-cli",
-  "version": "1.0.2",
-  "description": "Command-line tool for controlling Chrome browser instances via the Chrome DevTools Protocol",
+  "version": "1.1.0",
+  "description": "Command-line tool for controlling Chrome browser instances via the Chrome DevTools Protocol. Core features: JavaScript execution, screenshot capture, DOM snapshots, console/network monitoring. Additional features available via eval workarounds.",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "bin": {

@@ -2,17 +2,46 @@
 
 A powerful command-line tool for controlling Chrome browser instances via the Chrome DevTools Protocol (CDP). This tool provides programmatic access to browser automation, debugging, and inspection capabilities without requiring a graphical interface.
 
+## Implementation Status
+
+### ✅ Fully Implemented Features
+
+- 🔗 **Connection Management**: Connect to local or remote Chrome instances with auto-discovery
+- ⚡ **JavaScript Execution**: Execute JavaScript code in browser context with full async support and file execution
+- 📸 **Visual Capture**: Take screenshots and capture complete DOM snapshots with layout information
+- 📊 **Console Monitoring**: Real-time console message capture with filtering and storage
+- 🌐 **Network Monitoring**: Real-time network request/response monitoring with comprehensive filtering
+- 🔧 **CLI Interface**: Full command-line interface with argument parsing and routing
+- 📦 **Build System**: Complete TypeScript build pipeline with testing framework
+
+### 🚧 Eval Workaround Available
+
+These features are not directly implemented but can be achieved using the `eval` command:
+
+- 📄 **Page Navigation**: `eval "window.location.href = 'https://example.com'"`
+- 🖱️ **Element Interaction**: `eval "document.querySelector('#btn').click()"`
+- 📝 **Form Filling**: `eval "document.querySelector('#input').value = 'text'"`
+- 📄 **HTML Content**: `eval "document.documentElement.outerHTML"`
+- 🚀 **Performance Data**: `eval "performance.now()"` or `eval "performance.getEntriesByType('navigation')"`
+- 📱 **User Agent**: `eval "navigator.userAgent"`
+- 🌐 **Network Requests**: `eval "fetch('/api').then(r => r.json())"`
+
+### ⏳ Not Yet Implemented
+
+- 📄 **Direct Page Management**: Native commands for creating, closing, listing, and selecting tabs
+- 🖱️ **Direct Element Interaction**: Native click, hover, drag, and form filling commands
+- 🚀 **Performance Analysis**: Native performance profiling and metrics collection
+- 📱 **Device Emulation**: Native device and network condition simulation
+- 📊 **Output Formatting**: Advanced JSON/text formatting with quiet/verbose modes
+
 ## Features
 
 - 🔗 **Connection Management**: Connect to local or remote Chrome instances
-- 📄 **Page Management**: Navigate, create, close, and manage browser tabs
 - ⚡ **JavaScript Execution**: Execute JavaScript code in browser context with full async support
 - 📸 **Visual Capture**: Take screenshots and capture HTML content
-- 🖱️ **Element Interaction**: Click, hover, fill forms, and interact with page elements
 - 📊 **Monitoring**: Monitor console messages and network requests in real-time
-- 🚀 **Performance Analysis**: Profile page performance and analyze metrics
-- 📱 **Device Emulation**: Simulate different devices and network conditions
 - 🔧 **Flexible Output**: Support for JSON and human-readable text output formats
+- 🚧 **Eval Workarounds**: Many advanced features available through JavaScript execution
 
 ## Installation
 
@@ -77,17 +106,26 @@ chrome-cdp-cli eval "document.title"
 # Or use with npx (no installation needed)
 npx chrome-cdp-cli eval "document.title"
 
-# Navigate to a website
-chrome-cdp-cli navigate_page "https://example.com"
+# Navigate to a website (via eval)
+chrome-cdp-cli eval "window.location.href = 'https://example.com'"
 
 # Take a screenshot
 chrome-cdp-cli screenshot --filename screenshot.png
 
-# Click an element
-chrome-cdp-cli click "#submit-button"
+# Capture DOM snapshot
+chrome-cdp-cli snapshot --filename dom-snapshot.json
 
-# Fill a form field
-chrome-cdp-cli fill "#email" "user@example.com"
+# Click an element (via eval)
+chrome-cdp-cli eval "document.querySelector('#submit-button').click()"
+
+# Fill a form field (via eval)
+chrome-cdp-cli eval "document.querySelector('#email').value = 'user@example.com'"
+
+# Monitor console messages
+chrome-cdp-cli get_console_message
+
+# Monitor network requests
+chrome-cdp-cli get_network_request
 
 # Get help for all commands
 chrome-cdp-cli --help
@@ -112,7 +150,23 @@ All commands support these connection options:
 - `--quiet`: Suppress non-essential output
 - `--verbose`: Enable detailed logging
 
-### Core Commands
+## Command Reference
+
+### Connection Options
+
+All commands support these connection options:
+
+- `--host <host>`: Chrome host (default: localhost)
+- `--port <port>`: DevTools port (default: 9222)
+- `--timeout <ms>`: Command timeout in milliseconds (default: 30000)
+
+### Output Options
+
+- `--format <format>`: Output format - 'json' or 'text' (default: text)
+- `--quiet`: Suppress non-essential output
+- `--verbose`: Enable detailed logging
+
+### ✅ Implemented Commands
 
 #### JavaScript Execution
 ```bash
@@ -130,39 +184,6 @@ npx chrome-cdp-cli eval "document.title"
 npx chrome-cdp-cli eval --file script.js
 ```
 
-#### Page Management
-```bash
-# Navigate to URL
-chrome-cdp-cli navigate_page "https://example.com"
-
-# Create new tab
-chrome-cdp-cli new_page
-
-# List all pages
-chrome-cdp-cli list_pages
-
-# Close current page
-chrome-cdp-cli close_page
-
-# Switch to specific page
-chrome-cdp-cli select_page --id "page-id"
-```
-
-#### Element Interaction
-```bash
-# Click element
-chrome-cdp-cli click "#button"
-
-# Fill input field
-chrome-cdp-cli fill "#email" "user@example.com"
-
-# Hover over element
-chrome-cdp-cli hover ".menu-item"
-
-# Wait for element
-chrome-cdp-cli wait_for "#loading" --timeout 5000
-```
-
 #### Visual Capture
 ```bash
 # Take screenshot
@@ -171,15 +192,290 @@ chrome-cdp-cli screenshot --filename screenshot.png
 # Full page screenshot  
 chrome-cdp-cli screenshot --full-page --filename fullpage.png
 
-# DOM snapshot
+# DOM snapshot with complete layout information
 chrome-cdp-cli snapshot --filename dom-snapshot.json
 
 # Custom dimensions
 chrome-cdp-cli screenshot --width 1920 --height 1080 --filename custom.png
-
-# Get HTML content
-chrome-cdp-cli get_html --output page.html
 ```
+
+#### Console Monitoring
+```bash
+# Get latest console message
+chrome-cdp-cli get_console_message
+
+# List all console messages
+chrome-cdp-cli list_console_messages
+
+# Filter console messages
+chrome-cdp-cli list_console_messages --filter '{"types":["error","warn"]}'
+```
+
+#### Network Monitoring
+```bash
+# Get latest network request
+chrome-cdp-cli get_network_request
+
+# List all network requests
+chrome-cdp-cli list_network_requests
+
+# Filter network requests
+chrome-cdp-cli list_network_requests --filter '{"methods":["POST"],"statusCodes":[200,201]}'
+```
+
+### 🚧 Available via Eval Workarounds
+
+#### Page Management
+```bash
+# Navigate to URL
+chrome-cdp-cli eval "window.location.href = 'https://example.com'"
+
+# Get current URL
+chrome-cdp-cli eval "window.location.href"
+
+# Reload page
+chrome-cdp-cli eval "window.location.reload()"
+
+# Go back
+chrome-cdp-cli eval "window.history.back()"
+
+# Go forward
+chrome-cdp-cli eval "window.history.forward()"
+```
+
+#### Element Interaction
+```bash
+# Click element
+chrome-cdp-cli eval "document.querySelector('#button').click()"
+
+# Fill input field
+chrome-cdp-cli eval "document.querySelector('#email').value = 'user@example.com'"
+
+# Hover over element (trigger mouseover event)
+chrome-cdp-cli eval "document.querySelector('.menu-item').dispatchEvent(new MouseEvent('mouseover'))"
+
+# Check if element exists
+chrome-cdp-cli eval "!!document.querySelector('#element')"
+
+# Get element text
+chrome-cdp-cli eval "document.querySelector('#element').textContent"
+
+# Get element attributes
+chrome-cdp-cli eval "document.querySelector('#element').getAttribute('class')"
+```
+
+#### Form Handling
+```bash
+# Fill multiple form fields
+chrome-cdp-cli eval "
+document.querySelector('#name').value = 'John Doe';
+document.querySelector('#email').value = 'john@example.com';
+document.querySelector('#phone').value = '123-456-7890';
+"
+
+# Submit form
+chrome-cdp-cli eval "document.querySelector('#myform').submit()"
+
+# Select dropdown option
+chrome-cdp-cli eval "document.querySelector('#dropdown').value = 'option1'"
+
+# Check checkbox
+chrome-cdp-cli eval "document.querySelector('#checkbox').checked = true"
+```
+
+#### Content Extraction
+```bash
+# Get page HTML
+chrome-cdp-cli eval "document.documentElement.outerHTML"
+
+# Get page title
+chrome-cdp-cli eval "document.title"
+
+# Get all links
+chrome-cdp-cli eval "Array.from(document.querySelectorAll('a')).map(a => a.href)"
+
+# Get all images
+chrome-cdp-cli eval "Array.from(document.querySelectorAll('img')).map(img => img.src)"
+
+# Extract table data
+chrome-cdp-cli eval "Array.from(document.querySelectorAll('table tr')).map(row => Array.from(row.cells).map(cell => cell.textContent))"
+```
+
+#### Performance Monitoring
+```bash
+# Get performance timing
+chrome-cdp-cli eval "performance.timing"
+
+# Get navigation entries
+chrome-cdp-cli eval "performance.getEntriesByType('navigation')"
+
+# Get resource entries
+chrome-cdp-cli eval "performance.getEntriesByType('resource')"
+
+# Get current timestamp
+chrome-cdp-cli eval "performance.now()"
+
+# Measure performance
+chrome-cdp-cli eval "
+performance.mark('start');
+// ... some operation ...
+performance.mark('end');
+performance.measure('operation', 'start', 'end');
+performance.getEntriesByName('operation')[0].duration;
+"
+```
+
+#### Network Operations
+```bash
+# Make HTTP request
+chrome-cdp-cli eval "fetch('/api/data').then(r => r.json())"
+
+# POST data
+chrome-cdp-cli eval "
+fetch('/api/users', {
+  method: 'POST',
+  headers: {'Content-Type': 'application/json'},
+  body: JSON.stringify({name: 'John', email: 'john@example.com'})
+}).then(r => r.json())
+"
+
+# Check network connectivity
+chrome-cdp-cli eval "navigator.onLine"
+```
+
+#### Browser Information
+```bash
+# Get user agent
+chrome-cdp-cli eval "navigator.userAgent"
+
+# Get viewport size
+chrome-cdp-cli eval "{width: window.innerWidth, height: window.innerHeight}"
+
+# Get screen resolution
+chrome-cdp-cli eval "{width: screen.width, height: screen.height}"
+
+# Get browser language
+chrome-cdp-cli eval "navigator.language"
+
+# Get cookies
+chrome-cdp-cli eval "document.cookie"
+```
+
+### ⏳ Not Yet Implemented
+
+These features require dedicated handlers and are not yet available:
+
+- Native page management commands (new_page, close_page, list_pages, select_page)
+- Native element interaction commands (click, hover, fill, drag)
+- Native performance profiling commands
+- Native device emulation commands
+- Advanced output formatting options
+
+## The Power of Eval
+
+The `eval` command is the most powerful feature of this CLI tool. It allows you to execute any JavaScript code in the browser context, making it possible to achieve almost any browser automation task. Here are some advanced examples:
+
+### Advanced Automation Examples
+
+```bash
+# Wait for element to appear
+chrome-cdp-cli eval "
+new Promise(resolve => {
+  const check = () => {
+    const element = document.querySelector('#dynamic-content');
+    if (element) resolve(element.textContent);
+    else setTimeout(check, 100);
+  };
+  check();
+})
+"
+
+# Scroll to element
+chrome-cdp-cli eval "
+document.querySelector('#target').scrollIntoView({behavior: 'smooth'});
+"
+
+# Take element screenshot (get element bounds for screenshot)
+chrome-cdp-cli eval "
+const element = document.querySelector('#target');
+const rect = element.getBoundingClientRect();
+({x: rect.x, y: rect.y, width: rect.width, height: rect.height})
+"
+
+# Simulate complex user interactions
+chrome-cdp-cli eval "
+const element = document.querySelector('#button');
+element.dispatchEvent(new MouseEvent('mousedown'));
+setTimeout(() => element.dispatchEvent(new MouseEvent('mouseup')), 100);
+"
+
+# Extract structured data
+chrome-cdp-cli eval "
+Array.from(document.querySelectorAll('.product')).map(product => ({
+  name: product.querySelector('.name').textContent,
+  price: product.querySelector('.price').textContent,
+  image: product.querySelector('img').src
+}))
+"
+
+# Monitor page changes
+chrome-cdp-cli eval "
+new Promise(resolve => {
+  const observer = new MutationObserver(mutations => {
+    resolve(mutations.length + ' changes detected');
+    observer.disconnect();
+  });
+  observer.observe(document.body, {childList: true, subtree: true});
+  setTimeout(() => {
+    observer.disconnect();
+    resolve('No changes in 5 seconds');
+  }, 5000);
+})
+"
+```
+
+## Current Limitations & Roadmap
+
+### Current Limitations
+
+- **No native page management**: Creating, closing, and switching between tabs requires manual implementation
+- **No native element interaction**: Clicking, hovering, and form filling must be done via eval
+- **No performance profiling**: Advanced performance analysis requires manual JavaScript
+- **No device emulation**: Mobile/tablet simulation not yet implemented
+- **Basic output formatting**: Advanced JSON/text formatting options not available
+
+### Upcoming Features
+
+1. **Native Page Management Commands**
+   - `new_page`, `close_page`, `list_pages`, `select_page`
+   - Direct CDP Target domain integration
+
+2. **Native Element Interaction**
+   - `click`, `hover`, `fill`, `drag` commands
+   - CSS selector-based element targeting
+
+3. **Performance Analysis**
+   - `performance_start_trace`, `performance_stop_trace`
+   - Built-in performance metrics and analysis
+
+4. **Device Emulation**
+   - `emulate` command for device simulation
+   - Network condition simulation
+
+5. **Advanced Output Formatting**
+   - Enhanced JSON/text formatting
+   - Quiet and verbose modes
+   - Custom output templates
+
+### Why Use Eval Workarounds?
+
+The eval approach offers several advantages:
+
+- **Immediate availability**: No waiting for feature implementation
+- **Maximum flexibility**: Any JavaScript operation is possible
+- **Learning opportunity**: Better understanding of browser APIs
+- **Custom solutions**: Tailor automation to specific needs
+- **Future-proof**: Works with any web technology
 
 ## Configuration
 
