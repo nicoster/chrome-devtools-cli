@@ -146,35 +146,110 @@ Examples:
   private generateClaudeSkill(): ClaudeSkillConfig {
     return {
       name: 'cdp-cli',
-      description: 'Chrome browser automation and testing using DevTools Protocol. Use when user needs to control Chrome browser, execute JavaScript, take screenshots, monitor console/network, or perform web automation tasks.',
+      description: 'Chrome browser automation and testing using DevTools Protocol. Use when user needs to control Chrome browser, execute JavaScript, take screenshots, interact with elements, monitor console/network, upload files, handle dialogs, or perform comprehensive web automation tasks.',
       instructions: `# Chrome Browser Automation
 
 ## Instructions
 Use this skill when the user needs to:
 - Execute JavaScript code in Chrome browser
-- Take screenshots of web pages
-- Capture DOM snapshots with layout information
+- Take screenshots of web pages and DOM snapshots
+- Interact with page elements (click, hover, fill forms, drag & drop)
+- Simulate keyboard input and handle file uploads
+- Wait for elements and handle browser dialogs
 - Monitor console messages and network requests
-- Perform web automation and testing
+- Perform comprehensive web automation and testing
 
-## Available Commands
-1. **eval**: Execute JavaScript code in browser context
-2. **screenshot**: Capture page screenshots
-3. **snapshot**: Capture complete DOM snapshots
-4. **get_console_message**: Get latest console message
-5. **list_console_messages**: List all console messages
-6. **get_network_request**: Get latest network request
-7. **list_network_requests**: List all network requests
+## Complete Command List
 
-## Usage Examples
-- Execute: chrome-cdp-cli eval "document.title"
-- Screenshot: chrome-cdp-cli screenshot --filename page.png
-- Console: chrome-cdp-cli get_console_message
-- Network: chrome-cdp-cli list_network_requests
+### JavaScript Execution
+- **eval**: Execute JavaScript code in browser context
+  \`chrome-cdp-cli eval "document.title"\`
+  \`chrome-cdp-cli eval "fetch('/api/data').then(r => r.json())"\`
+
+### Visual Capture
+- **screenshot**: Capture page screenshots
+  \`chrome-cdp-cli screenshot --filename page.png\`
+- **snapshot**: Capture complete DOM snapshots with layout info
+  \`chrome-cdp-cli snapshot --filename dom-snapshot.json\`
+
+### Element Interaction
+- **click**: Click on elements using CSS selectors
+  \`chrome-cdp-cli click "#submit-button"\`
+- **hover**: Hover over elements
+  \`chrome-cdp-cli hover "#dropdown-trigger"\`
+- **fill**: Fill form fields with text
+  \`chrome-cdp-cli fill "#username" "john@example.com"\`
+- **fill_form**: Fill multiple form fields at once
+  \`chrome-cdp-cli fill_form '{"#username": "john", "#password": "secret"}'\`
+
+### Advanced Interactions
+- **drag**: Perform drag and drop operations
+  \`chrome-cdp-cli drag "#draggable" "#dropzone"\`
+- **press_key**: Simulate keyboard input with modifiers
+  \`chrome-cdp-cli press_key "Enter"\`
+  \`chrome-cdp-cli press_key "a" --modifiers Ctrl\`
+- **upload_file**: Upload files to file input elements
+  \`chrome-cdp-cli upload_file "input[type='file']" "./document.pdf"\`
+- **wait_for**: Wait for elements to appear or meet conditions
+  \`chrome-cdp-cli wait_for "#loading" --condition hidden\`
+  \`chrome-cdp-cli wait_for "#submit-btn" --condition enabled\`
+- **handle_dialog**: Handle browser dialogs (alert, confirm, prompt)
+  \`chrome-cdp-cli handle_dialog accept\`
+  \`chrome-cdp-cli handle_dialog accept --text "user input"\`
+
+### Monitoring
+- **get_console_message**: Get latest console message
+  \`chrome-cdp-cli get_console_message\`
+- **list_console_messages**: List all console messages
+  \`chrome-cdp-cli list_console_messages --type error\`
+- **get_network_request**: Get latest network request
+  \`chrome-cdp-cli get_network_request\`
+- **list_network_requests**: List all network requests
+  \`chrome-cdp-cli list_network_requests --method POST\`
+
+### IDE Integration
+- **install_cursor_command**: Install Cursor IDE commands
+  \`chrome-cdp-cli install_cursor_command\`
+- **install_claude_skill**: Install Claude Code skills
+  \`chrome-cdp-cli install_claude_skill --skill-type personal\`
+
+## Common Automation Patterns
+
+### Form Testing Workflow
+1. Wait for form: \`wait_for "#login-form" --condition visible\`
+2. Fill fields: \`fill "#email" "test@example.com"\`
+3. Submit: \`click "#submit-button"\`
+4. Verify: \`wait_for "#success" --condition visible\`
+5. Capture: \`screenshot --filename result.png\`
+
+### File Upload Testing
+1. Trigger upload: \`click "#upload-button"\`
+2. Upload file: \`upload_file "input[type='file']" "./test.pdf"\`
+3. Wait for completion: \`wait_for ".upload-success" --condition visible\`
+4. Verify: \`eval "document.querySelector('.file-name').textContent"\`
+
+### Dialog Handling
+1. Trigger action: \`click "#delete-button"\`
+2. Handle confirmation: \`handle_dialog accept\`
+3. Wait for result: \`wait_for "#deleted-message" --condition visible\`
+
+### Keyboard Navigation
+1. Focus element: \`click "#search-input"\`
+2. Type text: \`press_key "search term"\`
+3. Use shortcuts: \`press_key "a" --modifiers Ctrl\` (select all)
+4. Submit: \`press_key "Enter"\`
 
 ## Prerequisites
 Chrome browser must be running with DevTools enabled:
-chrome --remote-debugging-port=9222`,
+\`chrome --remote-debugging-port=9222\`
+
+## Global Options
+All commands support:
+- \`--host <hostname>\`: Chrome host (default: localhost)
+- \`--port <number>\`: Chrome port (default: 9222)
+- \`--format <json|text>\`: Output format
+- \`--verbose\`: Enable detailed logging
+- \`--timeout <ms>\`: Operation timeout`,
       allowedTools: ['Execute', 'Read', 'Write']
     };
   }
@@ -194,13 +269,14 @@ ${skill.allowedTools ? `allowedTools: [${skill.allowedTools.map(t => `"${t}"`).j
   private generateExamplesMarkdown(): string {
     return `# Chrome Automation Examples
 
-## Basic JavaScript Execution
+## JavaScript Execution
 
 ### Get Page Information
 \`\`\`bash
 chrome-cdp-cli eval "document.title"
 chrome-cdp-cli eval "window.location.href"
 chrome-cdp-cli eval "document.querySelectorAll('a').length"
+chrome-cdp-cli eval "({title: document.title, url: location.href, links: document.links.length})"
 \`\`\`
 
 ### Interact with Elements
@@ -216,17 +292,120 @@ chrome-cdp-cli eval "fetch('/api/data').then(r => r.json())"
 chrome-cdp-cli eval "new Promise(resolve => setTimeout(() => resolve('Done'), 1000))"
 \`\`\`
 
+## Element Interaction Commands
+
+### Clicking Elements
+\`\`\`bash
+chrome-cdp-cli click "#submit-button"
+chrome-cdp-cli click ".menu-item"
+chrome-cdp-cli click "button[type='submit']"
+chrome-cdp-cli click "#slow-button" --timeout 10000
+\`\`\`
+
+### Hovering Over Elements
+\`\`\`bash
+chrome-cdp-cli hover "#dropdown-trigger"
+chrome-cdp-cli hover ".tooltip-element"
+chrome-cdp-cli hover "#menu-item" --timeout 5000
+\`\`\`
+
+### Form Filling
+\`\`\`bash
+# Single field
+chrome-cdp-cli fill "#username" "john@example.com"
+chrome-cdp-cli fill "input[name='password']" "secret123"
+chrome-cdp-cli fill "#message" "This is a test message"
+
+# Multiple fields at once
+chrome-cdp-cli fill_form '{
+  "#username": "john@example.com",
+  "#password": "secret123",
+  "#confirm-password": "secret123",
+  "#email": "john@example.com"
+}'
+\`\`\`
+
+### Drag and Drop
+\`\`\`bash
+chrome-cdp-cli drag "#draggable-item" "#drop-zone"
+chrome-cdp-cli drag ".file-item" ".upload-area"
+chrome-cdp-cli drag "#source-element" "#target-container"
+\`\`\`
+
+### Keyboard Input
+\`\`\`bash
+# Basic key presses
+chrome-cdp-cli press_key "Enter"
+chrome-cdp-cli press_key "Escape"
+chrome-cdp-cli press_key "Tab"
+
+# With modifiers
+chrome-cdp-cli press_key "a" --modifiers Ctrl  # Ctrl+A (Select All)
+chrome-cdp-cli press_key "s" --modifiers Ctrl  # Ctrl+S (Save)
+chrome-cdp-cli press_key "c" --modifiers Ctrl,Shift  # Ctrl+Shift+C
+
+# Target specific elements
+chrome-cdp-cli press_key "Enter" --selector "#search-input"
+chrome-cdp-cli press_key "ArrowDown" --selector "#dropdown"
+\`\`\`
+
+### File Upload
+\`\`\`bash
+chrome-cdp-cli upload_file "input[type='file']" "./document.pdf"
+chrome-cdp-cli upload_file "#file-input" "/path/to/image.jpg"
+chrome-cdp-cli upload_file ".upload-field" "./test-data.csv"
+\`\`\`
+
+### Waiting for Elements
+\`\`\`bash
+# Wait for element to exist
+chrome-cdp-cli wait_for "#loading-spinner"
+
+# Wait for element to be visible
+chrome-cdp-cli wait_for "#modal" --condition visible
+
+# Wait for element to be hidden
+chrome-cdp-cli wait_for "#loading" --condition hidden
+
+# Wait for element to be enabled
+chrome-cdp-cli wait_for "#submit-btn" --condition enabled
+
+# Wait for element to be disabled
+chrome-cdp-cli wait_for "#processing-btn" --condition disabled
+
+# Custom timeout
+chrome-cdp-cli wait_for "#slow-element" --timeout 30000
+\`\`\`
+
+### Dialog Handling
+\`\`\`bash
+# Accept dialogs
+chrome-cdp-cli handle_dialog accept
+
+# Dismiss dialogs
+chrome-cdp-cli handle_dialog dismiss
+
+# Handle prompt with text input
+chrome-cdp-cli handle_dialog accept --text "John Doe"
+chrome-cdp-cli handle_dialog accept --text ""  # Empty input
+
+# Wait for dialog to appear
+chrome-cdp-cli handle_dialog accept --timeout 10000
+\`\`\`
+
 ## Visual Capture
 
 ### Screenshots
 \`\`\`bash
 chrome-cdp-cli screenshot --filename homepage.png
 chrome-cdp-cli screenshot --filename fullpage.png --fullpage
+chrome-cdp-cli screenshot --filename reports/test-result.png
 \`\`\`
 
 ### DOM Snapshots
 \`\`\`bash
 chrome-cdp-cli snapshot --filename page-structure.json
+chrome-cdp-cli snapshot --filename form-state.json
 \`\`\`
 
 ## Monitoring
@@ -234,41 +413,176 @@ chrome-cdp-cli snapshot --filename page-structure.json
 ### Console Messages
 \`\`\`bash
 chrome-cdp-cli get_console_message
+chrome-cdp-cli list_console_messages
 chrome-cdp-cli list_console_messages --type error
+chrome-cdp-cli list_console_messages --type warn
 \`\`\`
 
 ### Network Requests
 \`\`\`bash
 chrome-cdp-cli get_network_request
+chrome-cdp-cli list_network_requests
 chrome-cdp-cli list_network_requests --method POST
+chrome-cdp-cli list_network_requests --method GET
 \`\`\`
 
-## Common Workflows
+## Complete Workflow Examples
 
-### Testing Form Submission
+### Login Form Testing
 \`\`\`bash
-# Fill form
-chrome-cdp-cli eval "document.querySelector('#email').value = 'test@example.com'"
-chrome-cdp-cli eval "document.querySelector('#password').value = 'password123'"
+# 1. Wait for login form to be visible
+chrome-cdp-cli wait_for "#login-form" --condition visible
 
-# Submit and capture
-chrome-cdp-cli eval "document.querySelector('#submit').click()"
-chrome-cdp-cli screenshot --filename after-submit.png
+# 2. Fill login credentials
+chrome-cdp-cli fill "#email" "test@example.com"
+chrome-cdp-cli fill "#password" "password123"
 
-# Check for errors
+# 3. Submit form
+chrome-cdp-cli click "#login-button"
+
+# 4. Wait for redirect or success message
+chrome-cdp-cli wait_for "#dashboard" --condition visible --timeout 10000
+
+# 5. Capture success state
+chrome-cdp-cli screenshot --filename login-success.png
+
+# 6. Check for any errors
 chrome-cdp-cli list_console_messages --type error
 \`\`\`
 
-### API Testing
+### File Upload Workflow
 \`\`\`bash
-# Make API call
-chrome-cdp-cli eval "fetch('/api/users', {method: 'POST', body: JSON.stringify({name: 'John'}), headers: {'Content-Type': 'application/json'}})"
+# 1. Navigate to upload page
+chrome-cdp-cli eval "window.location.href = '/upload'"
 
-# Monitor network
-chrome-cdp-cli list_network_requests --method POST
+# 2. Wait for upload form
+chrome-cdp-cli wait_for "#upload-form" --condition visible
 
-# Check response
-chrome-cdp-cli get_network_request
+# 3. Click upload button to open file dialog
+chrome-cdp-cli click "#upload-trigger"
+
+# 4. Upload file
+chrome-cdp-cli upload_file "input[type='file']" "./test-document.pdf"
+
+# 5. Wait for upload completion
+chrome-cdp-cli wait_for ".upload-success" --condition visible
+
+# 6. Verify uploaded file name
+chrome-cdp-cli eval "document.querySelector('.file-name').textContent"
+
+# 7. Capture final state
+chrome-cdp-cli screenshot --filename upload-complete.png
+\`\`\`
+
+### E-commerce Shopping Flow
+\`\`\`bash
+# 1. Search for product
+chrome-cdp-cli fill "#search-input" "laptop"
+chrome-cdp-cli press_key "Enter" --selector "#search-input"
+
+# 2. Wait for search results
+chrome-cdp-cli wait_for ".search-results" --condition visible
+
+# 3. Click on first product
+chrome-cdp-cli click ".product-item:first-child"
+
+# 4. Wait for product page
+chrome-cdp-cli wait_for "#product-details" --condition visible
+
+# 5. Add to cart
+chrome-cdp-cli click "#add-to-cart"
+
+# 6. Handle any confirmation dialogs
+chrome-cdp-cli handle_dialog accept
+
+# 7. Go to cart
+chrome-cdp-cli click "#cart-icon"
+
+# 8. Proceed to checkout
+chrome-cdp-cli click "#checkout-button"
+
+# 9. Fill shipping information
+chrome-cdp-cli fill_form '{
+  "#first-name": "John",
+  "#last-name": "Doe",
+  "#address": "123 Main St",
+  "#city": "Anytown",
+  "#zip": "12345"
+}'
+
+# 10. Capture checkout page
+chrome-cdp-cli screenshot --filename checkout-form.png
+\`\`\`
+
+### Form Validation Testing
+\`\`\`bash
+# 1. Try to submit empty form
+chrome-cdp-cli click "#submit-button"
+
+# 2. Check for validation errors
+chrome-cdp-cli eval "document.querySelectorAll('.error-message').length"
+
+# 3. Fill invalid email
+chrome-cdp-cli fill "#email" "invalid-email"
+chrome-cdp-cli click "#submit-button"
+
+# 4. Check specific error message
+chrome-cdp-cli eval "document.querySelector('#email-error').textContent"
+
+# 5. Fill valid data
+chrome-cdp-cli fill "#email" "valid@example.com"
+chrome-cdp-cli fill "#phone" "555-1234"
+
+# 6. Submit and verify success
+chrome-cdp-cli click "#submit-button"
+chrome-cdp-cli wait_for "#success-message" --condition visible
+
+# 7. Capture final state
+chrome-cdp-cli screenshot --filename form-success.png
+\`\`\`
+
+### Drag and Drop Testing
+\`\`\`bash
+# 1. Wait for drag source and target
+chrome-cdp-cli wait_for "#draggable-item" --condition visible
+chrome-cdp-cli wait_for "#drop-zone" --condition visible
+
+# 2. Capture initial state
+chrome-cdp-cli screenshot --filename before-drag.png
+
+# 3. Perform drag and drop
+chrome-cdp-cli drag "#draggable-item" "#drop-zone"
+
+# 4. Wait for drop animation to complete
+chrome-cdp-cli wait_for "#drop-zone .dropped-item" --condition visible
+
+# 5. Verify drop result
+chrome-cdp-cli eval "document.querySelector('#drop-zone').children.length"
+
+# 6. Capture final state
+chrome-cdp-cli screenshot --filename after-drag.png
+\`\`\`
+
+### Keyboard Navigation Testing
+\`\`\`bash
+# 1. Focus on first input
+chrome-cdp-cli click "#first-input"
+
+# 2. Navigate using Tab
+chrome-cdp-cli press_key "Tab"
+chrome-cdp-cli press_key "Tab"
+
+# 3. Use arrow keys in dropdown
+chrome-cdp-cli press_key "ArrowDown" --selector "#dropdown"
+chrome-cdp-cli press_key "ArrowDown"
+chrome-cdp-cli press_key "Enter"
+
+# 4. Use keyboard shortcuts
+chrome-cdp-cli press_key "a" --modifiers Ctrl  # Select all
+chrome-cdp-cli press_key "c" --modifiers Ctrl  # Copy
+
+# 5. Submit with Enter
+chrome-cdp-cli press_key "Enter" --selector "#submit-button"
 \`\`\`
 `;
   }
@@ -276,9 +590,11 @@ chrome-cdp-cli get_network_request
   private generateReferenceMarkdown(): string {
     return `# Chrome DevTools CLI Reference
 
-## Command Reference
+## Complete Command Reference
 
-### eval
+### JavaScript Execution
+
+#### eval
 Execute JavaScript code in the browser context.
 
 **Syntax:** \`chrome-cdp-cli eval <expression>\`
@@ -291,7 +607,9 @@ Execute JavaScript code in the browser context.
 - \`chrome-cdp-cli eval "document.title"\`
 - \`chrome-cdp-cli eval "fetch('/api').then(r => r.text())"\`
 
-### screenshot
+### Visual Capture
+
+#### screenshot
 Capture a screenshot of the current page.
 
 **Syntax:** \`chrome-cdp-cli screenshot [options]\`
@@ -301,7 +619,7 @@ Capture a screenshot of the current page.
 - \`--fullpage\`: Capture full page instead of viewport
 - \`--quality <0-100>\`: JPEG quality (default: 90)
 
-### snapshot
+#### snapshot
 Capture a complete DOM snapshot with layout information.
 
 **Syntax:** \`chrome-cdp-cli snapshot [options]\`
@@ -311,7 +629,139 @@ Capture a complete DOM snapshot with layout information.
 - \`--include-styles\`: Include computed styles (default: true)
 - \`--include-layout\`: Include layout information (default: true)
 
-### get_console_message
+### Element Interaction
+
+#### click
+Click on an element using CSS selector.
+
+**Syntax:** \`chrome-cdp-cli click <selector> [options]\`
+
+**Options:**
+- \`--wait-for-element\`: Wait for element to be available (default: true)
+- \`--timeout <ms>\`: Timeout for waiting for element (default: 5000ms)
+
+**Examples:**
+- \`chrome-cdp-cli click "#submit-button"\`
+- \`chrome-cdp-cli click ".menu-item" --timeout 10000\`
+
+#### hover
+Hover over an element using CSS selector.
+
+**Syntax:** \`chrome-cdp-cli hover <selector> [options]\`
+
+**Options:**
+- \`--wait-for-element\`: Wait for element to be available (default: true)
+- \`--timeout <ms>\`: Timeout for waiting for element (default: 5000ms)
+
+#### fill
+Fill a form field with text using CSS selector.
+
+**Syntax:** \`chrome-cdp-cli fill <selector> <text> [options]\`
+
+**Options:**
+- \`--wait-for-element\`: Wait for element to be available (default: true)
+- \`--timeout <ms>\`: Timeout for waiting for element (default: 5000ms)
+- \`--clear-first\`: Clear field before filling (default: true)
+
+**Examples:**
+- \`chrome-cdp-cli fill "#username" "john@example.com"\`
+- \`chrome-cdp-cli fill "input[name='password']" "secret123"\`
+
+#### fill_form
+Fill multiple form fields at once.
+
+**Syntax:** \`chrome-cdp-cli fill_form <json> [options]\`
+
+**Options:**
+- \`--wait-for-elements\`: Wait for all elements to be available (default: true)
+- \`--timeout <ms>\`: Timeout for waiting for elements (default: 5000ms)
+
+**Examples:**
+- \`chrome-cdp-cli fill_form '{"#username": "john", "#password": "secret"}'\`
+
+### Advanced Interactions
+
+#### drag
+Perform drag and drop operation from source to target element.
+
+**Syntax:** \`chrome-cdp-cli drag <sourceSelector> <targetSelector> [options]\`
+
+**Options:**
+- \`--wait-for-element\`: Wait for elements to be available (default: true)
+- \`--timeout <ms>\`: Timeout for waiting for elements (default: 5000ms)
+
+**Examples:**
+- \`chrome-cdp-cli drag "#draggable" "#dropzone"\`
+
+#### press_key
+Simulate keyboard input.
+
+**Syntax:** \`chrome-cdp-cli press_key <key> [options]\`
+
+**Options:**
+- \`--selector <selector>\`: CSS selector to focus element first
+- \`--modifiers <list>\`: Comma-separated modifiers: Ctrl, Alt, Shift, Meta
+- \`--wait-for-element\`: Wait for element if selector provided (default: true)
+- \`--timeout <ms>\`: Timeout for waiting for element (default: 5000ms)
+
+**Examples:**
+- \`chrome-cdp-cli press_key "Enter"\`
+- \`chrome-cdp-cli press_key "a" --modifiers Ctrl\`
+- \`chrome-cdp-cli press_key "Enter" --selector "#input-field"\`
+
+#### upload_file
+Upload a file to a file input element.
+
+**Syntax:** \`chrome-cdp-cli upload_file <selector> <filePath> [options]\`
+
+**Options:**
+- \`--wait-for-element\`: Wait for element to be available (default: true)
+- \`--timeout <ms>\`: Timeout for waiting for element (default: 5000ms)
+
+**Examples:**
+- \`chrome-cdp-cli upload_file "input[type='file']" "./document.pdf"\`
+
+#### wait_for
+Wait for an element to appear or meet specific conditions.
+
+**Syntax:** \`chrome-cdp-cli wait_for <selector> [options]\`
+
+**Options:**
+- \`--timeout <ms>\`: Maximum time to wait (default: 10000ms)
+- \`--condition <type>\`: Condition to wait for (default: exists)
+- \`--poll-interval <ms>\`: Polling interval (default: 100ms)
+
+**Conditions:**
+- \`exists\`: Element exists in DOM
+- \`visible\`: Element exists and is visible
+- \`hidden\`: Element is hidden or does not exist
+- \`enabled\`: Element exists and is not disabled
+- \`disabled\`: Element exists and is disabled
+
+**Examples:**
+- \`chrome-cdp-cli wait_for "#loading" --condition hidden\`
+- \`chrome-cdp-cli wait_for "#submit-btn" --condition enabled\`
+
+#### handle_dialog
+Handle browser dialogs (alert, confirm, prompt).
+
+**Syntax:** \`chrome-cdp-cli handle_dialog <action> [options]\`
+
+**Arguments:**
+- \`<action>\`: Action to take: "accept" or "dismiss"
+
+**Options:**
+- \`--text <string>\`: Text to enter for prompt dialogs (when accepting)
+- \`--wait-for-dialog\`: Wait for dialog to appear (default: true)
+- \`--timeout <ms>\`: Timeout for waiting for dialog (default: 5000ms)
+
+**Examples:**
+- \`chrome-cdp-cli handle_dialog accept\`
+- \`chrome-cdp-cli handle_dialog accept --text "John Doe"\`
+
+### Monitoring
+
+#### get_console_message
 Get the latest console message.
 
 **Syntax:** \`chrome-cdp-cli get_console_message [options]\`
@@ -319,7 +769,7 @@ Get the latest console message.
 **Options:**
 - \`--type <log|info|warn|error>\`: Filter by message type
 
-### list_console_messages
+#### list_console_messages
 List all console messages.
 
 **Syntax:** \`chrome-cdp-cli list_console_messages [options]\`
@@ -328,7 +778,7 @@ List all console messages.
 - \`--type <log|info|warn|error>\`: Filter by message type
 - \`--limit <number>\`: Maximum number of messages to return
 
-### get_network_request
+#### get_network_request
 Get the latest network request.
 
 **Syntax:** \`chrome-cdp-cli get_network_request [options]\`
@@ -336,7 +786,7 @@ Get the latest network request.
 **Options:**
 - \`--method <GET|POST|PUT|DELETE>\`: Filter by HTTP method
 
-### list_network_requests
+#### list_network_requests
 List all network requests.
 
 **Syntax:** \`chrome-cdp-cli list_network_requests [options]\`
@@ -345,7 +795,32 @@ List all network requests.
 - \`--method <GET|POST|PUT|DELETE>\`: Filter by HTTP method
 - \`--limit <number>\`: Maximum number of requests to return
 
+### IDE Integration
+
+#### install_cursor_command
+Install Cursor IDE commands for Chrome browser automation.
+
+**Syntax:** \`chrome-cdp-cli install_cursor_command [options]\`
+
+**Options:**
+- \`--target-directory <path>\`: Custom installation directory (default: .cursor/commands)
+- \`--force\`: Force installation without directory validation
+
+#### install_claude_skill
+Install Claude Code skill for Chrome browser automation.
+
+**Syntax:** \`chrome-cdp-cli install_claude_skill [options]\`
+
+**Options:**
+- \`--skill-type <type>\`: Installation type: 'project' or 'personal' (default: project)
+- \`--target-directory <path>\`: Custom installation directory
+- \`--include-examples\`: Include examples.md file
+- \`--include-references\`: Include reference.md file
+- \`--force\`: Force installation without directory validation
+
 ## Global Options
+
+All commands support these global options:
 
 - \`--host <hostname>\`: Chrome DevTools host (default: localhost)
 - \`--port <number>\`: Chrome DevTools port (default: 9222)
@@ -373,19 +848,87 @@ chrome --remote-debugging-port=9222 --disable-web-security --user-data-dir=/tmp/
 chrome --headless --remote-debugging-port=9222
 \`\`\`
 
+## Supported Keys for press_key Command
+
+### Letters and Numbers
+- Letters: a-z, A-Z
+- Numbers: 0-9
+
+### Special Keys
+- \`Enter\`: Enter key
+- \`Escape\`: Escape key
+- \`Tab\`: Tab key
+- \`Backspace\`: Backspace key
+- \`Delete\`: Delete key
+- \`Space\`: Space bar
+
+### Arrow Keys
+- \`ArrowUp\`: Up arrow
+- \`ArrowDown\`: Down arrow
+- \`ArrowLeft\`: Left arrow
+- \`ArrowRight\`: Right arrow
+
+### Navigation Keys
+- \`Home\`: Home key
+- \`End\`: End key
+- \`PageUp\`: Page Up key
+- \`PageDown\`: Page Down key
+
+### Modifier Keys
+- \`Ctrl\`: Control key
+- \`Alt\`: Alt key
+- \`Shift\`: Shift key
+- \`Meta\`: Meta/Cmd key (macOS)
+
+## Wait Conditions Explained
+
+### exists
+Element is present in the DOM, regardless of visibility.
+
+### visible
+Element is present in the DOM and visible to the user:
+- Has non-zero dimensions (width > 0 and height > 0)
+- \`visibility\` is not 'hidden'
+- \`display\` is not 'none'
+- \`opacity\` is not '0'
+
+### hidden
+Element is either not present in the DOM or is hidden:
+- Not in DOM, or
+- Has zero dimensions, or
+- \`visibility\` is 'hidden', or
+- \`display\` is 'none', or
+- \`opacity\` is '0'
+
+### enabled
+Element is present and not disabled (for form elements):
+- Element exists in DOM
+- \`disabled\` property is false
+- No \`disabled\` attribute
+
+### disabled
+Element is present and disabled (for form elements):
+- Element exists in DOM
+- \`disabled\` property is true or \`disabled\` attribute is present
+
 ## Error Handling
 
 ### Common Errors
 - **Connection refused**: Chrome is not running or DevTools port is incorrect
 - **Target not found**: No active tab or page available
+- **Element not found**: CSS selector doesn't match any elements
 - **JavaScript error**: Syntax error or runtime exception in eval expression
 - **Timeout**: Operation took longer than specified timeout
+- **File not found**: File path for upload_file doesn't exist
+- **Dialog not found**: No dialog present when trying to handle_dialog
 
 ### Debugging Tips
 - Use \`--verbose\` flag for detailed logging
 - Check Chrome DevTools at \`http://localhost:9222\` for available targets
-- Verify JavaScript syntax before executing with eval
+- Verify CSS selectors using browser developer tools
+- Test JavaScript expressions in browser console before using eval
 - Use shorter timeouts for testing, longer for complex operations
+- Check file paths are correct and files exist for upload operations
 
 ## Integration Examples
 
@@ -403,18 +946,22 @@ chrome --headless --remote-debugging-port=9222
     # Navigate to application
     chrome-cdp-cli eval "window.location.href = 'http://localhost:3000'"
     
-    # Run tests
-    chrome-cdp-cli eval "document.querySelector('#test-button').click()"
+    # Run comprehensive tests
+    chrome-cdp-cli wait_for "#app" --condition visible
+    chrome-cdp-cli fill "#username" "testuser"
+    chrome-cdp-cli fill "#password" "testpass"
+    chrome-cdp-cli click "#login-button"
+    chrome-cdp-cli wait_for "#dashboard" --condition visible
     chrome-cdp-cli screenshot --filename test-result.png
     
     # Check for errors
     chrome-cdp-cli list_console_messages --type error
 \`\`\`
 
-### Automated Testing
+### Automated Testing Script
 \`\`\`bash
 #!/bin/bash
-# test-script.sh
+# comprehensive-test.sh
 
 # Start Chrome in background
 chrome --headless --remote-debugging-port=9222 &
@@ -423,15 +970,43 @@ CHROME_PID=$!
 # Wait for Chrome to start
 sleep 2
 
-# Run tests
-chrome-cdp-cli eval "window.location.href = 'http://localhost:3000'"
-chrome-cdp-cli eval "document.querySelector('#login-form input[name=username]').value = 'testuser'"
-chrome-cdp-cli eval "document.querySelector('#login-form input[name=password]').value = 'testpass'"
-chrome-cdp-cli eval "document.querySelector('#login-form').submit()"
+# Test suite
+echo "Running comprehensive web tests..."
 
-# Capture results
-chrome-cdp-cli screenshot --filename login-test.png
-chrome-cdp-cli list_console_messages --type error > errors.log
+# Navigation test
+chrome-cdp-cli eval "window.location.href = 'http://localhost:3000'"
+chrome-cdp-cli wait_for "#app" --condition visible
+
+# Form interaction test
+chrome-cdp-cli fill "#search-input" "test query"
+chrome-cdp-cli press_key "Enter" --selector "#search-input"
+chrome-cdp-cli wait_for ".search-results" --condition visible
+
+# File upload test
+chrome-cdp-cli click "#upload-button"
+chrome-cdp-cli upload_file "input[type='file']" "./test-file.pdf"
+chrome-cdp-cli wait_for ".upload-success" --condition visible
+
+# Dialog handling test
+chrome-cdp-cli click "#delete-button"
+chrome-cdp-cli handle_dialog accept
+
+# Drag and drop test
+chrome-cdp-cli drag "#draggable" "#dropzone"
+chrome-cdp-cli wait_for "#dropzone .dropped-item" --condition visible
+
+# Capture final state
+chrome-cdp-cli screenshot --filename final-state.png
+chrome-cdp-cli snapshot --filename final-dom.json
+
+# Check for errors
+ERROR_COUNT=$(chrome-cdp-cli list_console_messages --type error | jq length)
+if [ "$ERROR_COUNT" -gt 0 ]; then
+  echo "Test failed: $ERROR_COUNT console errors found"
+  exit 1
+fi
+
+echo "All tests passed!"
 
 # Cleanup
 kill $CHROME_PID

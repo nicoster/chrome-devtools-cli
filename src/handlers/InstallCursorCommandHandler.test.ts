@@ -155,12 +155,12 @@ describe('InstallCursorCommandHandler', () => {
 
       // Verify markdown structure
       expect(markdownContent).toContain('# Chrome DevTools Protocol CLI 工具');
-      expect(markdownContent).toContain('## 功能列表');
+      expect(markdownContent).toContain('## 完整命令列表');
       expect(markdownContent).toContain('### 1. JavaScript 执行');
-      expect(markdownContent).toContain('### 2. 页面截图');
-      expect(markdownContent).toContain('### 3. DOM 快照');
-      expect(markdownContent).toContain('### 4. 控制台监控');
-      expect(markdownContent).toContain('### 5. 网络请求监控');
+      expect(markdownContent).toContain('### 2. 页面截图和快照');
+      expect(markdownContent).toContain('### 3. 元素交互');
+      expect(markdownContent).toContain('### 4. 高级交互');
+      expect(markdownContent).toContain('### 5. 监控功能');
       expect(markdownContent).toContain('## 使用示例');
       expect(markdownContent).toContain('## 前置条件');
       expect(markdownContent).toContain('chrome-cdp-cli eval');
@@ -190,10 +190,10 @@ describe('InstallCursorCommandHandler', () => {
       // Should contain all functionality descriptions
       const content = contents[0];
       expect(content).toContain('JavaScript 执行');
-      expect(content).toContain('页面截图');
-      expect(content).toContain('DOM 快照');
-      expect(content).toContain('控制台监控');
-      expect(content).toContain('网络请求监控');
+      expect(content).toContain('页面截图和快照');
+      expect(content).toContain('元素交互');
+      expect(content).toContain('监控功能');
+      expect(content).toContain('IDE 集成');
     });
   });
 

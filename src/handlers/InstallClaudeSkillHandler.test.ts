@@ -239,8 +239,8 @@ describe('InstallClaudeSkillHandler', () => {
       // Verify instructions content
       expect(markdownContent).toContain('# Chrome Browser Automation');
       expect(markdownContent).toContain('## Instructions');
-      expect(markdownContent).toContain('## Available Commands');
-      expect(markdownContent).toContain('## Usage Examples');
+      expect(markdownContent).toContain('## Complete Command List');
+      expect(markdownContent).toContain('## Common Automation Patterns');
       expect(markdownContent).toContain('## Prerequisites');
       expect(markdownContent).toContain('chrome-cdp-cli eval');
       expect(markdownContent).toContain('--remote-debugging-port=9222');
@@ -280,12 +280,12 @@ describe('InstallClaudeSkillHandler', () => {
 
       // Verify examples structure
       expect(examplesContent).toContain('# Chrome Automation Examples');
-      expect(examplesContent).toContain('## Basic JavaScript Execution');
+      expect(examplesContent).toContain('## JavaScript Execution');
       expect(examplesContent).toContain('## Visual Capture');
       expect(examplesContent).toContain('## Monitoring');
-      expect(examplesContent).toContain('## Common Workflows');
-      expect(examplesContent).toContain('### Testing Form Submission');
-      expect(examplesContent).toContain('### API Testing');
+      expect(examplesContent).toContain('## Complete Workflow Examples');
+      expect(examplesContent).toContain('### Login Form Testing');
+      expect(examplesContent).toContain('### E-commerce Shopping Flow');
     });
   });
 
@@ -307,7 +307,7 @@ describe('InstallClaudeSkillHandler', () => {
 
       // Verify reference structure
       expect(referenceContent).toContain('# Chrome DevTools CLI Reference');
-      expect(referenceContent).toContain('## Command Reference');
+      expect(referenceContent).toContain('## Complete Command Reference');
       expect(referenceContent).toContain('### eval');
       expect(referenceContent).toContain('### screenshot');
       expect(referenceContent).toContain('### snapshot');

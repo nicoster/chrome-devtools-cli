@@ -49,6 +49,7 @@ A command-line tool designed specifically for Large Language Models (LLMs) and A
 - 📸 **Visual Capture**: Take screenshots and capture complete DOM snapshots with layout information
 - 📊 **Console Monitoring**: Real-time console message capture with filtering and storage
 - 🌐 **Network Monitoring**: Real-time network request/response monitoring with comprehensive filtering
+- 🖱️ **Element Interaction**: Native click, hover, and form filling commands with CSS selector support
 - 🔧 **CLI Interface**: Full command-line interface with argument parsing and routing
 - 🛠️ **IDE Integration**: Install Cursor commands and Claude skills with directory validation and --force option
 - 📦 **Build System**: Complete TypeScript build pipeline with testing framework
@@ -58,9 +59,6 @@ A command-line tool designed specifically for Large Language Models (LLMs) and A
 These features use the `eval` command by design (not as workarounds) - this is the intended approach for LLM-assisted development:
 
 - 📄 **Page Navigation**: `eval "window.location.href = 'https://example.com'"`
-- 🖱️ **Element Interaction**: `eval "document.querySelector('#btn').click()"`
-- 📝 **Form Filling**: `eval "document.querySelector('#input').value = 'text'"`
-- 📄 **HTML Content**: `eval "document.documentElement.outerHTML"`
 - 🚀 **Performance Data**: `eval "performance.now()"` or `eval "performance.getEntriesByType('navigation')"`
 - 📱 **User Agent**: `eval "navigator.userAgent"`
 - 🌐 **Network Requests**: `eval "fetch('/api').then(r => r.json())"`
@@ -93,7 +91,6 @@ This tool is designed for LLM-assisted development. The IDE integrations (`insta
 ### ⏳ Not Yet Implemented
 
 - 📄 **Direct Page Management**: Native commands for creating, closing, listing, and selecting tabs
-- 🖱️ **Direct Element Interaction**: Native click, hover, drag, and form filling commands
 - 🚀 **Performance Analysis**: Native performance profiling and metrics collection
 - 📱 **Device Emulation**: Native device and network condition simulation
 - 📊 **Output Formatting**: Advanced JSON/text formatting with quiet/verbose modes
@@ -104,6 +101,8 @@ This tool is designed for LLM-assisted development. The IDE integrations (`insta
 - ⚡ **JavaScript Execution**: Execute JavaScript code in browser context with full async support
 - 📸 **Visual Capture**: Take screenshots and capture HTML content
 - 📊 **Monitoring**: Monitor console messages and network requests in real-time
+- 🖱️ **Element Interaction**: Native click, hover, and form filling commands with CSS selector support
+- 📝 **Form Automation**: Single field and batch form filling with comprehensive options
 - 🔧 **Flexible Output**: Support for JSON and human-readable text output formats
 - 🚧 **Eval Workarounds**: Many advanced features available through JavaScript execution
 
@@ -179,21 +178,29 @@ chrome-cdp-cli screenshot --filename screenshot.png
 # Capture DOM snapshot
 chrome-cdp-cli snapshot --filename dom-snapshot.json
 
-# Click an element (via eval)
-chrome-cdp-cli eval "document.querySelector('#submit-button').click()"
+# Element interactions
+chrome-cdp-cli click "#submit-button"
+chrome-cdp-cli hover ".menu-item"
+chrome-cdp-cli fill "#email" "user@example.com"
 
-# Fill a form field (via eval)
-chrome-cdp-cli eval "document.querySelector('#email').value = 'user@example.com'"
+# Advanced interactions
+chrome-cdp-cli drag "#draggable" "#dropzone"
+chrome-cdp-cli press_key "Enter"
+chrome-cdp-cli press_key "a" --modifiers Ctrl
+chrome-cdp-cli upload_file "input[type='file']" "./document.pdf"
+chrome-cdp-cli wait_for "#loading" --condition hidden
+chrome-cdp-cli handle_dialog accept
 
-# Monitor console messages
+# Batch form filling
+chrome-cdp-cli fill_form --fields '[{"selector":"#username","value":"john"},{"selector":"#password","value":"secret"}]'
+
+# Monitor console and network
 chrome-cdp-cli get_console_message
-
-# Monitor network requests
 chrome-cdp-cli get_network_request
 
 # Install IDE integrations
-chrome-cdp-cli install-cursor-command
-chrome-cdp-cli install-claude-skill --skill-type personal
+chrome-cdp-cli install_cursor_command
+chrome-cdp-cli install_claude_skill --skill-type personal
 
 # Get help for all commands
 chrome-cdp-cli --help
@@ -267,6 +274,110 @@ chrome-cdp-cli snapshot --filename dom-snapshot.json
 chrome-cdp-cli screenshot --width 1920 --height 1080 --filename custom.png
 ```
 
+#### Element Interaction
+```bash
+# Click on an element using CSS selector
+chrome-cdp-cli click "#submit-button"
+
+# Click with custom timeout
+chrome-cdp-cli click ".slow-loading-button" --timeout 10000
+
+# Click without waiting for element (fail immediately if not found)
+chrome-cdp-cli click "#optional-element" --no-wait
+
+# Hover over an element
+chrome-cdp-cli hover "#menu-item"
+
+# Hover over a dropdown trigger
+chrome-cdp-cli hover ".dropdown-trigger"
+
+# Fill a single form field
+chrome-cdp-cli fill "#username" "john@example.com"
+
+# Fill a password field
+chrome-cdp-cli fill "input[type='password']" "secret123"
+
+# Fill a textarea
+chrome-cdp-cli fill "#message" "Hello, this is a test message"
+
+# Select an option in a dropdown (by value or text)
+chrome-cdp-cli fill "#country" "US"
+chrome-cdp-cli fill "#country" "United States"
+
+# Fill without clearing existing content
+chrome-cdp-cli fill "#notes" " - Additional note" --no-clear
+
+# Fill multiple form fields in batch
+chrome-cdp-cli fill_form --fields '[
+  {"selector":"#username","value":"john@example.com"},
+  {"selector":"#password","value":"secret123"},
+  {"selector":"#country","value":"United States"}
+]'
+
+# Fill form from JSON file
+echo '[
+  {"selector":"#firstName","value":"John"},
+  {"selector":"#lastName","value":"Doe"},
+  {"selector":"#email","value":"john.doe@example.com"}
+]' > form-data.json
+chrome-cdp-cli fill_form --fields-file form-data.json
+
+# Fill form with custom options
+chrome-cdp-cli fill_form --fields '[
+  {"selector":"#notes","value":"Additional information"}
+]' --no-clear --timeout 10000 --stop-on-error
+
+# Fill form and continue on errors (default behavior)
+chrome-cdp-cli fill_form --fields '[
+  {"selector":"#field1","value":"value1"},
+  {"selector":"#nonexistent","value":"value2"},
+  {"selector":"#field3","value":"value3"}
+]' --continue-on-error
+```
+
+#### Advanced Interactions
+```bash
+# Drag and drop operations
+chrome-cdp-cli drag "#draggable-item" "#drop-zone"
+
+# Drag with custom timeout
+chrome-cdp-cli drag ".file-item" ".upload-area" --timeout 10000
+
+# Keyboard input simulation
+chrome-cdp-cli press_key "Enter"
+chrome-cdp-cli press_key "Escape"
+chrome-cdp-cli press_key "Tab"
+
+# Keyboard input with modifiers
+chrome-cdp-cli press_key "a" --modifiers Ctrl  # Ctrl+A (Select All)
+chrome-cdp-cli press_key "s" --modifiers Ctrl  # Ctrl+S (Save)
+chrome-cdp-cli press_key "c" --modifiers Ctrl,Shift  # Ctrl+Shift+C
+
+# Target specific elements for keyboard input
+chrome-cdp-cli press_key "Enter" --selector "#search-input"
+chrome-cdp-cli press_key "ArrowDown" --selector "#dropdown"
+
+# File upload to file input elements
+chrome-cdp-cli upload_file "input[type='file']" "./document.pdf"
+chrome-cdp-cli upload_file "#file-input" "/path/to/image.jpg"
+chrome-cdp-cli upload_file ".upload-field" "./test-data.csv"
+
+# Wait for elements to appear or meet conditions
+chrome-cdp-cli wait_for "#loading-spinner"  # Wait for element to exist
+chrome-cdp-cli wait_for "#modal" --condition visible  # Wait for element to be visible
+chrome-cdp-cli wait_for "#loading" --condition hidden  # Wait for element to be hidden
+chrome-cdp-cli wait_for "#submit-btn" --condition enabled  # Wait for element to be enabled
+chrome-cdp-cli wait_for "#processing-btn" --condition disabled  # Wait for element to be disabled
+chrome-cdp-cli wait_for "#slow-element" --timeout 30000  # Custom timeout
+
+# Handle browser dialogs (alert, confirm, prompt)
+chrome-cdp-cli handle_dialog accept  # Accept dialog
+chrome-cdp-cli handle_dialog dismiss  # Dismiss dialog
+chrome-cdp-cli handle_dialog accept --text "John Doe"  # Handle prompt with text input
+chrome-cdp-cli handle_dialog accept --text ""  # Handle prompt with empty input
+chrome-cdp-cli handle_dialog accept --timeout 10000  # Wait for dialog to appear
+```
+
 #### Console Monitoring
 ```bash
 # Get latest console message
@@ -275,7 +386,7 @@ chrome-cdp-cli get_console_message
 # List all console messages
 chrome-cdp-cli list_console_messages
 
-# Filter console messages
+# Filter console messages by type
 chrome-cdp-cli list_console_messages --filter '{"types":["error","warn"]}'
 ```
 
@@ -287,34 +398,34 @@ chrome-cdp-cli get_network_request
 # List all network requests
 chrome-cdp-cli list_network_requests
 
-# Filter network requests
+# Filter network requests by method
 chrome-cdp-cli list_network_requests --filter '{"methods":["POST"],"statusCodes":[200,201]}'
 ```
 
 #### IDE Integration
 ```bash
 # Install Cursor command (creates .cursor/commands/cdp-cli.md)
-chrome-cdp-cli install-cursor-command
+chrome-cdp-cli install_cursor_command
 
 # Install Cursor command with --force (bypasses directory validation)
-chrome-cdp-cli install-cursor-command --force
+chrome-cdp-cli install_cursor_command --force
 
 # Install Claude skill for project (creates .claude/skills/cdp-cli/SKILL.md)
-chrome-cdp-cli install-claude-skill
+chrome-cdp-cli install_claude_skill
 
 # Install Claude skill for personal use (creates ~/.claude/skills/cdp-cli/SKILL.md)
-chrome-cdp-cli install-claude-skill --skill-type personal
+chrome-cdp-cli install_claude_skill --skill-type personal
 
 # Install Claude skill with examples and references
-chrome-cdp-cli install-claude-skill --include-examples --include-references
+chrome-cdp-cli install_claude_skill --include-examples --include-references
 
 # Install with custom directory
-chrome-cdp-cli install-cursor-command --target-directory /custom/path/.cursor/commands
-chrome-cdp-cli install-claude-skill --target-directory /custom/path/.claude/skills
+chrome-cdp-cli install_cursor_command --target-directory /custom/path/.cursor/commands
+chrome-cdp-cli install_claude_skill --target-directory /custom/path/.claude/skills
 
 # Force install (bypasses directory validation)
-chrome-cdp-cli install-cursor-command --force
-chrome-cdp-cli install-claude-skill --force
+chrome-cdp-cli install_cursor_command --force
+chrome-cdp-cli install_claude_skill --force
 ```
 
 ### 🚧 Available via Eval Workarounds
@@ -339,14 +450,15 @@ chrome-cdp-cli eval "window.history.forward()"
 
 #### Element Interaction
 ```bash
-# Click element
+# Native commands (recommended)
+chrome-cdp-cli click "#button"
+chrome-cdp-cli hover ".menu-item"
+chrome-cdp-cli fill "#email" "user@example.com"
+
+# Via eval (still available for complex scenarios)
 chrome-cdp-cli eval "document.querySelector('#button').click()"
-
-# Fill input field
-chrome-cdp-cli eval "document.querySelector('#email').value = 'user@example.com'"
-
-# Hover over element (trigger mouseover event)
 chrome-cdp-cli eval "document.querySelector('.menu-item').dispatchEvent(new MouseEvent('mouseover'))"
+chrome-cdp-cli eval "document.querySelector('#email').value = 'user@example.com'"
 
 # Check if element exists
 chrome-cdp-cli eval "!!document.querySelector('#element')"
@@ -360,7 +472,18 @@ chrome-cdp-cli eval "document.querySelector('#element').getAttribute('class')"
 
 #### Form Handling
 ```bash
-# Fill multiple form fields
+# Native batch form filling (recommended)
+chrome-cdp-cli fill_form --fields '[
+  {"selector":"#name","value":"John Doe"},
+  {"selector":"#email","value":"john@example.com"},
+  {"selector":"#phone","value":"123-456-7890"}
+]'
+
+# Native single field filling
+chrome-cdp-cli fill "#name" "John Doe"
+chrome-cdp-cli fill "#email" "john@example.com"
+
+# Via eval (for complex form operations)
 chrome-cdp-cli eval "
 document.querySelector('#name').value = 'John Doe';
 document.querySelector('#email').value = 'john@example.com';
@@ -370,7 +493,10 @@ document.querySelector('#phone').value = '123-456-7890';
 # Submit form
 chrome-cdp-cli eval "document.querySelector('#myform').submit()"
 
-# Select dropdown option
+# Select dropdown option (native)
+chrome-cdp-cli fill "#dropdown" "option1"
+
+# Select dropdown option (via eval)
 chrome-cdp-cli eval "document.querySelector('#dropdown').value = 'option1'"
 
 # Check checkbox
@@ -533,7 +659,6 @@ new Promise(resolve => {
 ### Current Limitations
 
 - **No native page management**: Creating, closing, and switching between tabs requires manual implementation
-- **No native element interaction**: Clicking, hovering, and form filling must be done via eval
 - **No performance profiling**: Advanced performance analysis requires manual JavaScript
 - **No device emulation**: Mobile/tablet simulation not yet implemented
 - **Basic output formatting**: Advanced JSON/text formatting options not available
@@ -544,9 +669,10 @@ new Promise(resolve => {
    - `new_page`, `close_page`, `list_pages`, `select_page`
    - Direct CDP Target domain integration
 
-2. **Native Element Interaction**
-   - `click`, `hover`, `fill`, `drag` commands
+2. **Native Element Interaction** ✅ **COMPLETED**
+   - `click`, `hover`, `fill`, `fill_form` commands
    - CSS selector-based element targeting
+   - Comprehensive form filling with batch operations
 
 3. **Performance Analysis**
    - `performance_start_trace`, `performance_stop_trace`
@@ -580,6 +706,191 @@ new Promise(resolve => {
 7. **⚡ Instant Iteration**: LLMs can adjust scripts based on results immediately - no need to wait for feature releases.
 
 **This tool is built for LLM-assisted development. The eval-first approach, combined with IDE integrations (Cursor commands & Claude skills), creates a seamless workflow where AI assistants can automate browser tasks as part of your development process.**
+
+## Form Filling & Element Interaction
+
+The CLI now includes native commands for element interaction and form filling, designed to work seamlessly with both simple and complex automation scenarios.
+
+### Single Field Filling
+
+```bash
+# Fill a text input
+chrome-cdp-cli fill "#username" "john@example.com"
+
+# Fill a password field
+chrome-cdp-cli fill "input[type='password']" "secret123"
+
+# Fill a textarea
+chrome-cdp-cli fill "#message" "Hello, this is a test message"
+
+# Select dropdown option (by value or text)
+chrome-cdp-cli fill "#country" "US"
+chrome-cdp-cli fill "#country" "United States"
+
+# Fill without clearing existing content
+chrome-cdp-cli fill "#notes" " - Additional note" --no-clear
+
+# Fill with custom timeout
+chrome-cdp-cli fill ".slow-loading-field" "value" --timeout 10000
+```
+
+### Batch Form Filling
+
+```bash
+# Fill multiple fields at once
+chrome-cdp-cli fill_form --fields '[
+  {"selector":"#firstName","value":"John"},
+  {"selector":"#lastName","value":"Doe"},
+  {"selector":"#email","value":"john.doe@example.com"},
+  {"selector":"#country","value":"United States"}
+]'
+
+# Fill form from JSON file
+echo '[
+  {"selector":"#username","value":"testuser"},
+  {"selector":"#password","value":"testpass"},
+  {"selector":"#confirmPassword","value":"testpass"}
+]' > login-form.json
+chrome-cdp-cli fill_form --fields-file login-form.json
+
+# Advanced options
+chrome-cdp-cli fill_form --fields '[
+  {"selector":"#field1","value":"value1"},
+  {"selector":"#field2","value":"value2"}
+]' --no-clear --timeout 15000 --stop-on-error
+```
+
+### Element Interaction
+
+```bash
+# Click elements
+chrome-cdp-cli click "#submit-button"
+chrome-cdp-cli click ".menu-item" --timeout 5000
+
+# Hover over elements
+chrome-cdp-cli hover "#dropdown-trigger"
+chrome-cdp-cli hover ".tooltip-element" --no-wait
+```
+
+### Form Filling Options
+
+**Single Field Options (`fill` command):**
+- `--wait-for-element` / `--no-wait`: Wait for element to appear (default: true)
+- `--timeout <ms>`: Timeout for waiting (default: 5000ms)
+- `--clear-first` / `--no-clear`: Clear field before filling (default: true)
+
+**Batch Form Options (`fill_form` command):**
+- `--fields <json>`: JSON array of field objects
+- `--fields-file <file>`: JSON file containing field array
+- `--wait-for-elements` / `--no-wait`: Wait for all elements (default: true)
+- `--timeout <ms>`: Timeout for each field (default: 5000ms)
+- `--clear-first` / `--no-clear`: Clear all fields before filling (default: true)
+- `--continue-on-error` / `--stop-on-error`: Continue if field fails (default: continue)
+
+### Supported Form Elements
+
+**Input Types:**
+- Text inputs (`<input type="text">`)
+- Email inputs (`<input type="email">`)
+- Password inputs (`<input type="password">`)
+- Number inputs (`<input type="number">`)
+- Search inputs (`<input type="search">`)
+- URL inputs (`<input type="url">`)
+
+**Other Elements:**
+- Textareas (`<textarea>`)
+- Select dropdowns (`<select>`) - matches by value or text content
+
+### Error Handling
+
+The form filling commands include comprehensive error handling:
+
+```bash
+# Continue filling other fields if one fails (default)
+chrome-cdp-cli fill_form --fields '[
+  {"selector":"#valid-field","value":"works"},
+  {"selector":"#invalid-field","value":"fails"},
+  {"selector":"#another-field","value":"also works"}
+]' --continue-on-error
+
+# Stop on first error
+chrome-cdp-cli fill_form --fields '[
+  {"selector":"#field1","value":"value1"},
+  {"selector":"#nonexistent","value":"value2"}
+]' --stop-on-error
+```
+
+### Integration with Eval
+
+For complex scenarios, combine native commands with eval:
+
+```bash
+# Use native commands for standard operations
+chrome-cdp-cli fill "#username" "john@example.com"
+chrome-cdp-cli fill "#password" "secret123"
+
+# Use eval for complex validation or custom logic
+chrome-cdp-cli eval "
+// Validate form before submission
+const username = document.querySelector('#username').value;
+const password = document.querySelector('#password').value;
+if (username && password && password.length >= 8) {
+  document.querySelector('#submit').click();
+  return 'Form submitted successfully';
+} else {
+  return 'Validation failed';
+}
+"
+```
+
+## Quick Reference
+
+### Form Filling Commands
+
+```bash
+# Single field filling
+chrome-cdp-cli fill "#username" "john@example.com"
+chrome-cdp-cli fill "#country" "United States"  # Works with dropdowns
+
+# Batch form filling
+chrome-cdp-cli fill_form --fields '[
+  {"selector":"#username","value":"john"},
+  {"selector":"#password","value":"secret"}
+]'
+
+# From JSON file
+chrome-cdp-cli fill_form --fields-file form-data.json
+```
+
+### Element Interaction Commands
+
+```bash
+# Click and hover
+chrome-cdp-cli click "#submit-button"
+chrome-cdp-cli hover ".dropdown-trigger"
+
+# With options
+chrome-cdp-cli fill "#field" "value" --timeout 10000 --no-clear
+chrome-cdp-cli click "#button" --no-wait
+```
+
+### Core Commands
+
+```bash
+# JavaScript execution
+chrome-cdp-cli eval "document.title"
+chrome-cdp-cli eval --file script.js
+
+# Visual capture
+chrome-cdp-cli screenshot --filename page.png
+chrome-cdp-cli snapshot --filename dom.json
+
+# Monitoring
+chrome-cdp-cli get_console_message
+chrome-cdp-cli list_network_requests
+```
+
+For detailed documentation, see the [Form Filling Guide](docs/FORM_FILLING.md).
 
 ## Configuration
 
@@ -806,6 +1117,7 @@ MIT License - see [LICENSE](LICENSE) file for details.
 ## Support
 
 - 📖 [Documentation](https://github.com/nickxiao42/chrome-devtools-cli/wiki)
+- 📝 [Form Filling Guide](docs/FORM_FILLING.md)
 - 🐛 [Issue Tracker](https://github.com/nickxiao42/chrome-devtools-cli/issues)
 - 💬 [Discussions](https://github.com/nickxiao42/chrome-devtools-cli/discussions)
 

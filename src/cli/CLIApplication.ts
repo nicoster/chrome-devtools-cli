@@ -9,7 +9,16 @@ import {
   GetNetworkRequestHandler,
   ListNetworkRequestsHandler,
   InstallCursorCommandHandler,
-  InstallClaudeSkillHandler
+  InstallClaudeSkillHandler,
+  ClickHandler,
+  HoverHandler,
+  FillHandler,
+  FillFormHandler,
+  DragHandler,
+  PressKeyHandler,
+  UploadFileHandler,
+  WaitForHandler,
+  HandleDialogHandler
 } from '../handlers';
 import { Logger } from '../utils/logger';
 import { CLICommand, CommandResult, CDPClient } from '../types';
@@ -45,10 +54,18 @@ export class CLIApplication {
     this.cli.registerHandler(new ListNetworkRequestsHandler());
     this.cli.registerHandler(new InstallCursorCommandHandler());
     this.cli.registerHandler(new InstallClaudeSkillHandler());
+    this.cli.registerHandler(new ClickHandler());
+    this.cli.registerHandler(new HoverHandler());
+    this.cli.registerHandler(new FillHandler());
+    this.cli.registerHandler(new FillFormHandler());
+    this.cli.registerHandler(new DragHandler());
+    this.cli.registerHandler(new PressKeyHandler());
+    this.cli.registerHandler(new UploadFileHandler());
+    this.cli.registerHandler(new WaitForHandler());
+    this.cli.registerHandler(new HandleDialogHandler());
     
     // TODO: Register other handlers as they are implemented
     // this.cli.registerHandler(new NavigatePageHandler());
-    // this.cli.registerHandler(new ClickHandler());
     // etc.
   }
 

@@ -5,6 +5,42 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.2.5] - 2024-12-21
+
+### Added
+- **Form Filling Commands**: Native form filling functionality with comprehensive options
+  - `fill` command for single form field filling with CSS selector support
+  - `fill_form` command for batch form filling with JSON input
+  - Support for input, textarea, and select elements
+  - Automatic event triggering (input/change events)
+  - Element waiting with configurable timeouts
+  - Clear-before-fill option (configurable)
+  - Continue-on-error vs stop-on-error modes for batch operations
+  - Comprehensive error handling and detailed result reporting
+
+- **Element Interaction Commands**: Native element interaction capabilities
+  - `click` command for clicking elements with CSS selectors
+  - `hover` command for hovering over elements
+  - CDP-first approach with JavaScript eval fallback
+  - Element waiting and timeout handling
+  - Automatic scrolling into view
+
+### Enhanced
+- **CLI Interface**: Updated command registration to include new form filling handlers
+- **Help System**: Comprehensive help text for all new commands with examples
+- **Documentation**: Updated README with detailed form filling examples and usage patterns
+- **Testing**: Complete test coverage for all new form filling functionality
+  - Unit tests for individual handlers
+  - Integration tests for batch operations
+  - Error handling and edge case testing
+
+### Technical Details
+- Dual implementation approach: CDP DOM.querySelector + Runtime.callFunctionOn with eval fallback
+- Smart select element handling: matches by value first, then by text content
+- Proper event simulation for form validation compatibility
+- TypeScript interfaces for all new command arguments
+- Comprehensive input validation and error messages
+
 ## [1.0.0] - 2024-01-XX
 
 ### Added
