@@ -49,7 +49,7 @@ A command-line tool designed specifically for Large Language Models (LLMs) and A
 - 📸 **Visual Capture**: Take screenshots and capture complete DOM snapshots with layout information
 - 📊 **Console Monitoring**: Real-time console message capture with filtering and storage
 - 🌐 **Network Monitoring**: Real-time network request/response monitoring with comprehensive filtering
-- 🖱️ **Element Interaction**: Native click, hover, and form filling commands with CSS selector support
+- 🖱️ **Element Interaction**: Complete native interaction commands (click, hover, fill, drag, press_key, upload_file, wait_for, handle_dialog)
 - 🔧 **CLI Interface**: Full command-line interface with argument parsing and routing
 - 🛠️ **IDE Integration**: Install Cursor commands and Claude skills with directory validation and --force option
 - 📦 **Build System**: Complete TypeScript build pipeline with testing framework
@@ -101,7 +101,7 @@ This tool is designed for LLM-assisted development. The IDE integrations (`insta
 - ⚡ **JavaScript Execution**: Execute JavaScript code in browser context with full async support
 - 📸 **Visual Capture**: Take screenshots and capture HTML content
 - 📊 **Monitoring**: Monitor console messages and network requests in real-time
-- 🖱️ **Element Interaction**: Native click, hover, and form filling commands with CSS selector support
+- 🖱️ **Element Interaction**: Complete native interaction commands (click, hover, fill, drag, press_key, upload_file, wait_for, handle_dialog)
 - 📝 **Form Automation**: Single field and batch form filling with comprehensive options
 - 🔧 **Flexible Output**: Support for JSON and human-readable text output formats
 - 🚧 **Eval Workarounds**: Many advanced features available through JavaScript execution
@@ -586,7 +586,6 @@ chrome-cdp-cli eval "document.cookie"
 These features require dedicated handlers and are not yet available:
 
 - Native page management commands (new_page, close_page, list_pages, select_page)
-- Native element interaction commands (click, hover, fill, drag)
 - Native performance profiling commands
 - Native device emulation commands
 - Advanced output formatting options
@@ -669,20 +668,15 @@ new Promise(resolve => {
    - `new_page`, `close_page`, `list_pages`, `select_page`
    - Direct CDP Target domain integration
 
-2. **Native Element Interaction** ✅ **COMPLETED**
-   - `click`, `hover`, `fill`, `fill_form` commands
-   - CSS selector-based element targeting
-   - Comprehensive form filling with batch operations
-
-3. **Performance Analysis**
+2. **Performance Analysis**
    - `performance_start_trace`, `performance_stop_trace`
    - Built-in performance metrics and analysis
 
-4. **Device Emulation**
+3. **Device Emulation**
    - `emulate` command for device simulation
    - Network condition simulation
 
-5. **Advanced Output Formatting**
+4. **Advanced Output Formatting**
    - Enhanced JSON/text formatting
    - Quiet and verbose modes
    - Custom output templates
