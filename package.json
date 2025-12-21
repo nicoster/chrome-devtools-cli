@@ -1,6 +1,6 @@
 {
   "name": "chrome-cdp-cli",
-  "version": "1.2.0",
+  "version": "1.2.1",
   "description": "Command-line tool for controlling Chrome browser via Chrome DevTools Protocol. Features: JavaScript execution, screenshots, DOM snapshots, console/network monitoring, IDE integration (Cursor commands & Claude skills). Install IDE tools with --force option for directory validation bypass.",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
