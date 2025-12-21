@@ -133,7 +133,7 @@ export class CommandRouter {
         return this.executeDisconnectCommand();
       
       case 'install_cursor_command':
-      case 'install_claude_skill':
+      case 'install_claude_skill': {
         // These commands have their own handlers, execute them directly
         const handler = this.registry.get(command.name);
         if (!handler) {
@@ -146,6 +146,7 @@ export class CommandRouter {
         
         // Execute without CDP client (pass null)
         return await handler.execute(null as any, command.args);
+      }
       
       default:
         return {
@@ -336,6 +337,10 @@ For more information about a specific command, use:
       'snapshot': 'Capture DOM snapshot with structure and styles',
       'console-messages': 'Get console messages',
       'network-requests': 'Get network requests',
+      'get_console_message': 'Get the latest console message',
+      'list_console_messages': 'List all console messages with filtering',
+      'get_network_request': 'Get the latest network request',
+      'list_network_requests': 'List all network requests with filtering',
       'install_cursor_command': 'Install Cursor IDE commands for Chrome automation',
       'install_claude_skill': 'Install Claude Code skill for Chrome automation',
       'help': 'Show help information'

@@ -53,8 +53,8 @@ Examples:
         }
       }
       
-      // 确保技能目录存在
-      await this.ensureDirectory(skillDir);
+      // 确保技能目录存在 - 改进逻辑以检查 .claude/skills 路径
+      await this.ensureSkillDirectoryPath(targetDir, skillDir);
       
       // 生成 SKILL.md
       const skillConfig = this.generateClaudeSkill();
@@ -112,6 +112,28 @@ Examples:
     } catch {
       await fs.mkdir(dirPath, { recursive: true });
       logger.info(`Created directory: ${dirPath}`);
+    }
+  }
+
+  private async ensureSkillDirectoryPath(targetDir: string, skillDir: string): Promise<void> {
+    // 检查路径是否包含 .claude/skills
+    if (targetDir.includes('.claude/skills') || targetDir.endsWith('.claude/skills')) {
+      // 确保 .claude 目录存在
+      const claudeDir = targetDir.includes('.claude/skills') 
+        ? targetDir.substring(0, targetDir.indexOf('.claude') + 7)  // 包含 .claude
+        : path.dirname(targetDir);
+      
+      await this.ensureDirectory(claudeDir);
+      
+      // 确保 skills 子目录存在
+      const skillsDir = path.join(claudeDir, 'skills');
+      await this.ensureDirectory(skillsDir);
+      
+      // 确保具体技能目录存在
+      await this.ensureDirectory(skillDir);
+    } else {
+      // 对于自定义路径，直接创建整个路径
+      await this.ensureDirectory(skillDir);
     }
   }
 
@@ -414,6 +436,69 @@ chrome-cdp-cli list_console_messages --type error > errors.log
 # Cleanup
 kill $CHROME_PID
 \`\`\`
+`;
+  }
+
+  /**
+   * Get command help text
+   */
+  getHelp(): string {
+    return `
+install-claude-skill - Install Claude Code skill for Chrome browser automation
+
+Usage:
+  install-claude-skill
+  install-claude-skill --skill-type personal
+  install-claude-skill --target-directory /path/to/.claude/skills
+  install-claude-skill --include-examples --include-references
+
+Arguments:
+  --skill-type <type>         Installation type: 'project' or 'personal' (default: project)
+  --target-directory <path>   Custom installation directory
+  --include-examples          Include examples.md file with usage examples
+  --include-references        Include reference.md file with detailed API documentation
+  --force                     Force installation without directory validation
+
+Description:
+  Installs a Claude Code skill that provides Chrome browser automation capabilities
+  within Claude IDE. The skill enables Claude to help with:
+
+  • Browser automation and testing
+  • JavaScript execution and debugging
+  • Web scraping and data extraction
+  • UI testing and interaction
+  • Performance monitoring
+
+Installation Types:
+  project  - Install in current project (.claude/skills/cdp-cli/)
+  personal - Install in user home directory (~/.claude/skills/cdp-cli/)
+
+Directory Validation:
+  For project installation, the command checks for a .claude directory to ensure
+  you're in a project root. Use --force to bypass this validation or 
+  --target-directory to specify a custom location.
+
+Examples:
+  # Install in current project (requires .claude directory)
+  install-claude-skill
+
+  # Install for personal use (in home directory)
+  install-claude-skill --skill-type personal
+
+  # Install with examples and references
+  install-claude-skill --include-examples --include-references
+
+  # Install with custom directory
+  install-claude-skill --target-directory /path/to/.claude/skills
+
+  # Force install without validation
+  install-claude-skill --force
+
+Note:
+  The installed skill leverages the eval command approach, which is particularly
+  powerful for LLM-assisted development. Claude can write and test JavaScript
+  automation scripts dynamically, making it ideal for rapid prototyping and
+  complex browser automation tasks.
 `;
   }
 }

@@ -1,7 +1,7 @@
 {
   "name": "chrome-cdp-cli",
-  "version": "1.2.2",
-  "description": "Command-line tool for controlling Chrome browser via Chrome DevTools Protocol. Features: JavaScript execution, screenshots, DOM snapshots, console/network monitoring, IDE integration (Cursor commands & Claude skills). Install IDE tools with --force option for directory validation bypass.",
+  "version": "1.2.4",
+  "description": "LLM-first browser automation CLI via Chrome DevTools Protocol. Designed specifically for AI assistants (LLMs) - most commands use eval because LLMs excel at writing JavaScript for rapid script validation. Features: JavaScript execution, screenshots, DOM snapshots, console/network monitoring. Built-in IDE integration: install Cursor commands and Claude skills directly. Perfect for LLM-assisted development workflows where AI writes and tests automation scripts instantly.",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "bin": {

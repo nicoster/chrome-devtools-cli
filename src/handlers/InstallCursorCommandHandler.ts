@@ -46,8 +46,8 @@ Examples:
         }
       }
       
-      // 确保目录存在
-      await this.ensureDirectory(targetDir);
+      // 确保目录存在 - 改进逻辑以检查 .cursor/commands 路径
+      await this.ensureDirectoryPath(targetDir);
       
       // 生成命令配置
       const commands = this.generateCursorCommands();
@@ -95,6 +95,25 @@ Examples:
     } catch {
       await fs.mkdir(dirPath, { recursive: true });
       logger.info(`Created directory: ${dirPath}`);
+    }
+  }
+
+  private async ensureDirectoryPath(targetPath: string): Promise<void> {
+    // 检查路径是否包含 .cursor/commands
+    if (targetPath.includes('.cursor/commands') || targetPath.endsWith('.cursor/commands')) {
+      // 确保 .cursor 目录存在
+      const cursorDir = targetPath.includes('.cursor/commands') 
+        ? targetPath.substring(0, targetPath.indexOf('.cursor') + 7)  // 包含 .cursor
+        : path.dirname(targetPath);
+      
+      await this.ensureDirectory(cursorDir);
+      
+      // 确保 commands 子目录存在
+      const commandsDir = path.join(cursorDir, 'commands');
+      await this.ensureDirectory(commandsDir);
+    } else {
+      // 对于自定义路径，直接创建整个路径
+      await this.ensureDirectory(targetPath);
     }
   }
 
@@ -265,6 +284,58 @@ chrome-cdp-cli snapshot --filename page-analysis.json
 # 3. 检查控制台错误
 chrome-cdp-cli list_console_messages --type error
 \`\`\`
+`;
+  }
+
+  /**
+   * Get command help text
+   */
+  getHelp(): string {
+    return `
+install-cursor-command - Install Cursor IDE commands for Chrome browser automation
+
+Usage:
+  install-cursor-command
+  install-cursor-command --target-directory /path/to/.cursor/commands
+  install-cursor-command --force
+
+Arguments:
+  --target-directory <path>   Custom installation directory (default: .cursor/commands)
+  --include-examples          Include example usage (default: true)
+  --force                     Force installation without directory validation
+
+Description:
+  Installs a unified Cursor command file (cdp-cli.md) that provides Chrome browser
+  automation capabilities directly within Cursor IDE. The command includes:
+
+  • JavaScript execution in browser context
+  • Screenshot capture and DOM snapshots
+  • Console and network monitoring
+  • Complete automation workflows
+  • Comprehensive examples and documentation
+
+Directory Validation:
+  By default, the command checks for a .cursor directory to ensure you're in a
+  Cursor project root. Use --force to bypass this validation or --target-directory
+  to specify a custom location.
+
+Examples:
+  # Install in current project (requires .cursor directory)
+  install-cursor-command
+
+  # Install with custom directory
+  install-cursor-command --target-directory /path/to/.cursor/commands
+
+  # Force install without validation
+  install-cursor-command --force
+
+  # After installation, use in Cursor with:
+  /cdp-cli
+
+Note:
+  The installed command provides powerful browser automation through the eval
+  approach, which is ideal for LLM-assisted development as it allows writing
+  and testing JavaScript automation scripts quickly and flexibly.
 `;
   }
 }

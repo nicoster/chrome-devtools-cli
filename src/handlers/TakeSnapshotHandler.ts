@@ -100,6 +100,63 @@ interface DOMSnapshotResponse {
 }
 
 /**
+ * CDP DOM.getDocument response
+ */
+interface DOMGetDocumentResponse {
+  root: {
+    nodeId: number;
+    backendNodeId: number;
+    nodeType: number;
+    nodeName: string;
+    localName: string;
+    nodeValue: string;
+    childNodeCount?: number;
+    children?: any[];
+    attributes?: string[];
+    documentURL?: string;
+    baseURL?: string;
+    publicId?: string;
+    systemId?: string;
+    xmlVersion?: string;
+    name?: string;
+    value?: string;
+    pseudoType?: string;
+    shadowRootType?: string;
+    frameId?: string;
+    contentDocument?: any;
+    shadowRoots?: any[];
+    templateContent?: any;
+    pseudoElements?: any[];
+    importedDocument?: any;
+    distributedNodes?: any[];
+    isSVG?: boolean;
+  };
+}
+
+/**
+ * CDP DOM.getOuterHTML response
+ */
+interface DOMGetOuterHTMLResponse {
+  outerHTML: string;
+}
+
+/**
+ * CDP Runtime.evaluate response
+ */
+interface RuntimeEvaluateResponse {
+  result: {
+    type: string;
+    value?: any;
+    unserializableValue?: string;
+    description?: string;
+    objectId?: string;
+    preview?: any;
+    customPreview?: any;
+  };
+  exceptionDetails?: any;
+}
+
+/**
  * Handler for snapshot command
  * Captures a DOM snapshot including DOM tree structure, computed styles, 
  * visibility, and attribute values using CDP DOMSnapshot domain
@@ -115,51 +172,16 @@ export class TakeSnapshotHandler implements ICommandHandler {
 
     try {
       // Enable required domains
-      await client.send('DOMSnapshot.enable');
       await client.send('DOM.enable');
       await client.send('CSS.enable');
 
-      // Prepare snapshot parameters
-      const params = this.buildSnapshotParams(snapshotArgs);
-
-      // Capture DOM snapshot
-      const response = await client.send('DOMSnapshot.captureSnapshot', params) as DOMSnapshotResponse;
-
-      if (!response || !response.documents || response.documents.length === 0) {
-        return {
-          success: false,
-          error: 'Failed to capture DOM snapshot: empty response'
-        };
+      // Try the DOMSnapshot approach first, fall back to DOM approach if it fails
+      try {
+        return await this.captureWithDOMSnapshot(client, snapshotArgs);
+      } catch (domSnapshotError) {
+        // DOMSnapshot method failed, silently fall back to DOM method
+        return await this.captureWithDOM(client, snapshotArgs);
       }
-
-      // Process and format the snapshot data
-      const processedSnapshot = this.processSnapshot(response, snapshotArgs);
-
-      // Save snapshot to file if filename provided
-      if (snapshotArgs.filename) {
-        await this.saveSnapshot(processedSnapshot, snapshotArgs.filename, snapshotArgs.format);
-        return {
-          success: true,
-          data: {
-            message: `DOM snapshot saved to ${snapshotArgs.filename}`,
-            filename: snapshotArgs.filename,
-            format: snapshotArgs.format || 'json',
-            documentsCount: response.documents.length,
-            nodesCount: response.documents[0]?.nodes?.nodeName?.length || 0
-          }
-        };
-      }
-
-      // Return snapshot data if no filename provided
-      return {
-        success: true,
-        data: {
-          snapshot: processedSnapshot,
-          format: snapshotArgs.format || 'json',
-          documentsCount: response.documents.length,
-          nodesCount: response.documents[0]?.nodes?.nodeName?.length || 0
-        }
-      };
 
     } catch (error) {
       return {
@@ -170,30 +192,160 @@ export class TakeSnapshotHandler implements ICommandHandler {
   }
 
   /**
+   * Capture snapshot using DOMSnapshot domain (preferred method)
+   */
+  private async captureWithDOMSnapshot(client: CDPClient, snapshotArgs: TakeSnapshotArgs): Promise<CommandResult> {
+    // Enable DOMSnapshot domain
+    await client.send('DOMSnapshot.enable');
+
+    // Prepare snapshot parameters
+    const params = this.buildSnapshotParams(snapshotArgs);
+
+    // Capture DOM snapshot
+    const response = await client.send('DOMSnapshot.captureSnapshot', params) as DOMSnapshotResponse;
+
+    if (!response || !response.documents || response.documents.length === 0) {
+      throw new Error('Failed to capture DOM snapshot: empty response');
+    }
+
+    // Process and format the snapshot data
+    const processedSnapshot = this.processSnapshot(response, snapshotArgs);
+
+    // Save snapshot to file if filename provided
+    if (snapshotArgs.filename) {
+      await this.saveSnapshot(processedSnapshot, snapshotArgs.filename, snapshotArgs.format);
+      return {
+        success: true,
+        data: {
+          message: `DOM snapshot saved to ${snapshotArgs.filename}`,
+          filename: snapshotArgs.filename,
+          format: snapshotArgs.format || 'json',
+          documentsCount: response.documents.length,
+          nodesCount: response.documents[0]?.nodes?.nodeName?.length || 0
+        }
+      };
+    }
+
+    // Return snapshot data if no filename provided
+    return {
+      success: true,
+      data: {
+        snapshot: processedSnapshot,
+        format: snapshotArgs.format || 'json',
+        documentsCount: response.documents.length,
+        nodesCount: response.documents[0]?.nodes?.nodeName?.length || 0
+      }
+    };
+  }
+
+  /**
+   * Capture snapshot using DOM domain (fallback method)
+   */
+  private async captureWithDOM(client: CDPClient, snapshotArgs: TakeSnapshotArgs): Promise<CommandResult> {
+    // Get the document root
+    const docResponse = await client.send('DOM.getDocument', { depth: -1 }) as DOMGetDocumentResponse;
+    
+    if (!docResponse || !docResponse.root) {
+      throw new Error('Failed to get document root');
+    }
+
+    // Get the outer HTML of the document
+    const htmlResponse = await client.send('DOM.getOuterHTML', { 
+      nodeId: docResponse.root.nodeId 
+    }) as DOMGetOuterHTMLResponse;
+
+    if (!htmlResponse || !htmlResponse.outerHTML) {
+      throw new Error('Failed to get document HTML');
+    }
+
+    let processedSnapshot: unknown;
+    
+    if (snapshotArgs.format === 'html') {
+      processedSnapshot = htmlResponse.outerHTML;
+    } else {
+      // JSON format - create a structured representation
+      processedSnapshot = {
+        metadata: {
+          captureTime: new Date().toISOString(),
+          method: 'DOM.getOuterHTML',
+          documentsCount: 1
+        },
+        documents: [{
+          url: await this.getCurrentURL(client),
+          title: await this.getCurrentTitle(client),
+          html: htmlResponse.outerHTML,
+          domTree: docResponse.root
+        }]
+      };
+    }
+
+    // Save snapshot to file if filename provided
+    if (snapshotArgs.filename) {
+      await this.saveSnapshot(processedSnapshot, snapshotArgs.filename, snapshotArgs.format);
+      return {
+        success: true,
+        data: {
+          message: `DOM snapshot saved to ${snapshotArgs.filename}`,
+          filename: snapshotArgs.filename,
+          format: snapshotArgs.format || 'json'
+        }
+      };
+    }
+
+    // Return snapshot data if no filename provided
+    return {
+      success: true,
+      data: {
+        snapshot: processedSnapshot,
+        format: snapshotArgs.format || 'json'
+      }
+    };
+  }
+
+  /**
+   * Get current page URL
+   */
+  private async getCurrentURL(client: CDPClient): Promise<string> {
+    try {
+      const result = await client.send('Runtime.evaluate', {
+        expression: 'window.location.href',
+        returnByValue: true
+      }) as RuntimeEvaluateResponse;
+      return result.result?.value || 'unknown';
+    } catch {
+      return 'unknown';
+    }
+  }
+
+  /**
+   * Get current page title
+   */
+  private async getCurrentTitle(client: CDPClient): Promise<string> {
+    try {
+      const result = await client.send('Runtime.evaluate', {
+        expression: 'document.title',
+        returnByValue: true
+      }) as RuntimeEvaluateResponse;
+      return result.result?.value || 'unknown';
+    } catch {
+      return 'unknown';
+    }
+  }
+
+  /**
    * Build CDP parameters for DOMSnapshot.captureSnapshot
    */
   private buildSnapshotParams(args: TakeSnapshotArgs): Record<string, unknown> {
+    // Start with minimal parameters - some CDP versions are very strict
     const params: Record<string, unknown> = {};
 
-    // Include computed styles (default: true)
-    params.computedStyles = args.includeStyles !== false;
-
-    // Include DOM attributes (default: true) 
-    params.includeDOMRects = args.includeAttributes !== false;
-
-    // Include paint order information
+    // Future: could use args for additional parameters
     if (args.includePaintOrder) {
-      params.includePaintOrder = true;
+      // This parameter might be supported in future CDP versions
+      console.log('Paint order requested but not yet supported');
     }
 
-    // Include text node indices
-    if (args.includeTextIndex) {
-      params.includeTextIndex = true;
-    }
-
-    // Always include basic snapshot data
-    params.computedStyleWhitelist = []; // Include all computed styles
-
+    // Try with no parameters first to see if basic call works
     return params;
   }
 

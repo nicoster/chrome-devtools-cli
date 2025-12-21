@@ -1,6 +1,44 @@
 # Chrome DevTools CLI
 
-A powerful command-line tool for controlling Chrome browser instances via the Chrome DevTools Protocol (CDP). This tool provides programmatic access to browser automation, debugging, and inspection capabilities without requiring a graphical interface.
+**Built for LLMs - Eval-First Browser Automation**
+
+A command-line tool designed specifically for Large Language Models (LLMs) and AI-assisted development. Controls Chrome browser via Chrome DevTools Protocol (CDP) with an **eval-first design philosophy** - most automation tasks use JavaScript execution because LLMs excel at writing and validating scripts quickly.
+
+**Why eval-first?** LLMs are exceptional at writing JavaScript. This tool leverages that strength by using `eval` for most operations, enabling AI assistants (Claude, Cursor, etc.) to write automation scripts instantly and test them in real-time. Includes built-in IDE integrations: install Cursor commands and Claude skills directly.
+
+## 🚀 Built for LLMs - Eval-First Design Philosophy
+
+**This tool is specifically designed for Large Language Models (LLMs) and AI-assisted development.**
+
+### Why Most Commands Use Eval
+
+**The core design principle:** Most browser automation tasks are accomplished through the `eval` command rather than dedicated CLI commands. This is intentional and optimized for LLM workflows:
+
+1. **🧠 LLMs Excel at JavaScript**: Large Language Models are exceptionally good at writing JavaScript code. They can generate complex automation scripts, handle async operations, and adapt to different scenarios - all in JavaScript.
+
+2. **⚡ Rapid Script Validation**: LLMs can write a script, test it immediately with `eval`, see the results, and refine it in seconds. This iterative loop is where LLMs shine.
+
+3. **🔄 Maximum Flexibility**: Instead of waiting for specific commands to be implemented, LLMs can accomplish any browser task through JavaScript execution. Need to click an element? `document.querySelector('#btn').click()`. Need to wait for content? `await new Promise(...)`. Need complex data extraction? Just write the JavaScript.
+
+4. **🎯 Perfect for AI Workflows**: When you ask Claude or Cursor to automate a browser task, they can write the JavaScript directly - no need to learn complex CLI syntax or wait for feature implementations.
+
+### IDE Integration for LLM Workflows
+
+**Built-in support for AI development environments:**
+
+- **🖥️ Cursor Commands**: Install with `install-cursor-command` - brings browser automation directly into Cursor's command palette
+- **🤖 Claude Skills**: Install with `install-claude-skill` - enables Claude to use browser automation in conversations
+- **⚡ Seamless Integration**: AI assistants can generate automation scripts and execute them instantly through these integrations
+
+**Why this matters:** When LLMs are integrated into your IDE, they can write browser automation scripts as part of your development workflow. The eval-first approach means they can accomplish any task without waiting for specific command implementations.
+
+### The LLM Advantage
+
+- **🧠 Natural Language → JavaScript**: Ask an LLM "click the submit button" → it generates `document.querySelector('#submit').click()`
+- **⚡ Instant Testing**: Write, execute, see results, refine - all in seconds
+- **🔄 Iterative Refinement**: LLMs can adjust scripts based on results immediately
+- **📚 Context-Aware**: AI understands your project and can write automation scripts that fit your specific needs
+- **🎯 No Learning Curve**: LLMs already know JavaScript - no need to learn CLI-specific syntax
 
 ## Implementation Status
 
@@ -15,9 +53,9 @@ A powerful command-line tool for controlling Chrome browser instances via the Ch
 - 🛠️ **IDE Integration**: Install Cursor commands and Claude skills with directory validation and --force option
 - 📦 **Build System**: Complete TypeScript build pipeline with testing framework
 
-### 🚧 Eval Workaround Available
+### 🚧 Eval-First Design - LLM-Optimized Features
 
-These features are not directly implemented but can be achieved using the `eval` command:
+These features use the `eval` command by design (not as workarounds) - this is the intended approach for LLM-assisted development:
 
 - 📄 **Page Navigation**: `eval "window.location.href = 'https://example.com'"`
 - 🖱️ **Element Interaction**: `eval "document.querySelector('#btn').click()"`
@@ -26,6 +64,31 @@ These features are not directly implemented but can be achieved using the `eval`
 - 🚀 **Performance Data**: `eval "performance.now()"` or `eval "performance.getEntriesByType('navigation')"`
 - 📱 **User Agent**: `eval "navigator.userAgent"`
 - 🌐 **Network Requests**: `eval "fetch('/api').then(r => r.json())"`
+
+**Why this design is optimal for LLMs:**
+
+1. **LLMs are JavaScript experts**: They can write complex automation scripts instantly
+2. **Rapid validation**: Write → Execute → See Results → Refine - perfect for LLM workflows
+3. **No feature waiting**: LLMs can accomplish any task through JavaScript without waiting for CLI command implementations
+4. **Natural workflow**: When you ask an LLM to automate something, it writes JavaScript - exactly what `eval` executes
+5. **Maximum flexibility**: Any browser API, any complexity level, any scenario - all through JavaScript
+
+**This is not a limitation - it's a feature designed specifically for AI-assisted development.**
+
+### 🎯 IDE Integration - Built for LLM Workflows
+
+**Why we support Cursor Commands & Claude Skills:**
+
+This tool is designed for LLM-assisted development. The IDE integrations (`install-cursor-command` and `install-claude-skill`) bring browser automation directly into AI-powered development environments:
+
+- **🔄 Seamless LLM Workflow**: AI assistants can write and execute browser automation scripts directly in your IDE
+- **🧠 AI-Native Design**: The eval-first approach means LLMs can accomplish any browser task through JavaScript
+- **⚡ Instant Script Validation**: LLMs write JavaScript → execute via eval → see results → refine - all in real-time
+- **📚 Context-Aware Automation**: AI understands your project context and can generate relevant automation scripts
+- **🎯 Natural Language → Automation**: Ask "click the submit button" → AI generates `document.querySelector('#submit').click()` → executes instantly
+- **🤖 Perfect for AI Assistants**: Claude and Cursor can use browser automation as part of their toolset
+
+**The integration exists because this tool is built for LLMs - the eval-first design and IDE integrations work together to enable AI-powered browser automation.**
 
 ### ⏳ Not Yet Implemented
 
@@ -498,15 +561,25 @@ new Promise(resolve => {
    - Quiet and verbose modes
    - Custom output templates
 
-### Why Use Eval Workarounds?
+### Why Eval-First Design? (Built for LLMs)
 
-The eval approach offers several advantages:
+**This is not a workaround - it's the core design philosophy optimized for LLM workflows:**
 
-- **Immediate availability**: No waiting for feature implementation
-- **Maximum flexibility**: Any JavaScript operation is possible
-- **Learning opportunity**: Better understanding of browser APIs
-- **Custom solutions**: Tailor automation to specific needs
-- **Future-proof**: Works with any web technology
+1. **🧠 LLMs are JavaScript Experts**: Large Language Models excel at writing JavaScript. They can generate complex automation scripts, handle async operations, and adapt to different scenarios - all naturally in JavaScript.
+
+2. **⚡ Rapid Script Validation**: The perfect workflow for LLMs: Write JavaScript → Execute via `eval` → See Results → Refine. This iterative loop is where LLMs shine.
+
+3. **🔄 Maximum Flexibility**: Any browser task, any complexity, any scenario - all through JavaScript. No waiting for specific command implementations.
+
+4. **🤖 AI-Native Workflow**: When you ask Claude or Cursor to automate something, they write JavaScript - exactly what `eval` executes. Perfect alignment.
+
+5. **📚 Natural Language → Automation**: "Click the submit button" → AI generates `document.querySelector('#submit').click()` → Executes instantly.
+
+6. **🎯 Context-Aware**: AI understands your project and can write automation scripts that fit your specific needs.
+
+7. **⚡ Instant Iteration**: LLMs can adjust scripts based on results immediately - no need to wait for feature releases.
+
+**This tool is built for LLM-assisted development. The eval-first approach, combined with IDE integrations (Cursor commands & Claude skills), creates a seamless workflow where AI assistants can automate browser tasks as part of your development process.**
 
 ## Configuration
 

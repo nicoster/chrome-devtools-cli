@@ -13,9 +13,13 @@ class MockCDPClient implements CDPClient {
     // Mock implementation
   }
 
-  async send(method: string, _params?: unknown): Promise<unknown> {
+  async send(method: string, params?: unknown): Promise<unknown> {
     if (method === 'Runtime.enable') {
       return {};
+    }
+    // Use params if needed in the future
+    if (params) {
+      console.log('Method called with params:', method);
     }
     return {};
   }
