@@ -60,7 +60,7 @@ chrome --remote-debugging-port=9222 --no-first-run --no-default-browser-check
 
 ```bash
 # Connect and execute JavaScript
-chrome-cli evaluate_script "document.title"
+chrome-cli eval "document.title"
 
 # Navigate to a website
 chrome-cli navigate_page "https://example.com"
@@ -78,7 +78,7 @@ chrome-cli fill "#email" "user@example.com"
 chrome-cli --help
 
 # Get help for a specific command
-chrome-cli evaluate_script --help
+chrome-cli eval --help
 ```
 
 ## Command Reference
@@ -102,13 +102,13 @@ All commands support these connection options:
 #### JavaScript Execution
 ```bash
 # Execute JavaScript expression
-chrome-cli evaluate_script "console.log('Hello World')"
+chrome-cli eval "console.log('Hello World')"
 
 # Execute from file
-chrome-cli evaluate_script --file script.js
+chrome-cli eval --file script.js
 
 # Execute with timeout
-chrome-cli evaluate_script "await new Promise(r => setTimeout(r, 5000))" --timeout 10000
+chrome-cli eval "await new Promise(r => setTimeout(r, 5000))" --timeout 10000
 ```
 
 #### Page Management
@@ -196,7 +196,7 @@ cd chrome-devtools-cli
 npm install
 
 # Run in development mode
-npm run dev -- evaluate_script "console.log('Development mode')"
+npm run dev -- eval "console.log('Development mode')"
 ```
 
 ### Build Scripts
@@ -299,7 +299,7 @@ import {
 import { CLIApplication } from 'chrome-devtools-cli';
 
 const app = new CLIApplication();
-const result = await app.run(['evaluate_script', 'document.title']);
+const result = await app.run(['eval', 'document.title']);
 console.log(result);
 ```
 
@@ -328,7 +328,7 @@ console.log(result);
 Enable verbose logging for troubleshooting:
 
 ```bash
-chrome-cli --verbose evaluate_script "console.log('debug')"
+chrome-cli --verbose eval "console.log('debug')"
 ```
 
 ## Contributing

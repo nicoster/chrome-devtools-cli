@@ -20,9 +20,9 @@ describe('CLIInterface', () => {
     });
 
     it('should parse command with options correctly', () => {
-      const result = cli.parseArgs(['node', 'script.js', '--host', '127.0.0.1', '--port', '9223', '--format', 'json', 'evaluate-script', '--expression', 'console.log("test")']);
+      const result = cli.parseArgs(['node', 'script.js', '--host', '127.0.0.1', '--port', '9223', '--format', 'json', 'eval', '--expression', 'console.log("test")']);
       
-      expect(result.name).toBe('evaluate_script'); // Normalized to underscore
+      expect(result.name).toBe('eval');
       expect(result.config.host).toBe('127.0.0.1');
       expect(result.config.port).toBe(9223);
       expect(result.config.outputFormat).toBe('json');
@@ -44,10 +44,10 @@ describe('CLIInterface', () => {
       expect(result.name).toBe('help');
     });
 
-    it('should parse evaluate-script command arguments correctly', () => {
-      const result = cli.parseArgs(['node', 'script.js', 'evaluate-script', '--expression', 'document.title', '--await-promise']);
+    it('should parse eval command arguments correctly', () => {
+      const result = cli.parseArgs(['node', 'script.js', 'eval', '--expression', 'document.title', '--await-promise']);
       
-      expect(result.name).toBe('evaluate_script'); // Normalized to underscore
+      expect(result.name).toBe('eval');
       expect(result.args.expression).toBe('document.title');
       expect(result.args.awaitPromise).toBe(true);
     });
@@ -117,15 +117,15 @@ describe('CLIInterface', () => {
     it('should return list of registered commands', () => {
       const commands = cli.getAvailableCommands();
       
-      expect(commands).toContain('evaluate_script');
+      expect(commands).toContain('eval');
     });
   });
 
   describe('showHelp', () => {
     it('should return help for specific command', () => {
-      const help = cli.showHelp('evaluate_script');
+      const help = cli.showHelp('eval');
       
-      expect(help).toContain('evaluate_script');
+      expect(help).toContain('eval'); // help text still shows original name
       expect(help).toContain('Execute JavaScript code');
     });
 

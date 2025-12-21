@@ -204,7 +204,7 @@ describe('EvaluateScriptHandler', () => {
   describe('getHelp', () => {
     it('should return help text', () => {
       const help = handler.getHelp();
-      expect(help).toContain('evaluate_script');
+      expect(help).toContain('eval');
       expect(help).toContain('--expression');
       expect(help).toContain('--file');
       expect(help).toContain('Examples:');

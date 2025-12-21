@@ -283,10 +283,8 @@ Available Commands:
 ${commands.map(cmd => `  ${cmd.padEnd(20)} - ${this.getCommandDescription(cmd)}`).join('\n')}
 
 Examples:
-  chrome-cli connect
-  chrome-cli navigate https://example.com
-  chrome-cli evaluate-script --expression "document.title"
-  chrome-cli screenshot --output screenshot.png
+  chrome-cli eval "document.title"
+  chrome-cli eval --file script.js
   chrome-cli help <command>
 
 For more information about a specific command, use:
@@ -307,7 +305,7 @@ For more information about a specific command, use:
       'list-pages': 'List all open pages',
       'select-page': 'Select/focus page',
       'resize-page': 'Resize browser viewport',
-      'evaluate-script': 'Execute JavaScript code',
+      'eval': 'Execute JavaScript code',
       'click': 'Click element',
       'fill': 'Fill form field',
       'hover': 'Hover over element',

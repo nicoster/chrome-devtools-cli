@@ -3,7 +3,7 @@ import { CDPClient, CommandResult } from '../types';
 import { promises as fs } from 'fs';
 
 /**
- * Arguments for evaluate_script command
+ * Arguments for eval command
  */
 export interface EvaluateScriptArgs {
   expression?: string;      // JavaScript expression to evaluate
@@ -46,11 +46,11 @@ interface RuntimeEvaluateResponse {
 }
 
 /**
- * Handler for evaluate_script command
+ * Handler for eval command
  * Executes JavaScript code in the browser context via CDP Runtime.evaluate
  */
 export class EvaluateScriptHandler implements ICommandHandler {
-  readonly name = 'evaluate_script';
+  readonly name = 'eval';
 
   /**
    * Execute JavaScript code in the browser
@@ -310,13 +310,13 @@ export class EvaluateScriptHandler implements ICommandHandler {
    */
   getHelp(): string {
     return `
-evaluate_script - Execute JavaScript code in the browser context
+eval - Execute JavaScript code in the browser context
 
 Usage:
-  evaluate_script --expression "console.log('Hello')"
-  evaluate_script --file script.js
-  evaluate_script --expression "fetch('/api')" --await-promise
-  evaluate_script --expression "longRunning()" --timeout 60000
+  eval --expression "console.log('Hello')"
+  eval --file script.js
+  eval --expression "fetch('/api')" --await-promise
+  eval --expression "longRunning()" --timeout 60000
 
 Arguments:
   --expression <code>     JavaScript code to execute
@@ -327,16 +327,16 @@ Arguments:
 
 Examples:
   # Execute simple expression
-  evaluate_script --expression "2 + 2"
+  eval --expression "2 + 2"
 
   # Execute async code
-  evaluate_script --expression "await fetch('/api').then(r => r.json())"
+  eval --expression "await fetch('/api').then(r => r.json())"
 
   # Execute from file
-  evaluate_script --file ./scripts/init.js
+  eval --file ./scripts/init.js
 
   # Set custom timeout
-  evaluate_script --expression "heavyComputation()" --timeout 120000
+  eval --expression "heavyComputation()" --timeout 120000
 `;
   }
 }

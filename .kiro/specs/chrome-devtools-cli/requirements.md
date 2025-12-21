@@ -44,7 +44,7 @@
 
 #### 验收标准
 
-1. 当用户执行带有 JavaScript 代码的 evaluate_script 命令时，CLI_Tool 应通过 CDP Runtime.evaluate 发送代码并返回结果
+1. 当用户执行带有 JavaScript 代码的 eval 命令时，CLI_Tool 应通过 CDP Runtime.evaluate 发送代码并返回结果
 2. 当 JavaScript 执行返回值时，CLI_Tool 应适当地序列化结果以供命令行输出
 3. 当 JavaScript 执行抛出错误时，CLI_Tool 应捕获并显示错误消息和堆栈跟踪
 4. 当执行异步 JavaScript 时，CLI_Tool 应支持基于 Promise 的代码并等待完成

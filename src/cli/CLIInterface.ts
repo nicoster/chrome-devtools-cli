@@ -253,9 +253,14 @@ export class CLIInterface implements ICLIInterface {
         commandArgs.height = parseInt(args[1], 10);
         break;
 
-      case 'evaluate_script':
-        if (options.expression || options.e) commandArgs.expression = options.expression || options.e;
-        if (options.file || options.f) commandArgs.file = options.file || options.f;
+      case 'eval':
+        // Handle direct expression as first argument
+        if (args[0] && !options.expression && !options.e && !options.file && !options.f) {
+          commandArgs.expression = args[0];
+        } else {
+          if (options.expression || options.e) commandArgs.expression = options.expression || options.e;
+          if (options.file || options.f) commandArgs.file = options.file || options.f;
+        }
         commandArgs.awaitPromise = options['await-promise'] !== false;
         commandArgs.returnByValue = options['return-by-value'] !== false;
         break;

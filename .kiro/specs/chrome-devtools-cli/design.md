@@ -26,7 +26,7 @@ Chrome DevTools CLI 是一个命令行工具，通过 Chrome DevTools Protocol (
 ┌──────────────▼──────────────────────┐
 │    命令处理层 (Command Handlers)     │
 │  - navigate_page                    │
-│  - evaluate_script                  │
+│  - eval                  │
 │  - take_screenshot                  │
 │  - click, fill, hover...            │
 └──────────────┬──────────────────────┘
@@ -151,7 +151,7 @@ interface CommandResult {
 
 // 示例：JavaScript 执行命令
 class EvaluateScriptHandler implements CommandHandler {
-  name = 'evaluate_script';
+  name = 'eval';
   
   async execute(client: CDPClient, args: {
     expression: string;
@@ -254,7 +254,7 @@ interface PerformanceMetrics {
 **验证: 需求 1.1, 1.3, 1.4, 10.1, 10.2**
 
 ### 属性 2: JavaScript 执行往返
-*对于任何* 有效的 JavaScript 表达式，通过 evaluate_script 执行后返回的结果应该与在浏览器控制台中直接执行的结果等价
+*对于任何* 有效的 JavaScript 表达式，通过 eval 执行后返回的结果应该与在浏览器控制台中直接执行的结果等价
 **验证: 需求 3.1, 3.2**
 
 ### 属性 3: JavaScript 错误处理

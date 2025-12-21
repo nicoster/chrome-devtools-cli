@@ -40,7 +40,7 @@
   - 确保所有测试通过，如有问题请询问用户
 
 - [x] 4. 实现 JavaScript 执行功能
-  - [x] 4.1 实现 evaluate_script 命令处理器
+  - [x] 4.1 实现 eval 命令处理器
     - 创建 EvaluateScriptHandler 类
     - 实现 Runtime.evaluate CDP 方法调用
     - 添加结果序列化和错误处理
