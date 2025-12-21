@@ -51,12 +51,12 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/nickxiao42/chrome-devtools-cli.git"
+    "url": "https://github.com/nicoster/chrome-devtools-cli.git"
   },
   "bugs": {
-    "url": "https://github.com/nickxiao42/chrome-devtools-cli/issues"
+    "url": "https://github.com/nicoster/chrome-devtools-cli/issues"
   },
-  "homepage": "https://github.com/nickxiao42/chrome-devtools-cli#readme",
+  "homepage": "https://github.com/nicoster/chrome-devtools-cli#readme",
   "dependencies": {
     "commander": "^11.1.0",
     "node-fetch": "^2.7.0",
