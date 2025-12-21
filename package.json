@@ -1,6 +1,6 @@
 {
   "name": "chrome-cdp-cli",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Command-line tool for controlling Chrome browser instances via the Chrome DevTools Protocol",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
