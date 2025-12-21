@@ -313,30 +313,34 @@ export class EvaluateScriptHandler implements ICommandHandler {
 eval - Execute JavaScript code in the browser context
 
 Usage:
-  eval --expression "console.log('Hello')"
+  eval "console.log('Hello')"
   eval --file script.js
-  eval --expression "fetch('/api')" --await-promise
-  eval --expression "longRunning()" --timeout 60000
+  eval "fetch('/api')" --await-promise
+  eval "longRunning()" --timeout 60000
 
 Arguments:
-  --expression <code>     JavaScript code to execute
+  <expression>            JavaScript code to execute (direct argument)
+  --expression <code>     JavaScript code to execute (explicit flag)
   --file <path>           Path to JavaScript file to execute
   --await-promise         Wait for Promise resolution (default: true)
   --timeout <ms>          Execution timeout in milliseconds (default: 30000)
   --return-by-value       Return result by value (default: true)
 
 Examples:
-  # Execute simple expression
+  # Execute simple expression (recommended)
+  eval "2 + 2"
+
+  # Execute with explicit flag
   eval --expression "2 + 2"
 
   # Execute async code
-  eval --expression "await fetch('/api').then(r => r.json())"
+  eval "await fetch('/api').then(r => r.json())"
 
   # Execute from file
   eval --file ./scripts/init.js
 
   # Set custom timeout
-  eval --expression "heavyComputation()" --timeout 120000
+  eval "heavyComputation()" --timeout 120000
 `;
   }
 }
