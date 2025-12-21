@@ -68,12 +68,13 @@
     - **属性 5: DOM 修改即时性**
     - **验证: 需求 3.5**
 
-- [ ] 5. 实现页面管理功能
-  - [ ] 5.1 实现页面导航命令
+- [ ]* 5. 实现页面管理功能
+  - [ ]* 5.1 实现页面导航命令
     - 创建 NavigatePageHandler 类
     - 实现 Page.navigate CDP 方法调用
     - 添加页面加载等待机制
     - _需求: 2.1_
+    - _注意: 可通过 eval "window.location.href = 'url'" 实现_
 
   - [ ]* 5.2 为页面导航编写属性测试
     - **属性 6: 页面导航一致性**
@@ -89,95 +90,101 @@
     - **属性 7: 页面管理操作**
     - **验证: 需求 2.2, 2.3, 2.4, 2.5**
 
-  - [ ] 5.5 实现视口调整功能
+  - [ ]* 5.5 实现视口调整功能
     - 创建 ResizePageHandler 类
     - 实现 Emulation.setDeviceMetricsOverride CDP 方法
     - _需求: 2.6_
+    - _注意: 部分可通过 eval "window.resizeTo(width, height)" 实现_
 
 - [ ] 6. 检查点 - 确保核心功能正常工作
   - 确保所有测试通过，如有问题请询问用户
 
-- [ ] 7. 实现元素交互功能
-  - [ ] 7.1 实现基础元素交互（点击、悬停）
+- [ ]* 7. 实现元素交互功能
+  - [ ]* 7.1 实现基础元素交互（点击、悬停）
     - 创建 ClickHandler、HoverHandler 类
     - 实现 DOM.querySelector 和 Runtime.callFunctionOn CDP 方法
     - 添加元素查找和交互逻辑
     - _需求: 5.1, 5.4_
+    - _注意: 可通过 eval "document.querySelector('#btn').click()" 实现_
 
   - [ ]* 7.2 为元素交互编写属性测试
     - **属性 8: 元素交互幂等性**
     - **验证: 需求 5.1, 5.4**
 
-  - [ ] 7.3 实现表单填充功能
+  - [ ]* 7.3 实现表单填充功能
     - 创建 FillHandler、FillFormHandler 类
     - 实现表单字段查找和值设置
     - 添加批量表单填充支持
     - _需求: 5.2, 5.3_
+    - _注意: 可通过 eval "document.querySelector('#input').value = 'text'" 实现_
 
   - [ ]* 7.4 为表单填充编写属性测试
     - **属性 9: 表单填充往返**
     - **验证: 需求 5.2, 5.3**
 
-  - [ ] 7.5 实现高级交互功能（拖拽、按键、文件上传）
+  - [ ]* 7.5 实现高级交互功能（拖拽、按键、文件上传）
     - 创建 DragHandler、PressKeyHandler、UploadFileHandler 类
     - 实现相应的 CDP 方法调用
     - 添加等待和对话框处理功能
     - _需求: 5.5, 5.6, 5.7, 5.8, 5.9_
+    - _注意: 拖拽和按键可通过 JavaScript 事件模拟，文件上传需要 CDP_
 
 - [ ] 8. 实现视觉捕获功能
-  - [ ] 8.1 实现截图功能
-    - 创建 TakeScreenshotHandler、TakeSnapshotHandler 类
-    - 实现 Page.captureScreenshot CDP 方法
+  - [x] 8.1 实现截图功能
+    - 创建 TakeScreenshotHandler 类（图像截图）
+    - 创建 TakeSnapshotHandler 类（DOM 快照）
+    - 实现 Page.captureScreenshot CDP 方法（截图）
+    - 实现 DOMSnapshot.captureSnapshot CDP 方法（DOM 快照）
     - 添加文件保存和尺寸控制
-    - _需求: 4.1, 4.2, 4.3, 4.4_
+    - DOM 快照包含：DOM 树结构、计算样式、布局信息、元素属性
+    - _需求: 4.1, 4.2, 4.3, 4.4, 4.5_
 
   - [ ]* 8.2 为截图功能编写属性测试
-    - **属性 10: 截图文件创建**
-    - **验证: 需求 4.1, 4.3, 4.4**
+    - **属性 10: DOM 快照数据完整性**
+    - **验证: 需求 4.1, 4.2, 4.5**
 
-  - [ ] 8.3 实现 HTML 内容获取
-    - 创建 GetHtmlHandler 类
-    - 实现 DOM.getOuterHTML CDP 方法
-    - _需求: 4.5_
-
-- [ ] 9. 实现监控功能
-  - [ ] 9.1 实现控制台消息监控
+- [ ]* 9. 实现监控功能
+  - [ ]* 9.1 实现控制台消息监控
     - 创建 ConsoleMonitor 类
     - 实现 Runtime.consoleAPICalled 事件监听
     - 添加消息过滤和存储功能
     - _需求: 6.1, 6.2, 6.5, 6.6_
+    - _注意: 基本控制台操作可通过 eval "console.log('test')" 实现_
 
   - [ ]* 9.2 为控制台监控编写属性测试
     - **属性 11: 控制台消息捕获**
     - **验证: 需求 6.1, 6.2, 6.5**
 
-  - [ ] 9.3 实现网络请求监控
+  - [ ]* 9.3 实现网络请求监控
     - 创建 NetworkMonitor 类
     - 实现 Network.requestWillBeSent、Network.responseReceived 事件监听
     - 添加请求/响应匹配和存储
     - _需求: 6.3, 6.4, 6.5, 6.6_
+    - _注意: 基本网络请求可通过 eval "fetch('/api')" 实现_
 
   - [ ]* 9.4 为网络监控编写属性测试
     - **属性 12: 网络请求监控**
     - **验证: 需求 6.3, 6.4, 6.5**
 
-- [ ] 10. 实现性能分析功能
-  - [ ] 10.1 实现性能跟踪
+- [ ]* 10. 实现性能分析功能
+  - [ ]* 10.1 实现性能跟踪
     - 创建 PerformanceTracker 类
     - 实现 Performance.enable、Performance.getMetrics CDP 方法
     - 添加跟踪数据收集和分析
     - _需求: 7.1, 7.2, 7.3, 7.4, 7.5_
+    - _注意: 基本性能数据可通过 eval "performance.now()" 等实现_
 
   - [ ]* 10.2 为性能跟踪编写属性测试
     - **属性 13: 性能跟踪数据完整性**
     - **验证: 需求 7.1, 7.2, 7.4**
 
-- [ ] 11. 实现设备模拟功能
-  - [ ] 11.1 实现设备模拟
+- [ ]* 11. 实现设备模拟功能
+  - [ ]* 11.1 实现设备模拟
     - 创建 EmulateHandler 类
     - 实现 Emulation.setDeviceMetricsOverride、Emulation.setUserAgentOverride CDP 方法
     - 添加网络条件模拟支持
     - _需求: 8.1, 8.2, 8.3, 8.4_
+    - _注意: 用户代理检测可通过 eval "navigator.userAgent" 实现_
 
   - [ ]* 11.2 为设备模拟编写属性测试
     - **属性 14: 设备模拟配置**
@@ -245,6 +252,15 @@
 ## 注意事项
 
 - 标记为 `*` 的任务是可选的，可以跳过以加快 MVP 开发
+- **通过 eval 可实现的功能已标记为可选**：
+  - 页面导航：`eval "window.location.href = 'url'"`
+  - 元素交互：`eval "document.querySelector('#btn').click()"`
+  - 表单填充：`eval "document.querySelector('#input').value = 'text'"`
+  - HTML 获取：`eval "document.documentElement.outerHTML"`
+  - 控制台操作：`eval "console.log('message')"`
+  - 网络请求：`eval "fetch('/api')"`
+  - 性能数据：`eval "performance.now()"`
+  - 用户代理：`eval "navigator.userAgent"`
 - 每个任务都引用了具体的需求以便追溯
 - 检查点确保增量验证
 - 属性测试验证通用正确性属性

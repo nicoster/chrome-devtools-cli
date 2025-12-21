@@ -63,7 +63,7 @@ describe('CLIInterface', () => {
       const result = cli.parseArgs(['node', 'script.js', 'screenshot', '--output', 'test.png', '--width', '800', '--height', '600']);
       
       expect(result.name).toBe('screenshot');
-      expect(result.args.output).toBe('test.png');
+      expect(result.args.filename).toBe('test.png'); // Changed from output to filename
       expect(result.args.width).toBe(800);
       expect(result.args.height).toBe(600);
     });

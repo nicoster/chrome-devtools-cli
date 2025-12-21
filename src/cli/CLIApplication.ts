@@ -1,6 +1,6 @@
 import { CLIInterface } from './CLIInterface';
 import { ConnectionManager } from '../connection/ConnectionManager';
-import { EvaluateScriptHandler } from '../handlers/EvaluateScriptHandler';
+import { EvaluateScriptHandler, TakeScreenshotHandler, TakeSnapshotHandler } from '../handlers';
 import { Logger } from '../utils/logger';
 import { CLICommand, CommandResult, CDPClient } from '../types';
 import { ExitCode } from './CommandRouter';
@@ -27,11 +27,12 @@ export class CLIApplication {
   private setupHandlers(): void {
     // Register available command handlers
     this.cli.registerHandler(new EvaluateScriptHandler());
+    this.cli.registerHandler(new TakeScreenshotHandler());
+    this.cli.registerHandler(new TakeSnapshotHandler());
     
     // TODO: Register other handlers as they are implemented
     // this.cli.registerHandler(new NavigatePageHandler());
     // this.cli.registerHandler(new ClickHandler());
-    // this.cli.registerHandler(new ScreenshotHandler());
     // etc.
   }
 

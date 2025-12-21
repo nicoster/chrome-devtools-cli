@@ -268,7 +268,7 @@ export class CommandRouter {
     return `
 Chrome DevTools CLI - Command-line tool for controlling Chrome browser
 
-Usage: chrome-cli [options] <command> [command-options]
+Usage: chrome-cdp-cli [options] <command> [command-options]
 
 Global Options:
   -h, --host <host>        Chrome host address (default: localhost)
@@ -283,12 +283,14 @@ Available Commands:
 ${commands.map(cmd => `  ${cmd.padEnd(20)} - ${this.getCommandDescription(cmd)}`).join('\n')}
 
 Examples:
-  chrome-cli eval "document.title"
-  chrome-cli eval --file script.js
-  chrome-cli help <command>
+  chrome-cdp-cli eval "document.title"
+  chrome-cdp-cli eval --file script.js
+  chrome-cdp-cli screenshot --filename page.png
+  chrome-cdp-cli snapshot --format html --filename dom.html
+  chrome-cdp-cli help <command>
 
 For more information about a specific command, use:
-  chrome-cli help <command>
+  chrome-cdp-cli help <command>
 `;
   }
 
@@ -309,8 +311,8 @@ For more information about a specific command, use:
       'click': 'Click element',
       'fill': 'Fill form field',
       'hover': 'Hover over element',
-      'screenshot': 'Take screenshot',
-      'get-html': 'Get page HTML content',
+      'screenshot': 'Capture page screenshot',
+      'snapshot': 'Capture DOM snapshot with structure and styles',
       'console-messages': 'Get console messages',
       'network-requests': 'Get network requests',
       'help': 'Show help information'

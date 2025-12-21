@@ -19,13 +19,25 @@ A powerful command-line tool for controlling Chrome browser instances via the Ch
 ### From npm (Recommended)
 
 ```bash
-npm install -g chrome-devtools-cli
+npm install -g chrome-cdp-cli
+```
+
+### Using npx (No Installation Required)
+
+```bash
+# Run directly with npx
+npx chrome-cdp-cli eval "document.title"
+
+# All commands work with npx
+npx chrome-cdp-cli eval "Math.PI * 2"
+npx chrome-cdp-cli eval --file script.js
+npx chrome-cdp-cli --help
 ```
 
 ### From Source
 
 ```bash
-git clone https://github.com/chrome-devtools-cli/chrome-devtools-cli.git
+git clone https://github.com/nickxiao42/chrome-devtools-cli.git
 cd chrome-devtools-cli
 npm install
 npm run build
@@ -60,25 +72,28 @@ chrome --remote-debugging-port=9222 --no-first-run --no-default-browser-check
 
 ```bash
 # Connect and execute JavaScript
-chrome-cli eval "document.title"
+chrome-cdp-cli eval "document.title"
+
+# Or use with npx (no installation needed)
+npx chrome-cdp-cli eval "document.title"
 
 # Navigate to a website
-chrome-cli navigate_page "https://example.com"
+chrome-cdp-cli navigate_page "https://example.com"
 
 # Take a screenshot
-chrome-cli take_screenshot --output screenshot.png
+chrome-cdp-cli screenshot --filename screenshot.png
 
 # Click an element
-chrome-cli click "#submit-button"
+chrome-cdp-cli click "#submit-button"
 
 # Fill a form field
-chrome-cli fill "#email" "user@example.com"
+chrome-cdp-cli fill "#email" "user@example.com"
 
 # Get help for all commands
-chrome-cli --help
+chrome-cdp-cli --help
 
 # Get help for a specific command
-chrome-cli eval --help
+chrome-cdp-cli eval --help
 ```
 
 ## Command Reference
@@ -102,68 +117,75 @@ All commands support these connection options:
 #### JavaScript Execution
 ```bash
 # Execute JavaScript expression
-chrome-cli eval "console.log('Hello World')"
+chrome-cdp-cli eval "console.log('Hello World')"
 
 # Execute from file
-chrome-cli eval --file script.js
+chrome-cdp-cli eval --file script.js
 
 # Execute with timeout
-chrome-cli eval "await new Promise(r => setTimeout(r, 5000))" --timeout 10000
+chrome-cdp-cli eval "await new Promise(r => setTimeout(r, 5000))" --timeout 10000
+
+# Using npx (no installation required)
+npx chrome-cdp-cli eval "document.title"
+npx chrome-cdp-cli eval --file script.js
 ```
 
 #### Page Management
 ```bash
 # Navigate to URL
-chrome-cli navigate_page "https://example.com"
+chrome-cdp-cli navigate_page "https://example.com"
 
 # Create new tab
-chrome-cli new_page
+chrome-cdp-cli new_page
 
 # List all pages
-chrome-cli list_pages
+chrome-cdp-cli list_pages
 
 # Close current page
-chrome-cli close_page
+chrome-cdp-cli close_page
 
 # Switch to specific page
-chrome-cli select_page --id "page-id"
+chrome-cdp-cli select_page --id "page-id"
 ```
 
 #### Element Interaction
 ```bash
 # Click element
-chrome-cli click "#button"
+chrome-cdp-cli click "#button"
 
 # Fill input field
-chrome-cli fill "#email" "user@example.com"
+chrome-cdp-cli fill "#email" "user@example.com"
 
 # Hover over element
-chrome-cli hover ".menu-item"
+chrome-cdp-cli hover ".menu-item"
 
 # Wait for element
-chrome-cli wait_for "#loading" --timeout 5000
+chrome-cdp-cli wait_for "#loading" --timeout 5000
 ```
 
 #### Visual Capture
 ```bash
 # Take screenshot
-chrome-cli take_screenshot --output screenshot.png
+chrome-cdp-cli screenshot --filename screenshot.png
 
-# Full page screenshot
-chrome-cli take_snapshot --output fullpage.png
+# Full page screenshot  
+chrome-cdp-cli screenshot --full-page --filename fullpage.png
+
+# DOM snapshot
+chrome-cdp-cli snapshot --filename dom-snapshot.json
 
 # Custom dimensions
-chrome-cli take_screenshot --width 1920 --height 1080 --output custom.png
+chrome-cdp-cli screenshot --width 1920 --height 1080 --filename custom.png
 
 # Get HTML content
-chrome-cli get_html --output page.html
+chrome-cdp-cli get_html --output page.html
 ```
 
 ## Configuration
 
 ### Configuration File
 
-Create a `.chrome-cli.json` file in your project root or home directory:
+Create a `.chrome-cdp-cli.json` file in your project root or home directory:
 
 ```json
 {
@@ -189,7 +211,7 @@ Create a `.chrome-cli.json` file in your project root or home directory:
 
 ```bash
 # Clone repository
-git clone https://github.com/chrome-devtools-cli/chrome-devtools-cli.git
+git clone https://github.com/nickxiao42/chrome-devtools-cli.git
 cd chrome-devtools-cli
 
 # Install dependencies
@@ -290,13 +312,13 @@ import {
   CommandResult, 
   CLIConfig,
   BrowserTarget 
-} from 'chrome-devtools-cli';
+} from 'chrome-cdp-cli';
 ```
 
 ### Programmatic Usage
 
 ```typescript
-import { CLIApplication } from 'chrome-devtools-cli';
+import { CLIApplication } from 'chrome-cdp-cli';
 
 const app = new CLIApplication();
 const result = await app.run(['eval', 'document.title']);
@@ -328,8 +350,44 @@ console.log(result);
 Enable verbose logging for troubleshooting:
 
 ```bash
-chrome-cli --verbose eval "console.log('debug')"
+chrome-cdp-cli --verbose eval "console.log('debug')"
 ```
+
+### Packaging
+
+```bash
+# Create npm package
+npm run package
+
+# Prepare for publishing
+npm run prepublishOnly
+```
+
+## Publishing to npm
+
+To make this tool available via `npx`, you need to publish it to npm:
+
+```bash
+# 1. Login to npm (one time setup)
+npm login
+
+# 2. Publish the package
+npm publish
+
+# 3. Users can then use it with npx
+npx chrome-cdp-cli eval "document.title"
+```
+
+**Note**: The package name `chrome-cdp-cli` uses a clean, descriptive approach. This approach:
+
+- ✅ **Professional naming** that clearly indicates Chrome DevTools Protocol CLI
+- ✅ **Works with npx**: `npx chrome-cdp-cli eval "document.title"`
+- ✅ **Simple installation**: `npm install -g chrome-cdp-cli`
+- ✅ **Short and memorable** compared to longer alternatives
+
+Alternative naming examples:
+1. **Scoped name**: `@nickxiao42/chrome-devtools-cli`
+2. **Longer descriptive**: `chrome-automation-cli`
 
 ## Contributing
 
@@ -347,9 +405,9 @@ MIT License - see [LICENSE](LICENSE) file for details.
 
 ## Support
 
-- 📖 [Documentation](https://github.com/chrome-devtools-cli/chrome-devtools-cli/wiki)
-- 🐛 [Issue Tracker](https://github.com/chrome-devtools-cli/chrome-devtools-cli/issues)
-- 💬 [Discussions](https://github.com/chrome-devtools-cli/chrome-devtools-cli/discussions)
+- 📖 [Documentation](https://github.com/nickxiao42/chrome-devtools-cli/wiki)
+- 🐛 [Issue Tracker](https://github.com/nickxiao42/chrome-devtools-cli/issues)
+- 💬 [Discussions](https://github.com/nickxiao42/chrome-devtools-cli/discussions)
 
 ## Changelog
 

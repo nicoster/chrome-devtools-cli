@@ -38,7 +38,7 @@ export class CLIInterface implements ICLIInterface {
    */
   private setupProgram(): void {
     this.program
-      .name('chrome-cli')
+      .name('chrome-cdp-cli')
       .description('Command-line tool for controlling Chrome browser via DevTools Protocol')
       .version('1.0.0')
       .allowUnknownOption(true)
@@ -146,9 +146,9 @@ export class CLIInterface implements ICLIInterface {
     } else {
       // Try default config locations
       const defaultPaths = [
-        '.chrome-cli.json',
-        path.join(process.env.HOME || '', '.chrome-cli.json'),
-        '/etc/chrome-cli.json'
+        '.chrome-cdp-cli.json',
+        path.join(process.env.HOME || '', '.chrome-cdp-cli.json'),
+        '/etc/chrome-cdp-cli.json'
       ];
 
       for (const defaultPath of defaultPaths) {
@@ -276,9 +276,46 @@ export class CLIInterface implements ICLIInterface {
         break;
 
       case 'screenshot':
-        if (options.output || options.o) commandArgs.output = options.output || options.o;
+        // Handle filename parameter
+        if (options.filename) commandArgs.filename = options.filename;
+        if (options.output || options.o) commandArgs.filename = options.output || options.o; // Legacy support
+        
+        // Handle dimensions
         if (options.width || options.w) commandArgs.width = parseInt(options.width || options.w, 10);
         if (options.height || options.h) commandArgs.height = parseInt(options.height || options.h, 10);
+        
+        // Handle format and quality
+        if (options.format) commandArgs.format = options.format;
+        if (options.quality) commandArgs.quality = parseInt(options.quality, 10);
+        
+        // Handle boolean flags
+        if (options['full-page']) commandArgs.fullPage = true;
+        
+        // Handle clip rectangle
+        if (options['clip-x'] || options['clip-y'] || options['clip-width'] || options['clip-height'] || options['clip-scale']) {
+          commandArgs.clip = {
+            x: options['clip-x'] ? parseInt(options['clip-x'], 10) : 0,
+            y: options['clip-y'] ? parseInt(options['clip-y'], 10) : 0,
+            width: options['clip-width'] ? parseInt(options['clip-width'], 10) : 0,
+            height: options['clip-height'] ? parseInt(options['clip-height'], 10) : 0,
+            scale: options['clip-scale'] ? parseFloat(options['clip-scale']) : 1
+          };
+        }
+        break;
+
+      case 'snapshot':
+        // Handle filename parameter
+        if (options.filename) commandArgs.filename = options.filename;
+        if (options.output || options.o) commandArgs.filename = options.output || options.o; // Legacy support
+        
+        // Handle format
+        if (options.format) commandArgs.format = options.format;
+        
+        // Handle boolean flags
+        if (options['include-styles'] !== undefined) commandArgs.includeStyles = options['include-styles'] !== 'false';
+        if (options['include-attributes'] !== undefined) commandArgs.includeAttributes = options['include-attributes'] !== 'false';
+        if (options['include-paint-order']) commandArgs.includePaintOrder = true;
+        if (options['include-text-index']) commandArgs.includeTextIndex = true;
         break;
 
       case 'console_messages':
