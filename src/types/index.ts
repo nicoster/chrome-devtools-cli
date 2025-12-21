@@ -52,6 +52,7 @@ export interface CommandResult {
   success: boolean;
   data?: unknown;
   error?: string;
+  exitCode?: number;
 }
 
 export interface CommandHandler {
