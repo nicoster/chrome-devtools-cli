@@ -12,6 +12,7 @@ A powerful command-line tool for controlling Chrome browser instances via the Ch
 - 📊 **Console Monitoring**: Real-time console message capture with filtering and storage
 - 🌐 **Network Monitoring**: Real-time network request/response monitoring with comprehensive filtering
 - 🔧 **CLI Interface**: Full command-line interface with argument parsing and routing
+- 🛠️ **IDE Integration**: Install Cursor commands and Claude skills with directory validation and --force option
 - 📦 **Build System**: Complete TypeScript build pipeline with testing framework
 
 ### 🚧 Eval Workaround Available
@@ -127,6 +128,10 @@ chrome-cdp-cli get_console_message
 # Monitor network requests
 chrome-cdp-cli get_network_request
 
+# Install IDE integrations
+chrome-cdp-cli install-cursor-command
+chrome-cdp-cli install-claude-skill --skill-type personal
+
 # Get help for all commands
 chrome-cdp-cli --help
 
@@ -221,6 +226,32 @@ chrome-cdp-cli list_network_requests
 
 # Filter network requests
 chrome-cdp-cli list_network_requests --filter '{"methods":["POST"],"statusCodes":[200,201]}'
+```
+
+#### IDE Integration
+```bash
+# Install Cursor command (creates .cursor/commands/cdp-cli.md)
+chrome-cdp-cli install-cursor-command
+
+# Install Cursor command with --force (bypasses directory validation)
+chrome-cdp-cli install-cursor-command --force
+
+# Install Claude skill for project (creates .claude/skills/cdp-cli/SKILL.md)
+chrome-cdp-cli install-claude-skill
+
+# Install Claude skill for personal use (creates ~/.claude/skills/cdp-cli/SKILL.md)
+chrome-cdp-cli install-claude-skill --skill-type personal
+
+# Install Claude skill with examples and references
+chrome-cdp-cli install-claude-skill --include-examples --include-references
+
+# Install with custom directory
+chrome-cdp-cli install-cursor-command --target-directory /custom/path/.cursor/commands
+chrome-cdp-cli install-claude-skill --target-directory /custom/path/.claude/skills
+
+# Force install (bypasses directory validation)
+chrome-cdp-cli install-cursor-command --force
+chrome-cdp-cli install-claude-skill --force
 ```
 
 ### 🚧 Available via Eval Workarounds
