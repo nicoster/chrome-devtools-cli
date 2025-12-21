@@ -1,5 +1,5 @@
 import { EvaluateScriptHandler } from './EvaluateScriptHandler';
-import { CDPClient, CommandResult } from '../types';
+import { CDPClient } from '../types';
 import { jest } from '@jest/globals';
 
 // Mock fs module

@@ -169,35 +169,35 @@ export class ConnectionManager implements IConnectionManager {
 
   /**
    * Create a CDP client instance for the given target
-   * This is a placeholder implementation that will be replaced when CDPClient is implemented
    * @param target Browser target
    * @returns Promise resolving to CDP client
    */
   private async createCDPClient(target: BrowserTarget): Promise<ICDPClient> {
-    // This is a placeholder implementation
-    // The actual CDPClient will be implemented in task 2.1
-    const mockClient: ICDPClient = {
-      connect: async () => {
-        // Placeholder implementation
-      },
-      disconnect: async () => {
-        // Placeholder implementation
-      },
-      send: async () => {
-        // Placeholder implementation
-        return {};
-      },
-      on: () => {
-        // Placeholder implementation
-      },
-      off: () => {
-        // Placeholder implementation
-      },
-      isConnected: () => false,
-      getConnectionStatus: () => 'disconnected' as const
-    };
+    // Import CDPClient dynamically to avoid circular dependencies
+    const { CDPClient } = await import('../client/CDPClient');
     
-    return mockClient;
+    const client = new CDPClient();
+    
+    // Connect to the target using the WebSocket URL
+    const wsUrl = target.webSocketDebuggerUrl;
+    if (!wsUrl) {
+      throw new Error(`Target ${target.id} does not have a WebSocket URL`);
+    }
+    
+    // Extract host and port from the WebSocket URL
+    // WebSocket URL format: ws://host:port/devtools/page/targetId
+    const urlMatch = wsUrl.match(/ws:\/\/([^:]+):(\d+)/);
+    if (!urlMatch) {
+      throw new Error(`Invalid WebSocket URL format: ${wsUrl}`);
+    }
+    
+    const host = urlMatch[1];
+    const port = parseInt(urlMatch[2], 10);
+    
+    // Connect the client
+    await client.connect(host, port, target.id);
+    
+    return client;
   }
 
   /**
@@ -222,16 +222,5 @@ export class ConnectionManager implements IConnectionManager {
    */
   private sleep(ms: number): Promise<void> {
     return new Promise(resolve => setTimeout(resolve, ms));
-  }
-
-  /**
-   * Remove a client from active connections
-   * @param client CDP client to remove
-   */
-  private removeConnection(client: ICDPClient): void {
-    const index = this.activeConnections.indexOf(client);
-    if (index > -1) {
-      this.activeConnections.splice(index, 1);
-    }
   }
 }

@@ -171,9 +171,25 @@ export class EvaluateScriptHandler implements ICommandHandler {
         generatePreview: false
       })) as RuntimeEvaluateResponse;
 
+      // Check if response is valid
+      if (!response) {
+        return {
+          success: false,
+          error: 'CDP returned empty response'
+        };
+      }
+
       // Check for JavaScript execution errors
       if (response.exceptionDetails) {
         return this.formatException(response.exceptionDetails);
+      }
+
+      // Check if result exists
+      if (!response.result) {
+        return {
+          success: false,
+          error: 'CDP response missing result field'
+        };
       }
 
       // Return successful result
@@ -226,6 +242,11 @@ export class EvaluateScriptHandler implements ICommandHandler {
    * Format result value for output
    */
   private formatResult(result: RuntimeEvaluateResponse['result']): unknown {
+    // Check if result exists
+    if (!result) {
+      return 'undefined';
+    }
+
     // If returnByValue is true, the value is already serialized
     if (result.value !== undefined) {
       return result.value;

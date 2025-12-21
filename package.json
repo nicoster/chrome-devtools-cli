@@ -1,22 +1,39 @@
 {
   "name": "chrome-devtools-cli",
   "version": "1.0.0",
-  "description": "Command-line tool for controlling Chrome browser via DevTools Protocol",
+  "description": "Command-line tool for controlling Chrome browser instances via the Chrome DevTools Protocol",
   "main": "dist/index.js",
+  "types": "dist/index.d.ts",
   "bin": {
     "chrome-cli": "dist/index.js"
   },
+  "files": [
+    "dist/**/*",
+    "README.md",
+    "LICENSE"
+  ],
+  "engines": {
+    "node": ">=18.0.0"
+  },
   "scripts": {
-    "build": "tsc",
+    "build": "node scripts/build.js development",
+    "build:prod": "node scripts/build.js production",
+    "build:watch": "tsc --watch",
     "dev": "ts-node src/index.ts",
     "demo": "ts-node demo.ts",
+    "start": "node dist/index.js",
     "test": "jest",
     "test:watch": "jest --watch",
     "test:coverage": "jest --coverage",
+    "test:ci": "jest --ci --coverage --watchAll=false",
     "lint": "eslint src/**/*.ts",
     "lint:fix": "eslint src/**/*.ts --fix",
     "clean": "rimraf dist",
-    "prepublishOnly": "npm run clean && npm run build"
+    "package": "npm run build:prod && npm pack",
+    "prepublishOnly": "npm run test:ci && npm run build:prod",
+    "prepack": "npm run build:prod",
+    "postinstall": "npm run build",
+    "verify": "npm run lint && npm run test:ci && npm run build:prod"
   },
   "keywords": [
     "chrome",
@@ -24,10 +41,22 @@
     "automation",
     "cli",
     "browser",
-    "testing"
+    "testing",
+    "cdp",
+    "chrome-devtools-protocol",
+    "browser-automation",
+    "headless-chrome"
   ],
-  "author": "",
+  "author": "Chrome DevTools CLI Team",
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/chrome-devtools-cli/chrome-devtools-cli.git"
+  },
+  "bugs": {
+    "url": "https://github.com/chrome-devtools-cli/chrome-devtools-cli/issues"
+  },
+  "homepage": "https://github.com/chrome-devtools-cli/chrome-devtools-cli#readme",
   "dependencies": {
     "commander": "^11.1.0",
     "node-fetch": "^2.7.0",

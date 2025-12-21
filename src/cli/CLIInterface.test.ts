@@ -22,7 +22,7 @@ describe('CLIInterface', () => {
     it('should parse command with options correctly', () => {
       const result = cli.parseArgs(['node', 'script.js', '--host', '127.0.0.1', '--port', '9223', '--format', 'json', 'evaluate-script', '--expression', 'console.log("test")']);
       
-      expect(result.name).toBe('evaluate-script');
+      expect(result.name).toBe('evaluate_script'); // Normalized to underscore
       expect(result.config.host).toBe('127.0.0.1');
       expect(result.config.port).toBe(9223);
       expect(result.config.outputFormat).toBe('json');
@@ -47,7 +47,7 @@ describe('CLIInterface', () => {
     it('should parse evaluate-script command arguments correctly', () => {
       const result = cli.parseArgs(['node', 'script.js', 'evaluate-script', '--expression', 'document.title', '--await-promise']);
       
-      expect(result.name).toBe('evaluate-script');
+      expect(result.name).toBe('evaluate_script'); // Normalized to underscore
       expect(result.args.expression).toBe('document.title');
       expect(result.args.awaitPromise).toBe(true);
     });

@@ -1,9 +1,7 @@
 import { Command } from 'commander';
-import { promises as fs } from 'fs';
 import * as path from 'path';
 import { ICLIInterface, DEFAULT_CLI_CONFIG } from '../interfaces/CLIInterface';
 import { CLICommand, CLIConfig, CommandResult, CDPClient } from '../types';
-import { Logger } from '../utils/logger';
 import { CommandRegistry } from './CommandRegistry';
 import { CommandRouter } from './CommandRouter';
 
@@ -25,13 +23,11 @@ interface ConfigFile {
  */
 export class CLIInterface implements ICLIInterface {
   private program: Command;
-  private logger: Logger;
   private registry: CommandRegistry;
   private router: CommandRouter;
 
   constructor() {
     this.program = new Command();
-    this.logger = new Logger();
     this.registry = new CommandRegistry();
     this.router = new CommandRouter(this.registry);
     this.setupProgram();
@@ -119,14 +115,17 @@ export class CLIInterface implements ICLIInterface {
       const command = commandArgs[0] || 'help';
       const remainingArgs = commandArgs.slice(1);
 
+      // Normalize command name (convert hyphens to underscores for handler lookup)
+      const normalizedCommand = command.replace(/-/g, '_');
+
       // Load configuration
       const config = this.loadConfiguration(options.config, options);
 
       // Extract command-specific arguments
-      const parsedArgs = this.extractCommandArgs(command, remainingArgs, options);
+      const parsedArgs = this.extractCommandArgs(normalizedCommand, remainingArgs, options);
 
       return {
-        name: command,
+        name: normalizedCommand,
         args: parsedArgs,
         config
       };
@@ -229,29 +228,32 @@ export class CLIInterface implements ICLIInterface {
   private extractCommandArgs(command: string, args: string[], options: any): Record<string, unknown> {
     const commandArgs: Record<string, unknown> = {};
 
-    switch (command) {
+    // Normalize command name (convert hyphens to underscores)
+    const normalizedCommand = command.replace(/-/g, '_');
+
+    switch (normalizedCommand) {
       case 'navigate':
         commandArgs.url = args[0];
         break;
 
-      case 'new-page':
+      case 'new_page':
         if (options.url) commandArgs.url = options.url;
         break;
 
-      case 'close-page':
+      case 'close_page':
         if (options['page-id']) commandArgs.pageId = options['page-id'];
         break;
 
-      case 'select-page':
+      case 'select_page':
         commandArgs.pageId = args[0];
         break;
 
-      case 'resize-page':
+      case 'resize_page':
         commandArgs.width = parseInt(args[0], 10);
         commandArgs.height = parseInt(args[1], 10);
         break;
 
-      case 'evaluate-script':
+      case 'evaluate_script':
         if (options.expression || options.e) commandArgs.expression = options.expression || options.e;
         if (options.file || options.f) commandArgs.file = options.file || options.f;
         commandArgs.awaitPromise = options['await-promise'] !== false;
@@ -274,11 +276,11 @@ export class CLIInterface implements ICLIInterface {
         if (options.height || options.h) commandArgs.height = parseInt(options.height || options.h, 10);
         break;
 
-      case 'console-messages':
+      case 'console_messages':
         if (options.filter) commandArgs.filter = options.filter;
         break;
 
-      case 'network-requests':
+      case 'network_requests':
         if (options.filter) commandArgs.filter = options.filter;
         break;
 

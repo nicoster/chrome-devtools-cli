@@ -124,7 +124,7 @@ export class CommandRouter {
         return this.executeConnectCommand(command);
       
       case 'disconnect':
-        return this.executeDisconnectCommand(command);
+        return this.executeDisconnectCommand();
       
       default:
         return {
@@ -142,8 +142,11 @@ export class CommandRouter {
     const commandName = command.args.command as string;
     
     if (commandName) {
+      // Normalize command name for handler lookup
+      const normalizedCommandName = commandName.replace(/-/g, '_');
+      
       // Show help for specific command
-      const handler = this.registry.get(commandName);
+      const handler = this.registry.get(normalizedCommandName);
       if (!handler) {
         return {
           success: false,
@@ -191,7 +194,7 @@ export class CommandRouter {
   /**
    * Execute disconnect command
    */
-  private async executeDisconnectCommand(command: CLICommand): Promise<CommandResult> {
+  private async executeDisconnectCommand(): Promise<CommandResult> {
     try {
       if (this.client) {
         await this.client.disconnect();

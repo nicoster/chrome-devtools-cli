@@ -45,10 +45,17 @@ export class CDPClient implements ICDPClient {
           return;
         }
 
-        this.ws.on('open', () => {
+        this.ws.on('open', async () => {
           this.connectionStatus = 'connected';
-          console.log('Connected to Chrome DevTools Protocol');
-          resolve();
+          
+          try {
+            // Enable Runtime domain
+            await this.send('Runtime.enable');
+            resolve();
+          } catch (error) {
+            console.error('Failed to enable Runtime domain:', error);
+            reject(error);
+          }
         });
 
         this.ws.on('message', (data: WebSocket.Data) => {
@@ -63,7 +70,6 @@ export class CDPClient implements ICDPClient {
 
         this.ws.on('close', () => {
           this.connectionStatus = 'disconnected';
-          console.log('WebSocket connection closed');
         });
       });
     } catch (error) {

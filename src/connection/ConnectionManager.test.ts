@@ -62,7 +62,7 @@ describe('ConnectionManager', () => {
       };
 
       const http = await import('http');
-      (http.get as jest.Mock).mockImplementation((url, callback) => {
+      (http.get as jest.Mock).mockImplementation((_url, callback) => {
         callback(mockResponse);
         return mockRequest;
       });
@@ -115,7 +115,7 @@ describe('ConnectionManager', () => {
       };
 
       const http = await import('http');
-      (http.get as jest.Mock).mockImplementation((url, callback) => {
+      (http.get as jest.Mock).mockImplementation((_url, callback) => {
         callback(mockResponse);
         return mockRequest;
       });
@@ -142,7 +142,7 @@ describe('ConnectionManager', () => {
       };
 
       const http = await import('http');
-      (http.get as jest.Mock).mockImplementation((url, callback) => {
+      (http.get as jest.Mock).mockImplementation((_url, callback) => {
         callback(mockResponse);
         return mockRequest;
       });
