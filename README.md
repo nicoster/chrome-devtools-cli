@@ -390,6 +390,18 @@ chrome-cdp-cli list_console_messages
 chrome-cdp-cli list_console_messages --filter '{"types":["error","warn"]}'
 ```
 
+**Note**: Console monitoring only captures messages generated *after* monitoring starts. For historical messages or immediate console operations, use the eval-first approach:
+
+```bash
+# Generate and capture console messages in one command
+chrome-cdp-cli eval "console.log('Test message'); console.warn('Warning'); 'Messages logged'"
+
+# Check for existing console history (if page maintains it)
+chrome-cdp-cli eval "window.consoleHistory || window._console_logs || 'No custom console history'"
+```
+
+See [Console Monitoring Documentation](docs/CONSOLE_MONITORING.md) for detailed solutions and workarounds.
+
 #### Network Monitoring
 ```bash
 # Get latest network request

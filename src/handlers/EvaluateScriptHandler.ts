@@ -1,6 +1,9 @@
 import { ICommandHandler } from '../interfaces/CommandHandler';
 import { CDPClient, CommandResult } from '../types';
+import { ProxyClient } from '../client/ProxyClient';
+import { WebSocket } from 'ws';
 import { promises as fs } from 'fs';
+import fetch from 'node-fetch';
 
 /**
  * Arguments for eval command
@@ -51,6 +54,11 @@ interface RuntimeEvaluateResponse {
  */
 export class EvaluateScriptHandler implements ICommandHandler {
   readonly name = 'eval';
+  private proxyClient: ProxyClient;
+
+  constructor() {
+    this.proxyClient = new ProxyClient();
+  }
 
   /**
    * Execute JavaScript code in the browser
@@ -73,6 +81,156 @@ export class EvaluateScriptHandler implements ICommandHandler {
       };
     }
 
+    try {
+      // Try proxy first
+      const proxyAvailable = await this.proxyClient.isProxyAvailable();
+      if (proxyAvailable) {
+        console.log('[INFO] Using proxy connection for script evaluation');
+        return await this.executeWithProxy(scriptArgs);
+      } else {
+        console.warn('[WARN] Proxy not available, falling back to direct CDP connection');
+      }
+    } catch (error) {
+      console.warn('[WARN] Proxy execution failed, falling back to direct CDP:', error instanceof Error ? error.message : error);
+    }
+
+    // Fallback to direct CDP
+    return await this.executeWithDirectCDP(client, scriptArgs);
+  }
+
+  /**
+   * Execute script through proxy
+   */
+  private async executeWithProxy(scriptArgs: EvaluateScriptArgs): Promise<CommandResult> {
+    try {
+      // Get the JavaScript code to execute
+      let expression: string;
+      if (scriptArgs.file) {
+        expression = await this.readScriptFile(scriptArgs.file);
+      } else {
+        expression = scriptArgs.expression!;
+      }
+
+      // Get existing connections from proxy API
+      const response = await fetch('http://localhost:9223/api/connections');
+      if (!response.ok) {
+        throw new Error('Failed to get proxy connections');
+      }
+      
+      const result = await response.json();
+      if (!result.success || !result.data.connections || result.data.connections.length === 0) {
+        throw new Error('No active proxy connections found');
+      }
+
+      // Use the first available healthy connection
+      const connection = result.data.connections.find((conn: any) => conn.isHealthy);
+      if (!connection) {
+        throw new Error('No healthy proxy connections found');
+      }
+
+      console.log(`[INFO] Using existing proxy connection: ${connection.id}`);
+
+      // Set the connection ID for WebSocket creation
+      (this.proxyClient as any).connectionId = connection.id;
+
+      // Create WebSocket proxy connection
+      const ws = await this.proxyClient.createWebSocketProxy();
+
+      try {
+        const result = await this.executeScriptThroughProxy(ws, expression, scriptArgs);
+        
+        return {
+          success: true,
+          data: result
+        };
+      } finally {
+        // Clean up
+        ws.close();
+      }
+    } catch (error) {
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : String(error)
+      };
+    }
+  }
+
+  /**
+   * Execute script through proxy WebSocket
+   */
+  private async executeScriptThroughProxy(ws: WebSocket, expression: string, args: EvaluateScriptArgs): Promise<any> {
+    return new Promise((resolve, reject) => {
+      const commandId = Date.now();
+      const timeout = args.timeout || 30000;
+      const awaitPromise = args.awaitPromise ?? true;
+      const returnByValue = args.returnByValue ?? true;
+
+      const timeoutHandle = setTimeout(() => {
+        reject(new Error(`Script execution timeout after ${timeout}ms`));
+      }, timeout);
+
+      ws.on('message', (data) => {
+        try {
+          const response = JSON.parse(data.toString());
+          
+          if (response.id === commandId) {
+            clearTimeout(timeoutHandle);
+            
+            if (response.error) {
+              reject(new Error(`CDP Error: ${response.error.message}`));
+              return;
+            }
+
+            const result = response.result;
+            if (result.exceptionDetails) {
+              const error = new Error(result.result?.description || 'Script execution failed');
+              (error as any).exceptionDetails = result.exceptionDetails;
+              reject(error);
+              return;
+            }
+
+            // Handle the result
+            let value = result.result?.value;
+            if (result.result?.type === 'undefined') {
+              value = undefined;
+            } else if (result.result?.unserializableValue) {
+              value = result.result.unserializableValue;
+            }
+
+            resolve(value);
+          }
+        } catch (error) {
+          clearTimeout(timeoutHandle);
+          reject(new Error(`Failed to parse CDP response: ${error instanceof Error ? error.message : error}`));
+        }
+      });
+
+      ws.on('error', (error) => {
+        clearTimeout(timeoutHandle);
+        reject(new Error(`WebSocket error: ${error.message}`));
+      });
+
+      // Send the Runtime.evaluate command
+      const command = {
+        id: commandId,
+        method: 'Runtime.evaluate',
+        params: {
+          expression: expression,
+          awaitPromise: awaitPromise,
+          returnByValue: returnByValue,
+          userGesture: true,
+          generatePreview: false
+        }
+      };
+
+      ws.send(JSON.stringify(command));
+    });
+  }
+
+  /**
+   * Execute script with direct CDP (fallback)
+   */
+  private async executeWithDirectCDP(client: CDPClient, scriptArgs: EvaluateScriptArgs): Promise<CommandResult> {
     try {
       // Get the JavaScript code to execute
       let expression: string;

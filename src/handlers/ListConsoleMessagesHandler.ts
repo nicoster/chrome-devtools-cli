@@ -1,6 +1,8 @@
 import { ICommandHandler } from '../interfaces/CommandHandler';
 import { CDPClient, CommandResult } from '../types';
 import { ConsoleMonitor, ConsoleMessageFilter } from '../monitors/ConsoleMonitor';
+import { ProxyClient } from '../client/ProxyClient';
+import { ConsoleMessageFilter as ProxyConsoleMessageFilter } from '../proxy/types/ProxyTypes';
 
 /**
  * Handler for listing all console messages
@@ -8,6 +10,7 @@ import { ConsoleMonitor, ConsoleMessageFilter } from '../monitors/ConsoleMonitor
 export class ListConsoleMessagesHandler implements ICommandHandler {
   readonly name = 'list_console_messages';
   private consoleMonitor: ConsoleMonitor | null = null;
+  private proxyClient: ProxyClient | null = null;
 
   async execute(client: CDPClient, args: unknown): Promise<CommandResult> {
     try {
@@ -18,20 +21,58 @@ export class ListConsoleMessagesHandler implements ICommandHandler {
         startTime?: number;
         endTime?: number;
         startMonitoring?: boolean;
+        host?: string;
+        port?: number;
+        targetId?: string;
       };
 
-      // Initialize console monitor if not already done
-      if (!this.consoleMonitor) {
-        this.consoleMonitor = new ConsoleMonitor(client);
+      // Try to use proxy first
+      const proxyResult = await this.tryProxyExecution(params);
+      if (proxyResult) {
+        return proxyResult;
       }
 
-      // Start monitoring if requested or if not already monitoring
-      if (params.startMonitoring || !this.consoleMonitor.isActive()) {
-        await this.consoleMonitor.startMonitoring();
+      // Fallback to direct CDP connection
+      return await this.executeDirectCDP(client, params);
+    } catch (error) {
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Unknown error occurred'
+      };
+    }
+  }
+
+  /**
+   * Try to execute using proxy server
+   */
+  private async tryProxyExecution(params: any): Promise<CommandResult | null> {
+    try {
+      // Initialize proxy client if not already done
+      if (!this.proxyClient) {
+        this.proxyClient = new ProxyClient();
       }
 
-      // Build filter
-      const filter: ConsoleMessageFilter = {};
+      // Check if proxy is available
+      const isProxyAvailable = await this.proxyClient.isProxyAvailable();
+      if (!isProxyAvailable) {
+        // Try to start proxy if needed
+        const proxyStarted = await this.proxyClient.ensureProxyRunning();
+        if (!proxyStarted) {
+          console.warn('⚠️  Proxy server unavailable. Falling back to direct CDP connection.');
+          console.warn('⚠️  Note: Direct connection only captures NEW console messages, not historical data.');
+          return null; // Fallback to direct CDP
+        }
+      }
+
+      // Connect through proxy if not already connected
+      if (!this.proxyClient.getConnectionId()) {
+        const host = params.host || 'localhost';
+        const port = params.port || 9222;
+        await this.proxyClient.connect(host, port, params.targetId);
+      }
+
+      // Build filter for proxy
+      const filter: ProxyConsoleMessageFilter = {};
       if (params.types && params.types.length > 0) {
         filter.types = params.types;
       }
@@ -48,8 +89,8 @@ export class ListConsoleMessagesHandler implements ICommandHandler {
         filter.endTime = params.endTime;
       }
 
-      // Get filtered messages
-      const messages = this.consoleMonitor.getMessages(filter);
+      // Get messages from proxy
+      const messages = await this.proxyClient.getConsoleMessages(filter);
 
       return {
         success: true,
@@ -62,15 +103,69 @@ export class ListConsoleMessagesHandler implements ICommandHandler {
             stackTrace: msg.stackTrace
           })),
           totalCount: messages.length,
-          isMonitoring: this.consoleMonitor.isActive()
-        }
+          isMonitoring: true
+        },
+        dataSource: 'proxy',
+        hasHistoricalData: true
       };
     } catch (error) {
-      return {
-        success: false,
-        error: error instanceof Error ? error.message : 'Unknown error occurred'
-      };
+      console.warn('⚠️  Proxy execution failed, falling back to direct CDP:', error instanceof Error ? error.message : error);
+      console.warn('⚠️  Note: Direct connection only captures NEW console messages, not historical data.');
+      return null;
     }
+  }
+
+  /**
+   * Execute using direct CDP connection (fallback)
+   */
+  private async executeDirectCDP(client: CDPClient, params: any): Promise<CommandResult> {
+    // Initialize console monitor if not already done
+    if (!this.consoleMonitor) {
+      this.consoleMonitor = new ConsoleMonitor(client);
+    }
+
+    // Start monitoring if requested or if not already monitoring
+    if (params.startMonitoring || !this.consoleMonitor.isActive()) {
+      await this.consoleMonitor.startMonitoring();
+    }
+
+    // Build filter
+    const filter: ConsoleMessageFilter = {};
+    if (params.types && params.types.length > 0) {
+      filter.types = params.types;
+    }
+    if (params.textPattern) {
+      filter.textPattern = params.textPattern;
+    }
+    if (params.maxMessages && params.maxMessages > 0) {
+      filter.maxMessages = params.maxMessages;
+    }
+    if (params.startTime) {
+      filter.startTime = params.startTime;
+    }
+    if (params.endTime) {
+      filter.endTime = params.endTime;
+    }
+
+    // Get filtered messages
+    const messages = this.consoleMonitor.getMessages(filter);
+
+    return {
+      success: true,
+      data: {
+        messages: messages.map(msg => ({
+          type: msg.type,
+          text: msg.text,
+          args: msg.args,
+          timestamp: msg.timestamp,
+          stackTrace: msg.stackTrace
+        })),
+        totalCount: messages.length,
+        isMonitoring: this.consoleMonitor.isActive()
+      },
+      dataSource: 'direct',
+      hasHistoricalData: false
+    };
   }
 
   validateArgs(args: unknown): boolean {
@@ -139,6 +234,10 @@ Examples:
   list_console_messages
   list_console_messages --types error,warn
   list_console_messages --textPattern "API" --maxMessages 10
-  list_console_messages --startTime 1640995200000`;
+  list_console_messages --startTime 1640995200000
+
+Note: This command now uses the proxy server when available, providing access to
+historical console messages from connection establishment. When proxy is unavailable,
+falls back to direct CDP connection (captures only new messages).`;
   }
 }

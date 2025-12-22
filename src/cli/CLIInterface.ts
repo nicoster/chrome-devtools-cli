@@ -387,6 +387,75 @@ export class CLIInterface implements ICLIInterface {
       return 'Success';
     }
 
+    // Handle data source and historical data indicators
+    let output = '';
+    let dataSourceInfo = '';
+    
+    // Add data source information
+    if (result.dataSource === 'proxy' && result.hasHistoricalData) {
+      dataSourceInfo = '📊 Data from proxy server (includes historical data)\n';
+    } else if (result.dataSource === 'direct' && result.hasHistoricalData === false) {
+      dataSourceInfo = '⚠️  Data from direct connection (new messages only, no historical data)\n';
+    }
+    
+    if (result.data && typeof result.data === 'object') {
+      const data = result.data as any;
+      
+      // Handle console messages output
+      if (data.messages && Array.isArray(data.messages)) {
+        output += dataSourceInfo;
+        if (data.messages.length === 0) {
+          output += 'No console messages found.';
+        } else {
+          output += `Found ${data.messages.length} console message(s):\n\n`;
+          data.messages.forEach((msg: any, index: number) => {
+            const timestamp = new Date(msg.timestamp).toISOString();
+            output += `[${index + 1}] ${timestamp} [${msg.type.toUpperCase()}] ${msg.text}\n`;
+            if (msg.args && msg.args.length > 0) {
+              output += `    Args: ${JSON.stringify(msg.args)}\n`;
+            }
+          });
+        }
+        return output.trim();
+      }
+      
+      // Handle network requests output
+      if (data.requests && Array.isArray(data.requests)) {
+        output += dataSourceInfo;
+        if (data.requests.length === 0) {
+          output += 'No network requests found.';
+        } else {
+          output += `Found ${data.requests.length} network request(s):\n\n`;
+          data.requests.forEach((req: any, index: number) => {
+            const timestamp = new Date(req.timestamp).toISOString();
+            const status = req.status ? ` [${req.status}]` : ' [pending]';
+            output += `[${index + 1}] ${timestamp} ${req.method} ${req.url}${status}\n`;
+          });
+        }
+        return output.trim();
+      }
+      
+      // Handle single console message
+      if (data.type && data.text !== undefined && data.timestamp) {
+        output += dataSourceInfo;
+        const timestamp = new Date(data.timestamp).toISOString();
+        output += `${timestamp} [${data.type.toUpperCase()}] ${data.text}`;
+        if (data.args && data.args.length > 0) {
+          output += `\nArgs: ${JSON.stringify(data.args)}`;
+        }
+        return output;
+      }
+      
+      // Handle single network request
+      if (data.requestId && data.url && data.method) {
+        output += dataSourceInfo;
+        const timestamp = new Date(data.timestamp).toISOString();
+        const status = data.status ? ` [${data.status}]` : ' [pending]';
+        output += `${timestamp} ${data.method} ${data.url}${status}`;
+        return output;
+      }
+    }
+
     if (typeof result.data === 'string') {
       return result.data;
     }

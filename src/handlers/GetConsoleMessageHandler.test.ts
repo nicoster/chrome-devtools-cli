@@ -1,6 +1,19 @@
 import { GetConsoleMessageHandler } from './GetConsoleMessageHandler';
 import { CDPClient } from '../types';
 
+// Mock ProxyClient
+jest.mock('../client/ProxyClient', () => {
+  return {
+    ProxyClient: jest.fn().mockImplementation(() => ({
+      isProxyAvailable: jest.fn().mockResolvedValue(false),
+      ensureProxyRunning: jest.fn().mockResolvedValue(false),
+      getConnectionId: jest.fn().mockReturnValue(null),
+      connect: jest.fn().mockResolvedValue(undefined),
+      getConsoleMessages: jest.fn().mockResolvedValue([])
+    }))
+  };
+});
+
 // Mock CDPClient for testing
 class MockCDPClient implements CDPClient {
   private eventListeners = new Map<string, Array<(params: unknown) => void>>();
@@ -51,10 +64,18 @@ class MockCDPClient implements CDPClient {
 describe('GetConsoleMessageHandler', () => {
   let handler: GetConsoleMessageHandler;
   let mockClient: MockCDPClient;
+  let consoleWarnSpy: jest.SpyInstance;
 
   beforeEach(() => {
     handler = new GetConsoleMessageHandler();
     mockClient = new MockCDPClient();
+    
+    // Suppress console.warn during tests
+    consoleWarnSpy = jest.spyOn(console, 'warn').mockImplementation(() => {});
+  });
+
+  afterEach(() => {
+    consoleWarnSpy.mockRestore();
   });
 
   describe('execute', () => {

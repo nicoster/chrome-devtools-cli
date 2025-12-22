@@ -2,6 +2,19 @@ import { ListNetworkRequestsHandler } from './ListNetworkRequestsHandler';
 import { NetworkMonitor } from '../monitors/NetworkMonitor';
 import { CDPClient, NetworkRequest } from '../types';
 
+// Mock ProxyClient
+jest.mock('../client/ProxyClient', () => {
+  return {
+    ProxyClient: jest.fn().mockImplementation(() => ({
+      isProxyAvailable: jest.fn().mockResolvedValue(false),
+      ensureProxyRunning: jest.fn().mockResolvedValue(false),
+      getConnectionId: jest.fn().mockReturnValue(null),
+      connect: jest.fn().mockResolvedValue(undefined),
+      getNetworkRequests: jest.fn().mockResolvedValue([])
+    }))
+  };
+});
+
 // Mock CDPClient for testing
 class MockCDPClient implements CDPClient {
   async connect(): Promise<void> {}
@@ -50,12 +63,20 @@ describe('ListNetworkRequestsHandler', () => {
   let handler: ListNetworkRequestsHandler;
   let mockClient: MockCDPClient;
   let mockMonitor: MockNetworkMonitor;
+  let consoleWarnSpy: jest.SpyInstance;
 
   beforeEach(() => {
     handler = new ListNetworkRequestsHandler();
     mockClient = new MockCDPClient();
     mockMonitor = new MockNetworkMonitor();
     handler.setNetworkMonitor(mockMonitor);
+    
+    // Suppress console.warn during tests
+    consoleWarnSpy = jest.spyOn(console, 'warn').mockImplementation(() => {});
+  });
+
+  afterEach(() => {
+    consoleWarnSpy.mockRestore();
   });
 
   describe('execute', () => {

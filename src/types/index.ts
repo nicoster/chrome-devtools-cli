@@ -53,6 +53,8 @@ export interface CommandResult {
   data?: unknown;
   error?: string;
   exitCode?: number;
+  dataSource?: 'proxy' | 'direct';
+  hasHistoricalData?: boolean;
 }
 
 export interface CommandHandler {

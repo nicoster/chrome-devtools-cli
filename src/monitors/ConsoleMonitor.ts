@@ -34,6 +34,14 @@ export class ConsoleMonitor {
 
     // Enable Runtime domain to receive console events
     await this.client.send('Runtime.enable');
+    
+    // Also enable Log domain to capture more message types
+    try {
+      await this.client.send('Log.enable');
+    } catch (error) {
+      // Log domain might not be available in all contexts, continue without it
+      console.warn('Log domain not available:', error);
+    }
 
     // Set up event listener for console API calls
     this.messageHandler = (params: unknown) => {
@@ -41,6 +49,12 @@ export class ConsoleMonitor {
     };
 
     this.client.on('Runtime.consoleAPICalled', this.messageHandler);
+    
+    // Also listen for Log domain events if available
+    this.client.on('Log.entryAdded', (params: unknown) => {
+      this.handleLogEntry(params);
+    });
+    
     this.isMonitoring = true;
   }
 
@@ -176,6 +190,49 @@ export class ConsoleMonitor {
   }
 
   /**
+   * Handle incoming log entries from Log domain
+   */
+  private handleLogEntry(params: unknown): void {
+    try {
+      const logParams = params as {
+        entry: {
+          source: string;
+          level: string;
+          text: string;
+          timestamp: number;
+          url?: string;
+          lineNumber?: number;
+        };
+      };
+
+      const entry = logParams.entry;
+      
+      // Convert Log entry to our console message format
+      const message: ConsoleMessage = {
+        type: this.mapLogLevel(entry.level),
+        text: entry.text,
+        args: [entry.text],
+        timestamp: entry.timestamp,
+        stackTrace: entry.url && entry.lineNumber ? [{
+          functionName: '<unknown>',
+          url: entry.url,
+          lineNumber: entry.lineNumber,
+          columnNumber: 0
+        }] : undefined
+      };
+
+      this.messages.push(message);
+
+      // Limit stored messages to prevent memory issues (keep last 1000)
+      if (this.messages.length > 1000) {
+        this.messages = this.messages.slice(-1000);
+      }
+    } catch (error) {
+      console.error('Error handling log entry:', error);
+    }
+  }
+
+  /**
    * Map CDP console type to our console message type
    */
   private mapConsoleType(cdpType: string): 'log' | 'info' | 'warn' | 'error' | 'debug' {
@@ -190,6 +247,23 @@ export class ConsoleMonitor {
         return 'error';
       case 'debug':
         return 'debug';
+      default:
+        return 'log';
+    }
+  }
+
+  /**
+   * Map Log domain level to our console message type
+   */
+  private mapLogLevel(logLevel: string): 'log' | 'info' | 'warn' | 'error' | 'debug' {
+    switch (logLevel.toLowerCase()) {
+      case 'verbose':
+      case 'info':
+        return 'info';
+      case 'warning':
+        return 'warn';
+      case 'error':
+        return 'error';
       default:
         return 'log';
     }
