@@ -1,8 +1,5 @@
 import { WebSocket } from 'ws';
 import fetch from 'node-fetch';
-import { spawn, ChildProcess } from 'child_process';
-import * as path from 'path';
-import * as fs from 'fs';
 import {
   ProxyClientConfig,
   APIResponse,
@@ -14,6 +11,7 @@ import {
   NetworkRequestFilter,
   HealthCheckResult
 } from '../proxy/types/ProxyTypes';
+import { ProxyManager } from '../proxy/ProxyManager';
 
 /**
  * Client-side integration for chrome-cdp-cli to use the proxy server
@@ -22,7 +20,7 @@ export class ProxyClient {
   private config: ProxyClientConfig;
   private connectionId?: string;
   private wsConnection?: WebSocket;
-  private proxyProcess?: ChildProcess;
+  private proxyManager: ProxyManager;
 
   constructor(config?: Partial<ProxyClientConfig>) {
     this.config = {
@@ -31,29 +29,24 @@ export class ProxyClient {
       startProxyIfNeeded: true,
       ...config
     };
+    this.proxyManager = ProxyManager.getInstance();
   }
 
   /**
    * Ensure proxy server is running, starting it if needed
    */
   async ensureProxyRunning(): Promise<boolean> {
-    try {
-      // First check if proxy is already running
-      const isRunning = await this.isProxyRunning();
-      if (isRunning) {
-        return true;
-      }
-
-      // If not running and auto-start is enabled, start it
-      if (this.config.startProxyIfNeeded) {
-        return await this.startProxyServer();
-      }
-
-      return false;
-    } catch (error) {
-      console.warn('Failed to ensure proxy is running:', error instanceof Error ? error.message : error);
-      return false;
+    if (this.config.startProxyIfNeeded) {
+      return await this.proxyManager.ensureProxyReady();
     }
+    return await this.isProxyRunning();
+  }
+
+  /**
+   * Check if proxy is available
+   */
+  async isProxyAvailable(): Promise<boolean> {
+    return await this.isProxyRunning();
   }
 
   /**
@@ -74,69 +67,6 @@ export class ProxyClient {
     } catch (error) {
       return false;
     }
-  }
-
-  /**
-   * Start the proxy server as a background process
-   */
-  private async startProxyServer(): Promise<boolean> {
-    try {
-      // Find the proxy server executable
-      const proxyServerPath = this.findProxyServerExecutable();
-      if (!proxyServerPath) {
-        console.warn('Proxy server executable not found');
-        return false;
-      }
-
-      // Start the proxy server process
-      this.proxyProcess = spawn('node', [proxyServerPath], {
-        detached: true,
-        stdio: 'ignore'
-      });
-
-      // Unref the process so it doesn't keep the parent alive
-      this.proxyProcess.unref();
-
-      // Wait for the server to start (up to 5 seconds)
-      const startTime = Date.now();
-      while (Date.now() - startTime < 5000) {
-        if (await this.isProxyRunning()) {
-          return true;
-        }
-        await new Promise(resolve => setTimeout(resolve, 200));
-      }
-
-      console.warn('Proxy server failed to start within timeout');
-      return false;
-    } catch (error) {
-      console.warn('Failed to start proxy server:', error instanceof Error ? error.message : error);
-      return false;
-    }
-  }
-
-  /**
-   * Find the proxy server executable
-   */
-  private findProxyServerExecutable(): string | null {
-    // Look for compiled proxy server in dist directory
-    const distPath = path.join(__dirname, '../../dist/proxy/index.js');
-    if (fs.existsSync(distPath)) {
-      return distPath;
-    }
-
-    // Look for source proxy server
-    const srcPath = path.join(__dirname, '../proxy/index.js');
-    if (fs.existsSync(srcPath)) {
-      return srcPath;
-    }
-
-    // Look in node_modules if this is installed as a package
-    const nodeModulesPath = path.join(__dirname, '../../../node_modules/chrome-cdp-cli/dist/proxy/index.js');
-    if (fs.existsSync(nodeModulesPath)) {
-      return nodeModulesPath;
-    }
-
-    return null;
   }
 
   /**
@@ -423,13 +353,6 @@ export class ProxyClient {
    */
   getConnectionId(): string | undefined {
     return this.connectionId;
-  }
-
-  /**
-   * Check if proxy is available
-   */
-  async isProxyAvailable(): Promise<boolean> {
-    return await this.isProxyRunning();
   }
 
   /**

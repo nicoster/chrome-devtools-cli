@@ -5,6 +5,56 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.6.0] - 2024-12-23
+
+### Added
+- **Persistent Connection Proxy Server**: Revolutionary proxy architecture for maintaining persistent Chrome connections
+  - Automatic proxy server startup and management via ProxyManager
+  - Persistent connection pooling with automatic reconnection
+  - Historical data capture for console messages and network requests
+  - WebSocket proxy for real-time CDP command forwarding
+  - RESTful API for data retrieval with comprehensive filtering
+  - Health monitoring and connection status tracking
+  - Security features including rate limiting and request validation
+  - Performance monitoring with metrics collection
+  - File system security with path validation and access controls
+
+- **Enhanced Console and Network Monitoring**: 
+  - Historical console message access from connection establishment
+  - Network request history with full request/response capture
+  - Advanced filtering by type, pattern, time range, and more
+  - Proxy-first approach with automatic fallback to direct CDP
+  - Comprehensive message storage and retrieval system
+
+- **Proxy Integration**:
+  - Seamless integration with existing CLI commands
+  - Automatic proxy detection and usage
+  - Graceful fallback to direct CDP when proxy unavailable
+  - Enhanced `list_console_messages` and `list_network_requests` commands
+  - Real-time data streaming via WebSocket connections
+
+### Enhanced
+- **Architecture**: Dual-mode operation (proxy + direct CDP) for maximum reliability
+- **Data Persistence**: Historical data access beyond session boundaries  
+- **Performance**: Optimized connection management and data retrieval
+- **Security**: Comprehensive security measures for proxy operations
+- **Testing**: Complete test coverage including integration tests and property-based testing
+- **Documentation**: Extensive documentation for proxy architecture and usage
+
+### Fixed
+- **Test Suite**: Fixed ListConsoleMessagesHandler tests with proper proxy mocking
+- **Connection Management**: Improved connection stability and error handling
+- **Memory Management**: Optimized message storage with automatic cleanup
+
+### Technical Details
+- Express.js-based proxy server with WebSocket support
+- Connection pooling with automatic lifecycle management
+- Message store with efficient filtering and pagination
+- Security manager with comprehensive validation
+- Performance monitoring with detailed metrics
+- File system security with sandboxed access controls
+- Comprehensive error handling and logging throughout proxy system
+
 ## [1.2.5] - 2024-12-21
 
 ### Added

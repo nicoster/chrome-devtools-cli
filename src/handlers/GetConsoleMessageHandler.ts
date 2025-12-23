@@ -49,16 +49,14 @@ export class GetConsoleMessageHandler implements ICommandHandler {
         this.proxyClient = new ProxyClient();
       }
 
-      // Check if proxy is available
+      // Proxy should already be ready thanks to ProxyManager in CLIApplication
+      // Just check if it's available and try to use it
       const isProxyAvailable = await this.proxyClient.isProxyAvailable();
+      
       if (!isProxyAvailable) {
-        // Try to start proxy if needed
-        const proxyStarted = await this.proxyClient.ensureProxyRunning();
-        if (!proxyStarted) {
-          console.warn('⚠️  Proxy server unavailable. Falling back to direct CDP connection.');
-          console.warn('⚠️  Note: Direct connection only captures NEW console messages, not historical data.');
-          return null; // Fallback to direct CDP
-        }
+        console.warn('⚠️  Proxy server unavailable. Falling back to direct CDP connection.');
+        console.warn('⚠️  Note: Direct connection only captures NEW console messages, not historical data.');
+        return null; // Fallback to direct CDP
       }
 
       // Connect through proxy if not already connected

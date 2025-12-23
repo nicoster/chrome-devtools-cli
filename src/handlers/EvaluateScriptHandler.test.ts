@@ -24,7 +24,7 @@ describe('EvaluateScriptHandler', () => {
   let handler: EvaluateScriptHandler;
 
   beforeEach(() => {
-    handler = new EvaluateScriptHandler();
+    handler = new EvaluateScriptHandler(false); // Disable proxy for tests
     jest.clearAllMocks();
   });
 

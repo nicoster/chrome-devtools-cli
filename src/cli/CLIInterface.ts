@@ -5,6 +5,9 @@ import { CLICommand, CLIConfig, CommandResult, CDPClient } from '../types';
 import { CommandRegistry } from './CommandRegistry';
 import { CommandRouter } from './CommandRouter';
 
+// Import package.json to get version dynamically
+const packageJson = require('../../package.json');
+
 /**
  * Configuration file structure
  */
@@ -40,7 +43,7 @@ export class CLIInterface implements ICLIInterface {
     this.program
       .name('chrome-cdp-cli')
       .description('Command-line tool for controlling Chrome browser via DevTools Protocol')
-      .version('1.0.0')
+      .version(packageJson.version)
       .allowUnknownOption(true)
       .allowExcessArguments(true);
 
@@ -60,8 +63,17 @@ export class CLIInterface implements ICLIInterface {
    */
   parseArgs(argv: string[]): CLICommand {
     try {
-      // Parse arguments - skip first two (node and script path)
+      // First, let commander.js handle built-in options like --version
+      // We'll catch the exit and handle it gracefully
       const args = argv.slice(2);
+      
+      // Check for version flag specifically
+      if (args.includes('--version') || args.includes('-V')) {
+        console.log(packageJson.version);
+        process.exit(0);
+      }
+
+      // Parse arguments - skip first two (node and script path)
       
       // Separate options from command and arguments
       const options: any = {};

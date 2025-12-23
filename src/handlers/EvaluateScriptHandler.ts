@@ -55,9 +55,11 @@ interface RuntimeEvaluateResponse {
 export class EvaluateScriptHandler implements ICommandHandler {
   readonly name = 'eval';
   private proxyClient: ProxyClient;
+  private useProxy: boolean;
 
-  constructor() {
+  constructor(useProxy: boolean = true) {
     this.proxyClient = new ProxyClient();
+    this.useProxy = useProxy;
   }
 
   /**
@@ -82,13 +84,15 @@ export class EvaluateScriptHandler implements ICommandHandler {
     }
 
     try {
-      // Try proxy first
-      const proxyAvailable = await this.proxyClient.isProxyAvailable();
-      if (proxyAvailable) {
-        console.log('[INFO] Using proxy connection for script evaluation');
-        return await this.executeWithProxy(scriptArgs);
-      } else {
-        console.warn('[WARN] Proxy not available, falling back to direct CDP connection');
+      // Try proxy first if enabled
+      if (this.useProxy) {
+        const proxyAvailable = await this.proxyClient.isProxyAvailable();
+        if (proxyAvailable) {
+          console.log('[INFO] Using proxy connection for script evaluation');
+          return await this.executeWithProxy(scriptArgs);
+        } else {
+          console.warn('[WARN] Proxy not available, falling back to direct CDP connection');
+        }
       }
     } catch (error) {
       console.warn('[WARN] Proxy execution failed, falling back to direct CDP:', error instanceof Error ? error.message : error);

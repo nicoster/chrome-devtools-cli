@@ -5,12 +5,12 @@
  */
 
 import express from 'express';
-import rateLimit from 'express-rate-limit';
 import { APIResponse, ConnectRequest, ConnectResponse, ConsoleMessageFilter, NetworkRequestFilter } from '../types/ProxyTypes';
 import { ConnectionPool } from './ConnectionPool';
 import { MessageStore } from './MessageStore';
 import { HealthMonitor } from './HealthMonitor';
 import { PerformanceMonitor } from './PerformanceMonitor';
+import { SecurityManager } from './SecurityManager';
 import { Logger } from '../../utils/logger';
 
 export class ProxyAPIServer {
@@ -18,37 +18,22 @@ export class ProxyAPIServer {
   private messageStore: MessageStore;
   private healthMonitor?: HealthMonitor;
   private performanceMonitor?: PerformanceMonitor;
+  private securityManager: SecurityManager;
   private logger: Logger;
-  private rateLimiter: express.RequestHandler;
 
   constructor(
     connectionPool: ConnectionPool, 
     messageStore: MessageStore, 
     healthMonitor?: HealthMonitor,
-    performanceMonitor?: PerformanceMonitor
+    performanceMonitor?: PerformanceMonitor,
+    securityManager?: SecurityManager
   ) {
     this.connectionPool = connectionPool;
     this.messageStore = messageStore;
     this.healthMonitor = healthMonitor;
     this.performanceMonitor = performanceMonitor;
+    this.securityManager = securityManager || new SecurityManager();
     this.logger = new Logger();
-    
-    // Configure rate limiting
-    this.rateLimiter = rateLimit({
-      windowMs: 60 * 1000, // 1 minute
-      max: 100, // Limit each IP to 100 requests per windowMs
-      message: {
-        success: false,
-        error: 'Too many requests, please try again later',
-        timestamp: Date.now()
-      },
-      standardHeaders: true,
-      legacyHeaders: false,
-      skip: (req) => {
-        // Skip rate limiting for health checks
-        return req.path === '/api/health' || req.path === '/api/status';
-      }
-    });
   }
 
   /**
@@ -56,14 +41,11 @@ export class ProxyAPIServer {
    */
   setupRoutes(app: express.Application): void {
     // Apply rate limiting to all API routes
-    app.use('/api', this.rateLimiter);
+    app.use('/api', this.securityManager.getRateLimiter());
 
-    // Apply request validation middleware
-    app.use('/api', this.validateRequest.bind(this));
-
-    // Connection management
-    app.post('/api/connect', this.validateConnectRequest.bind(this), this.handleConnect.bind(this));
-    app.delete('/api/connection/:connectionId', this.validateConnectionId.bind(this), this.handleCloseConnection.bind(this));
+    // Connection management (with strict rate limiting for sensitive operations)
+    app.post('/api/connect', this.securityManager.getStrictRateLimiter(), this.validateConnectRequest.bind(this), this.handleConnect.bind(this));
+    app.delete('/api/connection/:connectionId', this.securityManager.getStrictRateLimiter(), this.validateConnectionId.bind(this), this.handleCloseConnection.bind(this));
     app.get('/api/connections', this.handleListConnections.bind(this));
 
     // Data retrieval
@@ -76,7 +58,7 @@ export class ProxyAPIServer {
     app.get('/api/health/detailed', this.handleDetailedHealthCheck.bind(this));
     app.get('/api/health/statistics', this.handleHealthStatistics.bind(this));
     app.get('/api/health/connections', this.handleAllConnectionsHealth.bind(this));
-    app.post('/api/health/check/:connectionId', this.validateConnectionId.bind(this), this.handleForceHealthCheck.bind(this));
+    app.post('/api/health/check/:connectionId', this.securityManager.getStrictRateLimiter(), this.validateConnectionId.bind(this), this.handleForceHealthCheck.bind(this));
     app.get('/api/metrics/connections', this.handleConnectionMetrics.bind(this));
     app.get('/api/metrics/reconnections', this.handleReconnectionMetrics.bind(this));
 
@@ -88,7 +70,7 @@ export class ProxyAPIServer {
     // Server status
     app.get('/api/status', this.handleServerStatus.bind(this));
 
-    this.logger.info('API routes configured with validation and rate limiting');
+    this.logger.info('API routes configured with enhanced security measures');
   }
 
   /**
@@ -789,42 +771,18 @@ export class ProxyAPIServer {
   // ============================================================================
 
   /**
-   * General request validation middleware
-   */
-  private validateRequest(req: express.Request, res: express.Response, next: express.NextFunction): void {
-    // Validate Content-Type for POST requests
-    if (req.method === 'POST' && !req.is('application/json')) {
-      res.status(400).json({
-        success: false,
-        error: 'Content-Type must be application/json',
-        timestamp: Date.now()
-      });
-      return;
-    }
-
-    // Validate request body size (already handled by express.json middleware, but add explicit check)
-    if (req.method === 'POST' && req.body && JSON.stringify(req.body).length > 10 * 1024 * 1024) {
-      res.status(413).json({
-        success: false,
-        error: 'Request body too large',
-        timestamp: Date.now()
-      });
-      return;
-    }
-
-    // Log request for monitoring
-    this.logger.debug(`API Request: ${req.method} ${req.path} from ${req.ip}`);
-    
-    next();
-  }
-
-  /**
    * Validate connection ID parameter
    */
   private validateConnectionId(req: express.Request, res: express.Response, next: express.NextFunction): void {
     const { connectionId } = req.params;
     
     if (!connectionId || typeof connectionId !== 'string' || connectionId.trim() === '') {
+      this.logger.logSecurityEvent('invalid_connection_id', 'Invalid connection ID provided', {
+        connectionId,
+        ip: req.ip,
+        path: req.path
+      });
+      
       res.status(400).json({
         success: false,
         error: 'Connection ID is required and must be a non-empty string',
@@ -833,9 +791,15 @@ export class ProxyAPIServer {
       return;
     }
 
-    // Validate connection ID format (UUID-like)
+    // Validate connection ID format (alphanumeric, hyphens, underscores only)
     const connectionIdRegex = /^[a-zA-Z0-9-_]+$/;
     if (!connectionIdRegex.test(connectionId)) {
+      this.logger.logSecurityEvent('malformed_connection_id', 'Connection ID contains invalid characters', {
+        connectionId,
+        ip: req.ip,
+        path: req.path
+      });
+      
       res.status(400).json({
         success: false,
         error: 'Connection ID contains invalid characters',
@@ -855,6 +819,11 @@ export class ProxyAPIServer {
 
     // Validate required fields
     if (!host || typeof host !== 'string') {
+      this.logger.logSecurityEvent('invalid_connect_request', 'Missing or invalid host', {
+        host,
+        ip: req.ip
+      });
+      
       res.status(400).json({
         success: false,
         error: 'Host is required and must be a string',
@@ -864,6 +833,11 @@ export class ProxyAPIServer {
     }
 
     if (!port || typeof port !== 'number' || port <= 0 || port > 65535) {
+      this.logger.logSecurityEvent('invalid_connect_request', 'Invalid port number', {
+        port,
+        ip: req.ip
+      });
+      
       res.status(400).json({
         success: false,
         error: 'Port is required and must be a valid number between 1 and 65535',
@@ -874,6 +848,11 @@ export class ProxyAPIServer {
 
     // Validate optional targetId
     if (targetId !== undefined && (typeof targetId !== 'string' || targetId.trim() === '')) {
+      this.logger.logSecurityEvent('invalid_connect_request', 'Invalid target ID', {
+        targetId,
+        ip: req.ip
+      });
+      
       res.status(400).json({
         success: false,
         error: 'TargetId must be a non-empty string if provided',
@@ -885,19 +864,14 @@ export class ProxyAPIServer {
     // Validate host format (basic validation)
     const hostRegex = /^[a-zA-Z0-9.-]+$/;
     if (!hostRegex.test(host)) {
+      this.logger.logSecurityEvent('invalid_host_format', 'Host contains invalid characters', {
+        host,
+        ip: req.ip
+      });
+      
       res.status(400).json({
         success: false,
         error: 'Host contains invalid characters',
-        timestamp: Date.now()
-      });
-      return;
-    }
-
-    // Security check: only allow localhost connections for security
-    if (host !== 'localhost' && host !== '127.0.0.1' && !host.startsWith('192.168.') && !host.startsWith('10.') && !host.startsWith('172.')) {
-      res.status(403).json({
-        success: false,
-        error: 'Only local network connections are allowed for security reasons',
         timestamp: Date.now()
       });
       return;

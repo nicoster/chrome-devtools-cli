@@ -300,6 +300,7 @@ Global Options:
   -q, --quiet              Enable quiet mode
   -t, --timeout <ms>       Command timeout in milliseconds (default: 30000)
   -c, --config <path>      Configuration file path
+  -V, --version            Show version number
 
 Available Commands:
 ${commands.map(cmd => `  ${cmd.padEnd(20)} - ${this.getCommandDescription(cmd)}`).join('\n')}

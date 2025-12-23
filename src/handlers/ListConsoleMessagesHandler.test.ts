@@ -1,6 +1,18 @@
 import { ListConsoleMessagesHandler } from './ListConsoleMessagesHandler';
 import { CDPClient } from '../types';
 
+// Mock ProxyClient to always return unavailable during tests
+jest.mock('../client/ProxyClient', () => {
+  return {
+    ProxyClient: jest.fn().mockImplementation(() => ({
+      isProxyAvailable: jest.fn().mockResolvedValue(false),
+      connect: jest.fn(),
+      getConsoleMessages: jest.fn(),
+      getConnectionId: jest.fn().mockReturnValue(null)
+    }))
+  };
+});
+
 // Mock CDPClient for testing
 class MockCDPClient implements CDPClient {
   private eventListeners = new Map<string, Array<(params: unknown) => void>>();

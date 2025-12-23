@@ -23,6 +23,7 @@ import {
 import { Logger } from '../utils/logger';
 import { CLICommand, CommandResult, CDPClient } from '../types';
 import { ExitCode } from './CommandRouter';
+import { ProxyManager } from '../proxy/ProxyManager';
 
 /**
  * Main CLI application that coordinates all components
@@ -32,11 +33,13 @@ export class CLIApplication {
   private connectionManager: ConnectionManager;
   private logger: Logger;
   private client?: CDPClient;
+  private proxyManager: ProxyManager;
 
   constructor() {
     this.cli = new CLIInterface();
     this.connectionManager = new ConnectionManager();
     this.logger = new Logger();
+    this.proxyManager = ProxyManager.getInstance();
     this.setupHandlers();
   }
 
@@ -77,6 +80,14 @@ export class CLIApplication {
       // Parse command line arguments
       const command = this.cli.parseArgs(argv);
 
+      // Enable proxy manager logging if verbose mode
+      if (command.config.verbose) {
+        this.proxyManager.setLogging(true);
+      }
+
+      // Ensure proxy is ready for all commands (seamless experience)
+      await this.ensureProxyReady();
+
       // Handle connection for commands that need it
       if (this.needsConnection(command.name)) {
         await this.ensureConnection(command);
@@ -99,6 +110,22 @@ export class CLIApplication {
       
       // Return error exit code
       return ExitCode.GENERAL_ERROR;
+    }
+  }
+
+  /**
+   * Ensure proxy server is ready and healthy
+   */
+  private async ensureProxyReady(): Promise<void> {
+    try {
+      const isReady = await this.proxyManager.ensureProxyReady();
+      if (!isReady) {
+        // Proxy failed to start, but we continue with direct CDP fallback
+        // This is logged by ProxyManager if verbose mode is enabled
+      }
+    } catch (error) {
+      // Silently continue - proxy failure should not break CLI functionality
+      // Individual handlers will fall back to direct CDP connections
     }
   }
 
@@ -188,6 +215,13 @@ export class CLIApplication {
       } catch (error) {
         this.logger.error('Error during shutdown:', error);
       }
+    }
+
+    // Shutdown proxy manager
+    try {
+      await this.proxyManager.shutdown();
+    } catch (error) {
+      this.logger.error('Error shutting down proxy manager:', error);
     }
   }
 

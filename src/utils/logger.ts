@@ -387,6 +387,22 @@ export class Logger {
     this.writeLog(entry);
   }
 
+  logSecurityEvent(
+    event: string,
+    message: string,
+    data?: any,
+    error?: Error
+  ): void {
+    const entry = this.createLogEntry(
+      error ? 'ERROR' : 'WARN',
+      `[SECURITY-${event.toUpperCase()}] ${message}`,
+      data,
+      error,
+      { component: 'SecurityManager' }
+    );
+    this.writeLog(entry);
+  }
+
   // Performance monitoring
   logPerformanceMetrics(component: string, metrics: any): void {
     const entry = this.createLogEntry(

@@ -6,7 +6,7 @@ describe('CLIInterface', () => {
 
   beforeEach(() => {
     cli = new CLIInterface();
-    cli.registerHandler(new EvaluateScriptHandler());
+    cli.registerHandler(new EvaluateScriptHandler(false)); // Disable proxy for tests
   });
 
   describe('parseArgs', () => {

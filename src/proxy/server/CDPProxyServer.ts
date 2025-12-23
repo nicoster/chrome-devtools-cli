@@ -16,6 +16,8 @@ import { ProxyAPIServer } from './ProxyAPIServer';
 import { WSProxy } from './WSProxy';
 import { CDPEventMonitor } from './CDPEventMonitor';
 import { PerformanceMonitor } from './PerformanceMonitor';
+import { SecurityManager } from './SecurityManager';
+import { FileSystemSecurity } from './FileSystemSecurity';
 import { createLogger, Logger } from '../../utils/logger';
 import * as os from 'os';
 import * as path from 'path';
@@ -29,6 +31,8 @@ export class CDPProxyServer {
   private messageStore: MessageStore;
   private healthMonitor: HealthMonitor;
   private performanceMonitor: PerformanceMonitor;
+  private securityManager: SecurityManager;
+  private fileSystemSecurity: FileSystemSecurity;
   private apiServer: ProxyAPIServer;
   private wsProxy: WSProxy;
   private eventMonitor: CDPEventMonitor;
@@ -39,6 +43,9 @@ export class CDPProxyServer {
   private startTime: number = 0;
 
   constructor() {
+    // Initialize file system security first
+    this.fileSystemSecurity = new FileSystemSecurity();
+    
     // Initialize logger with file output in user's home directory
     const logDir = path.join(os.homedir(), '.chrome-cdp-cli', 'logs');
     const logFile = path.join(logDir, 'proxy-server.log');
@@ -50,6 +57,9 @@ export class CDPProxyServer {
       maxFileSize: 10 * 1024 * 1024, // 10MB
       maxFiles: 5
     });
+    
+    // Check log file security
+    this.checkLogFileSecurity(logFile);
     
     this.app = express();
     this.httpServer = http.createServer(this.app);
@@ -63,6 +73,7 @@ export class CDPProxyServer {
     this.connectionPool = new ConnectionPool(this.eventMonitor, this.messageStore);
     this.healthMonitor = new HealthMonitor(this.connectionPool);
     this.performanceMonitor = new PerformanceMonitor(this.connectionPool, this.messageStore);
+    this.securityManager = new SecurityManager();
     this.apiServer = new ProxyAPIServer(this.connectionPool, this.messageStore, this.healthMonitor, this.performanceMonitor);
     this.wsProxy = new WSProxy(this.connectionPool);
   }
@@ -79,9 +90,13 @@ export class CDPProxyServer {
     try {
       this.startTime = Date.now();
       
+      // Load configuration securely from file
+      const fileConfig = await this.loadConfigurationSecurely();
+      
       // Log startup event with system information
       this.logger.logServerEvent('startup', 'Starting proxy server', {
         config: this.config,
+        fileConfig,
         configOverride,
         nodeVersion: process.version,
         platform: process.platform,
@@ -89,8 +104,8 @@ export class CDPProxyServer {
         pid: process.pid
       });
 
-      // Merge configuration
-      this.config = { ...this.config, ...configOverride };
+      // Merge configuration: defaults < file < override
+      this.config = { ...this.config, ...fileConfig, ...configOverride };
       
       // Update components with new config
       this.messageStore = new MessageStore(this.config.maxConsoleMessages, this.config.maxNetworkRequests);
@@ -98,7 +113,10 @@ export class CDPProxyServer {
       this.connectionPool = new ConnectionPool(this.eventMonitor, this.messageStore, this.config);
       this.healthMonitor = new HealthMonitor(this.connectionPool);
       this.performanceMonitor = new PerformanceMonitor(this.connectionPool, this.messageStore);
-      this.apiServer = new ProxyAPIServer(this.connectionPool, this.messageStore, this.healthMonitor, this.performanceMonitor);
+      this.securityManager = new SecurityManager({
+        allowedHosts: ['localhost', '127.0.0.1', '192.168.*', '10.*', '172.*']
+      });
+      this.apiServer = new ProxyAPIServer(this.connectionPool, this.messageStore, this.healthMonitor, this.performanceMonitor, this.securityManager);
       
       // Setup Express middleware
       this.setupMiddleware();
@@ -132,7 +150,9 @@ export class CDPProxyServer {
         startupTimeMs: startupTime,
         bindAddress: `${this.config.host}:${this.config.port}`,
         autoShutdownTimeout: this.config.autoShutdownTimeout,
-        maxConnections: this.config.maxConsoleMessages
+        maxConnections: this.config.maxConsoleMessages,
+        securityEnabled: true,
+        fileSystemSecurityEnabled: true
       });
       
     } catch (error) {
@@ -245,8 +265,27 @@ export class CDPProxyServer {
         connectionsWithData: memoryStats.connections,
         maxConsoleMessages: this.config.maxConsoleMessages,
         maxNetworkRequests: this.config.maxNetworkRequests
+      },
+      security: {
+        securityManagerEnabled: true,
+        fileSystemSecurityEnabled: true,
+        allowedDirectories: this.fileSystemSecurity.getConfig().allowedDirectories.length
       }
     };
+  }
+
+  /**
+   * Get file system security manager
+   */
+  getFileSystemSecurity(): FileSystemSecurity {
+    return this.fileSystemSecurity;
+  }
+
+  /**
+   * Get security manager
+   */
+  getSecurityManager(): SecurityManager {
+    return this.securityManager;
   }
 
   /**
@@ -321,14 +360,37 @@ export class CDPProxyServer {
    * Setup Express middleware
    */
   private setupMiddleware(): void {
-    // JSON body parser
-    this.app.use(express.json({ limit: '10mb' }));
+    // Security headers (must be first)
+    this.app.use(this.securityManager.getSecurityHeadersMiddleware());
     
-    // CORS for local development
+    // Security logging
+    this.app.use(this.securityManager.getSecurityLoggingMiddleware());
+    
+    // JSON body parser with security limits (must be before input sanitization)
+    this.app.use(express.json({ 
+      limit: this.securityManager.getConfig().maxRequestBodySize,
+      strict: true,
+      type: 'application/json'
+    }));
+    
+    // Request validation and sanitization (after JSON parsing)
+    this.app.use(this.securityManager.getRequestValidationMiddleware());
+    this.app.use(this.securityManager.getInputSanitizationMiddleware());
+    
+    // Host validation for connection requests
+    this.app.use(this.securityManager.getHostValidationMiddleware());
+    
+    // CORS for local development (restricted to localhost)
     this.app.use((req: express.Request, res: express.Response, next: express.NextFunction) => {
-      res.header('Access-Control-Allow-Origin', 'http://localhost:*');
+      // Only allow localhost origins for security
+      const origin = req.get('origin');
+      if (!origin || origin.includes('localhost') || origin.includes('127.0.0.1')) {
+        res.header('Access-Control-Allow-Origin', origin || 'http://localhost:*');
+      }
+      
       res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
       res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+      res.header('Access-Control-Max-Age', '86400'); // 24 hours
       
       if (req.method === 'OPTIONS') {
         res.sendStatus(200);
@@ -337,7 +399,7 @@ export class CDPProxyServer {
       }
     });
 
-    // Request logging with timing
+    // Request logging with timing and auto-shutdown reset
     this.app.use((req: express.Request, res: express.Response, next: express.NextFunction) => {
       const startTime = Date.now();
       
@@ -375,6 +437,16 @@ export class CDPProxyServer {
         req.ip,
         error
       );
+      
+      // Log security-relevant errors
+      this.logger.logSecurityEvent('api_error', 'API error occurred', {
+        method: req.method,
+        path: req.path,
+        ip: req.ip,
+        userAgent: req.get('user-agent'),
+        error: error.message
+      });
+      
       res.status(500).json({
         success: false,
         error: 'Internal server error',
@@ -453,5 +525,86 @@ export class CDPProxyServer {
       reconnectBackoffMs: 1000,
       healthCheckInterval: 30000 // 30 seconds
     };
+  }
+
+  /**
+   * Check log file security and fix issues if needed
+   */
+  private async checkLogFileSecurity(logFile: string): Promise<void> {
+    try {
+      const securityCheck = await this.fileSystemSecurity.checkConfigurationSecurity(logFile);
+      
+      if (!securityCheck.isSecure) {
+        this.logger.warn('Log file security issues detected', {
+          issues: securityCheck.issues,
+          recommendations: securityCheck.recommendations
+        });
+        
+        // Attempt to fix permissions
+        try {
+          await this.fileSystemSecurity.fixConfigurationPermissions(logFile);
+          this.logger.info('Log file permissions fixed');
+        } catch (error) {
+          this.logger.warn('Failed to fix log file permissions', { error });
+        }
+      }
+    } catch (error) {
+      this.logger.warn('Log file security check failed', { error });
+    }
+  }
+
+  /**
+   * Load configuration from file securely
+   */
+  private async loadConfigurationSecurely(configPath?: string): Promise<Partial<ProxyServerConfig>> {
+    if (!configPath) {
+      const defaultConfigPath = path.join(os.homedir(), '.chrome-cdp-cli', 'proxy.json');
+      configPath = defaultConfigPath;
+    }
+
+    try {
+      // Check if configuration file exists and is secure
+      const securityCheck = await this.fileSystemSecurity.checkConfigurationSecurity(configPath);
+      
+      if (!securityCheck.isSecure) {
+        this.logger.warn('Configuration file security issues detected', {
+          configPath: configPath.replace(os.homedir(), '~'),
+          issues: securityCheck.issues,
+          recommendations: securityCheck.recommendations
+        });
+        
+        // Attempt to fix permissions
+        try {
+          await this.fileSystemSecurity.fixConfigurationPermissions(configPath);
+        } catch (error) {
+          this.logger.warn('Failed to fix configuration file permissions', { error });
+        }
+      }
+
+      // Read configuration securely
+      const configContent = await this.fileSystemSecurity.readFileSecurely(configPath);
+      const config = JSON.parse(configContent);
+      
+      this.logger.info('Configuration loaded securely', {
+        configPath: configPath.replace(os.homedir(), '~'),
+        hasCustomConfig: true
+      });
+      
+      return config;
+      
+    } catch (error) {
+      if ((error as any).code === 'ENOENT') {
+        this.logger.info('No configuration file found, using defaults', {
+          configPath: configPath.replace(os.homedir(), '~')
+        });
+        return {};
+      } else {
+        this.logger.warn('Failed to load configuration file', {
+          configPath: configPath.replace(os.homedir(), '~'),
+          error: (error as Error).message
+        });
+        return {};
+      }
+    }
   }
 }

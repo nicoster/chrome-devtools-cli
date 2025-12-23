@@ -14,7 +14,19 @@ jest.mock('../../utils/logger', () => ({
     info: jest.fn(),
     debug: jest.fn(),
     warn: jest.fn(),
-    error: jest.fn()
+    error: jest.fn(),
+    logClientEvent: jest.fn(),
+    logServerEvent: jest.fn(),
+    logConnectionEvent: jest.fn()
+  })),
+  createLogger: jest.fn().mockImplementation(() => ({
+    info: jest.fn(),
+    debug: jest.fn(),
+    warn: jest.fn(),
+    error: jest.fn(),
+    logClientEvent: jest.fn(),
+    logServerEvent: jest.fn(),
+    logConnectionEvent: jest.fn()
   }))
 }));
 
@@ -71,14 +83,16 @@ describe('WSProxy', () => {
 
       mockRequest = {
         url: '/?connectionId=test-connection',
-        headers: { host: 'localhost:9223' }
+        headers: { host: 'localhost:9223' },
+        socket: { remoteAddress: '127.0.0.1' }
       } as any;
     });
 
     it('should reject connection without connection ID', () => {
       const requestWithoutId = {
         url: '/',
-        headers: { host: 'localhost:9223' }
+        headers: { host: 'localhost:9223' },
+        socket: { remoteAddress: '127.0.0.1' }
       } as any;
       
       wsProxy.handleConnection(mockClientWs as any as WebSocket, requestWithoutId);
@@ -169,7 +183,8 @@ describe('WSProxy', () => {
 
       const mockRequest = {
         url: '/?connectionId=test-connection',
-        headers: { host: 'localhost:9223' }
+        headers: { host: 'localhost:9223' },
+        socket: { remoteAddress: '127.0.0.1' }
       } as any;
 
       const mockCdpConnection = {
@@ -218,7 +233,8 @@ describe('WSProxy', () => {
 
       const mockRequest = {
         url: '/?connectionId=test-connection',
-        headers: { host: 'localhost:9223' }
+        headers: { host: 'localhost:9223' },
+        socket: { remoteAddress: '127.0.0.1' }
       } as any;
 
       const mockCdpConnection = {
