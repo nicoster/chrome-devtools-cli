@@ -5,6 +5,21 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.2] - 2024-12-23
+
+### Enhanced
+- **Installation Experience**: Added postinstall script with welcome message and quick start guide
+  - Users now see installation success confirmation with emoji indicators
+  - Includes essential quick start steps (Chrome setup, first command, help)
+  - Provides GitHub repository link for additional documentation
+  - Improves first-time user experience with clear next steps
+
+### Changed
+- **User Experience**: Enhanced npm install output with helpful information
+  - Clear visual confirmation of successful installation
+  - Immediate guidance on how to get started
+  - Reduces friction for new users getting started with the CLI
+
 ## [1.7.1] - 2024-12-23
 
 ### Enhanced

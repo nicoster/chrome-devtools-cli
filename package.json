@@ -1,6 +1,6 @@
 {
   "name": "chrome-cdp-cli",
-  "version": "1.7.1",
+  "version": "1.7.2",
   "description": "LLM-first browser automation CLI via Chrome DevTools Protocol. Eval-first design optimized for AI assistants - LLMs write JavaScript scripts for rapid validation. Features: JavaScript execution, element interaction, screenshots, DOM snapshots, console/network monitoring. Built-in IDE integration for Cursor and Claude.",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
@@ -34,7 +34,8 @@
     "package": "npm run build:prod && npm pack",
     "prepublishOnly": "npm run test:ci && npm run build:prod",
     "prepack": "npm run build:prod",
-    "verify": "npm run lint && npm run test:ci && npm run build:prod"
+    "verify": "npm run lint && npm run test:ci && npm run build:prod",
+    "postinstall": "node -e \"console.log('\\n🎉 chrome-cdp-cli installed successfully!\\n\\n📋 Quick Start:\\n  1. Start Chrome with debugging: chrome --remote-debugging-port=9222\\n  2. Try: chrome-cdp-cli eval \\\"document.title\\\"\\n  3. Get help: chrome-cdp-cli --help\\n\\n🔗 More info: https://github.com/nicoster/chrome-devtools-cli\\n')\""
   },
   "keywords": [
     "chrome",
