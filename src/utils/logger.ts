@@ -23,7 +23,13 @@ export interface LogEntry {
     code?: string;
   };
   metrics?: {
-    memoryUsage?: NodeJS.MemoryUsage;
+    memoryUsage?: {
+      rss: number;
+      heapTotal: number;
+      heapUsed: number;
+      external: number;
+      arrayBuffers: number;
+    };
     connectionCount?: number;
     messageCount?: number;
     requestCount?: number;
@@ -350,7 +356,13 @@ export class Logger {
     event: 'cleanup' | 'limit-reached' | 'rotation',
     message: string,
     metrics: {
-      memoryUsage?: NodeJS.MemoryUsage;
+      memoryUsage?: {
+        rss: number;
+        heapTotal: number;
+        heapUsed: number;
+        external: number;
+        arrayBuffers: number;
+      };
       connectionCount?: number;
       messageCount?: number;
       requestCount?: number;
