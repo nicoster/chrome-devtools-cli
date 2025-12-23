@@ -357,30 +357,293 @@ export class TakeSnapshotHandler implements ICommandHandler {
       return this.convertToHTML(response);
     }
 
-    // Default JSON format - return structured data
+    const doc = response.documents[0];
+    if (!doc) {
+      return {
+        error: 'No documents found'
+      };
+    }
+
+    // Create LLM-friendly text representation
+    const textSnapshot = this.createTextSnapshot(doc, response.strings);
+    
     return {
-      metadata: {
-        captureTime: new Date().toISOString(),
-        documentsCount: response.documents.length,
-        stringsCount: response.strings.length
-      },
-      documents: response.documents.map(doc => ({
-        url: doc.documentURL,
-        title: doc.title,
-        baseURL: doc.baseURL,
-        language: doc.contentLanguage,
-        encoding: doc.encodingName,
-        frameId: doc.frameId,
-        domTree: this.buildDOMTree(doc, response.strings),
-        layout: this.processLayoutInfo(doc.layout, response.strings),
-        textBoxes: doc.textBoxes
-      })),
-      strings: response.strings
+      url: doc.documentURL,
+      title: doc.title,
+      snapshot: textSnapshot
     };
   }
 
   /**
-   * Build a hierarchical DOM tree from the flat node arrays
+   * Create a text-based snapshot that LLMs can easily understand
+   */
+  private createTextSnapshot(doc: DOMSnapshotResponse['documents'][0], strings: string[]): string {
+    const nodes = doc.nodes;
+    if (!nodes.nodeName || !nodes.nodeType) {
+      return 'Empty document';
+    }
+
+    // Build node tree with essential information
+    const nodeTree = this.buildNodeTree(doc, strings);
+    
+    // Convert to text representation
+    let output = `PAGE: ${doc.title || 'Untitled'} (${doc.documentURL})\n`;
+    
+    // Find body or root content
+    const bodyNode = this.findBodyNode(nodeTree);
+    if (bodyNode) {
+      output += this.renderNodeAsText(bodyNode, 0);
+    } else {
+      // Fallback: render all root nodes
+      for (const node of nodeTree) {
+        if (this.shouldIncludeNode(node)) {
+          output += this.renderNodeAsText(node, 0);
+        }
+      }
+    }
+
+    return output;
+  }
+
+  /**
+   * Build a simplified node tree with essential information
+   */
+  private buildNodeTree(doc: DOMSnapshotResponse['documents'][0], strings: string[]): any[] {
+    const nodes = doc.nodes;
+    const nodeCount = nodes.nodeName!.length;
+    const nodeMap = new Map<number, any>();
+
+    // Create nodes with essential info
+    for (let i = 0; i < nodeCount; i++) {
+      const node: any = {
+        index: i,
+        nodeType: nodes.nodeType![i],
+        nodeName: nodes.nodeName![i].toLowerCase(),
+        children: [],
+        textContent: '',
+        attributes: {}
+      };
+
+      // Extract text content
+      if (nodes.nodeValue?.[i]) {
+        node.textContent = nodes.nodeValue[i].trim();
+      }
+      if (nodes.textValue?.index.includes(i)) {
+        const textIndex = nodes.textValue.index.indexOf(i);
+        const stringIndex = nodes.textValue.value[textIndex];
+        if (typeof stringIndex === 'number' && strings[stringIndex]) {
+          node.textContent = strings[stringIndex].trim();
+        }
+      }
+
+      // Extract essential attributes
+      if (nodes.attributes?.[i]) {
+        const attrs = nodes.attributes[i];
+        for (let j = 0; j < attrs.length; j += 2) {
+          const name = strings[parseInt(attrs[j])];
+          const value = strings[parseInt(attrs[j + 1])];
+          
+          // Only keep attributes useful for LLM understanding
+          if (['id', 'class', 'type', 'name', 'href', 'src', 'alt', 'placeholder', 'value', 'title'].includes(name)) {
+            node.attributes[name] = value;
+          }
+        }
+      }
+
+      // Add form states
+      if (nodes.inputValue?.index.includes(i)) {
+        const inputIndex = nodes.inputValue.index.indexOf(i);
+        const stringIndex = nodes.inputValue.value[inputIndex];
+        if (typeof stringIndex === 'number') {
+          node.inputValue = strings[stringIndex];
+        }
+      }
+
+      if (nodes.inputChecked?.index.includes(i)) {
+        node.checked = true;
+      }
+
+      if (nodes.optionSelected?.index.includes(i)) {
+        node.selected = true;
+      }
+
+      if (nodes.isClickable?.index.includes(i)) {
+        node.clickable = true;
+      }
+
+      nodeMap.set(i, node);
+    }
+
+    // Build parent-child relationships
+    const tree: any[] = [];
+    for (let i = 0; i < nodeCount; i++) {
+      const parentIndex = nodes.parentIndex?.[i];
+      const node = nodeMap.get(i);
+
+      if (parentIndex !== undefined && parentIndex >= 0) {
+        const parent = nodeMap.get(parentIndex);
+        if (parent) {
+          parent.children.push(node);
+        }
+      } else {
+        tree.push(node);
+      }
+    }
+
+    return tree;
+  }
+
+  /**
+   * Find the body node or main content container
+   */
+  private findBodyNode(nodeTree: any[]): any | null {
+    const findNode = (nodes: any[], tagName: string): any | null => {
+      for (const node of nodes) {
+        if (node.nodeName === tagName) {
+          return node;
+        }
+        const found = findNode(node.children, tagName);
+        if (found) return found;
+      }
+      return null;
+    };
+
+    return findNode(nodeTree, 'body') || findNode(nodeTree, 'main') || null;
+  }
+
+  /**
+   * Check if a node should be included in the text representation
+   */
+  private shouldIncludeNode(node: any): boolean {
+    // Skip script, style, meta, etc.
+    const skipTags = ['script', 'style', 'meta', 'link', 'head', 'noscript', 'svg', 'path'];
+    if (skipTags.includes(node.nodeName)) {
+      return false;
+    }
+
+    // Skip empty text nodes
+    if (node.nodeType === 3 && !node.textContent) {
+      return false;
+    }
+
+    // Skip empty containers with no meaningful children
+    if (node.nodeType === 1 && !node.textContent && node.children.length === 0) {
+      return false;
+    }
+
+    return true;
+  }
+
+  /**
+   * Render a node as text with proper indentation and formatting
+   */
+  private renderNodeAsText(node: any, depth: number): string {
+    if (!this.shouldIncludeNode(node)) {
+      return '';
+    }
+
+    const indent = '│   '.repeat(depth);
+    const prefix = depth > 0 ? '├── ' : '';
+    let output = '';
+
+    if (node.nodeType === 3) {
+      // Text node
+      if (node.textContent) {
+        output += `${indent}${prefix}"${node.textContent}"\n`;
+      }
+    } else if (node.nodeType === 1) {
+      // Element node
+      const tag = node.nodeName.toUpperCase();
+      let description = tag;
+
+      // Add meaningful attributes
+      const attrs = [];
+      if (node.attributes.id) attrs.push(`#${node.attributes.id}`);
+      if (node.attributes.class) attrs.push(`.${node.attributes.class.split(' ')[0]}`);
+      if (node.attributes.type) attrs.push(`[${node.attributes.type}]`);
+      if (node.attributes.name) attrs.push(`name="${node.attributes.name}"`);
+      
+      if (attrs.length > 0) {
+        description += `(${attrs.join(' ')})`;
+      }
+
+      // Add special content for specific elements
+      if (node.nodeName === 'img' && node.attributes.alt) {
+        description += `: "${node.attributes.alt}"`;
+      } else if (node.nodeName === 'a' && node.attributes.href) {
+        description += `: "${node.attributes.href}"`;
+      } else if (['input', 'textarea'].includes(node.nodeName)) {
+        if (node.attributes.placeholder) {
+          description += `: "${node.attributes.placeholder}"`;
+        } else if (node.inputValue) {
+          description += `: "${node.inputValue}"`;
+        }
+        if (node.checked) description += ' [checked]';
+      } else if (node.nodeName === 'button' || ['h1', 'h2', 'h3', 'h4', 'h5', 'h6'].includes(node.nodeName)) {
+        // For buttons and headings, show text content inline
+        const textContent = this.extractTextContent(node);
+        if (textContent) {
+          description += `: "${textContent}"`;
+        }
+      }
+
+      output += `${indent}${prefix}${description}\n`;
+
+      // Render children
+      const meaningfulChildren = node.children.filter((child: any) => this.shouldIncludeNode(child));
+      
+      // For elements like P, DIV, SPAN - show text content directly if no complex children
+      if (['p', 'div', 'span', 'li', 'td', 'th'].includes(node.nodeName)) {
+        const textContent = this.extractTextContent(node);
+        if (textContent && meaningfulChildren.length <= 1) {
+          output += `${indent}│   └── "${textContent}"\n`;
+          return output;
+        }
+      }
+
+      // Render child nodes
+      for (const child of meaningfulChildren) {
+        output += this.renderNodeAsText(child, depth + 1);
+      }
+    }
+
+    return output;
+  }
+
+  /**
+   * Extract all text content from a node and its children
+   */
+  private extractTextContent(node: any): string {
+    let text = '';
+    
+    if (node.nodeType === 3) {
+      return node.textContent || '';
+    }
+    
+    if (node.textContent) {
+      text += node.textContent + ' ';
+    }
+    
+    for (const child of node.children) {
+      text += this.extractTextContent(child) + ' ';
+    }
+    
+    return text.trim().replace(/\s+/g, ' ');
+  }
+
+  /**
+   * Convert DOM snapshot to HTML representation
+   */
+  private convertToHTML(response: DOMSnapshotResponse): string {
+    const doc = response.documents[0];
+    if (!doc) return '';
+
+    const tree = this.buildDOMTree(doc, response.strings);
+    return this.renderNodeAsHTML(tree[0], 0);
+  }
+
+  /**
+   * Build a hierarchical DOM tree from the flat node arrays (for HTML output)
    */
   private buildDOMTree(doc: DOMSnapshotResponse['documents'][0], strings: string[]): unknown[] {
     const nodes = doc.nodes;
@@ -463,37 +726,6 @@ export class TakeSnapshotHandler implements ICommandHandler {
     }
 
     return tree;
-  }
-
-  /**
-   * Process layout information
-   */
-  private processLayoutInfo(layout: DOMSnapshotResponse['documents'][0]['layout'], strings: string[]): unknown {
-    return {
-      nodeCount: layout.nodeIndex.length,
-      styles: layout.styles.map(styleArray => 
-        styleArray.map(styleIndex => strings[parseInt(styleIndex)])
-      ),
-      bounds: layout.bounds,
-      text: layout.text,
-      paintOrders: layout.paintOrders,
-      offsetRects: layout.offsetRects,
-      scrollRects: layout.scrollRects,
-      clientRects: layout.clientRects,
-      blendedBackgroundColors: layout.blendedBackgroundColors,
-      textColorOpacities: layout.textColorOpacities
-    };
-  }
-
-  /**
-   * Convert DOM snapshot to HTML representation
-   */
-  private convertToHTML(response: DOMSnapshotResponse): string {
-    const doc = response.documents[0];
-    if (!doc) return '';
-
-    const tree = this.buildDOMTree(doc, response.strings);
-    return this.renderNodeAsHTML(tree[0], 0);
   }
 
   /**
@@ -626,47 +858,58 @@ export class TakeSnapshotHandler implements ICommandHandler {
    */
   getHelp(): string {
     return `
-snapshot - Capture a DOM snapshot including DOM tree structure, computed styles, and layout information
+snapshot - Capture a text-based DOM representation optimized for LLM understanding
 
 Usage:
   snapshot
-  snapshot --filename dom-snapshot.json
+  snapshot --filename page-structure.txt
   snapshot --format html --filename page-structure.html
-  snapshot --include-paint-order --filename detailed-snapshot.json
 
 Arguments:
   --filename <path>           Output filename (if not provided, returns data directly)
-  --format <json|html>        Output format (default: json)
+  --format <json|html>        Output format (default: json with text snapshot)
   --include-styles            Include computed styles (default: true)
   --include-attributes        Include DOM attributes (default: true)
   --include-paint-order       Include paint order information (default: false)
-  --include-text-index        Include text node indices (default: false)
+  --include-text-index        Include additional DOM tree data (default: false)
 
-Output Formats:
-  json: Structured JSON with DOM tree, layout info, and computed styles
-  html: Reconstructed HTML representation of the DOM
+Output Format:
+  The default JSON output contains a text-based representation of the page structure
+  that LLMs can easily understand, showing:
+  - Page hierarchy with indentation
+  - Element types and key attributes
+  - Text content and form values
+  - Interactive elements (buttons, links, forms)
+  - Semantic structure (headings, lists, etc.)
+
+Example Output:
+  PAGE: Example Site (https://example.com)
+  ├── HEADER
+  │   ├── IMG(#logo): "Company Logo"
+  │   └── NAV
+  │       ├── A: "https://example.com/home"
+  │       └── "Home"
+  ├── MAIN
+  │   ├── H1: "Welcome to Our Site"
+  │   ├── P
+  │   │   └── "This is the main content..."
+  │   └── FORM
+  │       ├── INPUT[email](name="email"): "Enter your email"
+  │       └── BUTTON: "Submit"
 
 Examples:
-  # Basic DOM snapshot as JSON
-  snapshot --filename dom-snapshot.json
+  # Get text-based page structure
+  snapshot
+
+  # Save to file
+  snapshot --filename page-structure.json
 
   # HTML representation
   snapshot --format html --filename page-structure.html
 
-  # Detailed snapshot with paint order
-  snapshot --include-paint-order --filename detailed-snapshot.json
-
-  # Return data directly (no file)
-  snapshot --format json
-
 Note:
-  DOM snapshots capture the complete DOM tree structure including:
-  - Element hierarchy and attributes
-  - Computed CSS styles for each element
-  - Layout information (bounds, positioning)
-  - Text content and form values
-  - Visibility and clickability information
-  - Paint order and rendering details (optional)
+  This format provides a "text screenshot" that LLMs can easily parse to understand
+  page layout, content, and interactive elements without overwhelming detail.
 `;
   }
 }

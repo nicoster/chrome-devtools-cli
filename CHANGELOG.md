@@ -5,6 +5,25 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.9] - 2024-12-23
+
+### Enhanced
+- **Snapshot Command Optimization**: Redesigned snapshot output for LLM-friendly text representation
+  - Changed from verbose JSON structure to hierarchical text format
+  - Output now resembles a "text screenshot" that LLMs can easily understand
+  - Shows page structure with indentation, element types, and key attributes
+  - Includes text content, form values, and interactive elements
+  - Dramatically reduced output size while maintaining essential information
+  - Perfect for AI assistants to understand page layout and content
+
+### Changed
+- **Snapshot Output Format**: Default JSON now contains a text-based page representation
+  - Hierarchical structure with tree-like indentation
+  - Essential attributes only (id, class, type, href, src, etc.)
+  - Text content and form values included inline
+  - Interactive elements clearly marked
+  - Removed verbose DOM tree data by default
+
 ## [1.7.8] - 2024-12-23
 
 ### Enhanced
