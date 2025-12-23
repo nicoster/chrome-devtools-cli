@@ -70,7 +70,7 @@ describe('InstallCursorCommandHandler', () => {
       expect(mockFs.writeFile).toHaveBeenCalledTimes(1);
       expect(mockFs.writeFile).toHaveBeenCalledWith(
         '.cursor/commands/cdp-cli.md',
-        expect.stringContaining('# Chrome DevTools Protocol CLI 工具'),
+        expect.stringContaining('# Chrome DevTools Protocol CLI Tool'),
         'utf8'
       );
     });
@@ -154,15 +154,15 @@ describe('InstallCursorCommandHandler', () => {
       const markdownContent = automationCommandCall![1] as string;
 
       // Verify markdown structure
-      expect(markdownContent).toContain('# Chrome DevTools Protocol CLI 工具');
-      expect(markdownContent).toContain('## 完整命令列表');
-      expect(markdownContent).toContain('### 1. JavaScript 执行');
-      expect(markdownContent).toContain('### 2. 页面截图和快照');
-      expect(markdownContent).toContain('### 3. 元素交互');
-      expect(markdownContent).toContain('### 4. 高级交互');
-      expect(markdownContent).toContain('### 5. 监控功能');
-      expect(markdownContent).toContain('## 使用示例');
-      expect(markdownContent).toContain('## 前置条件');
+      expect(markdownContent).toContain('# Chrome DevTools Protocol CLI Tool');
+      expect(markdownContent).toContain('## Complete Command List');
+      expect(markdownContent).toContain('### 1. JavaScript Execution');
+      expect(markdownContent).toContain('### 2. Page Screenshots and Snapshots');
+      expect(markdownContent).toContain('### 3. Element Interaction');
+      expect(markdownContent).toContain('### 4. Advanced Interactions');
+      expect(markdownContent).toContain('### 5. Monitoring Features');
+      expect(markdownContent).toContain('## Usage Examples');
+      expect(markdownContent).toContain('## Prerequisites');
       expect(markdownContent).toContain('chrome-cdp-cli eval');
       expect(markdownContent).toContain('--remote-debugging-port=9222');
     });
@@ -189,11 +189,11 @@ describe('InstallCursorCommandHandler', () => {
 
       // Should contain all functionality descriptions
       const content = contents[0];
-      expect(content).toContain('JavaScript 执行');
-      expect(content).toContain('页面截图和快照');
-      expect(content).toContain('元素交互');
-      expect(content).toContain('监控功能');
-      expect(content).toContain('IDE 集成');
+      expect(content).toContain('JavaScript Execution');
+      expect(content).toContain('Page Screenshots and Snapshots');
+      expect(content).toContain('Element Interaction');
+      expect(content).toContain('Monitoring Features');
+      expect(content).toContain('IDE Integration');
     });
   });
 

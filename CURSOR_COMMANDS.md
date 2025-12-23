@@ -1,108 +1,108 @@
-Cursor 自定义 Chat 命令
+Cursor Custom Chat Commands
 
-自定义命令允许你为 Cursor 聊天框定义可复用的工作流程，这些命令可以通过在聊天输入框中打 / 前缀来触发。它们有助于将团队中的常用任务标准化，提高效率。
-当前该功能仍处于测试阶段（Beta），语法或行为可能会变动。  ￼
-
-⸻
-
-🧠 命令如何工作
-	•	命令是一些普通的 Markdown 文件，存放在你项目的 .cursor/commands 目录内。
-	•	在聊天输入框中输入 / 时，Cursor 会自动扫描这个目录并展示可用命令。  ￼
+Custom commands allow you to define reusable workflows for the Cursor chat interface, which can be triggered by typing the / prefix in the chat input box. They help standardize common tasks within teams and improve efficiency.
+This feature is currently in Beta stage, and syntax or behavior may change.
 
 ⸻
 
-📁 创建命令
+🧠 How Commands Work
+	•	Commands are simple Markdown files stored in your project's .cursor/commands directory.
+	•	When you type / in the chat input box, Cursor automatically scans this directory and displays available commands.
 
-命令创建步骤如下：
-	1.	在项目根目录下创建目录：
+⸻
+
+📁 Creating Commands
+
+Steps to create commands:
+	1.	Create a directory in your project root:
 
 .cursor/commands
 
 
-	2.	在该目录下新增一个 .md 文件，例如：
+	2.	Add a .md file in this directory, for example:
 
 `.cursor/commands/
 ├── review-code.md
 ├── write-tests.md
 └── create-pr.md
 
-✨ 文件名应具有描述性，便于识别对应命令功能。  ￼
+✨ File names should be descriptive to easily identify the corresponding command functionality.
 
-	3.	使用 Markdown 编写这个命令所描述的工作流程或说明内容。  ￼
-	4.	在聊天输入框中输入 / 即可看到这个命令并执行。  ￼
+	3.	Use Markdown to write the workflow or instructions that this command describes.
+	4.	Type / in the chat input box to see and execute this command.
 
 ⸻
 
-📌 示例命令
+📌 Example Commands
 
-你可以尝试编写以下命令来熟悉工作方式：
+You can try writing the following commands to familiarize yourself with how they work:
 
 # review-code.md
-描述：
-  为当前文件生成可执行的代码审查建议。
+Description:
+  Generate actionable code review suggestions for the current file.
 
-输出行为：
-  - 自动生成审查结果
-  - 可以一键插入建议
+Output Behavior:
+  - Automatically generate review results
+  - One-click insertion of suggestions
 
 # run-tests.md
-描述：
-  运行当前项目的测试套件，并修复常见失败项（如果有）。
+Description:
+  Run the current project's test suite and fix common failures (if any).
 
-输出行为：
-  - 输出测试结果
-  - 自动修复可修复的错误
+Output Behavior:
+  - Output test results
+  - Automatically fix fixable errors
 
-一些常见的命令示例：
+Some common command examples:
 	•	Code review checklist
 	•	Security audit
 	•	Setup new feature
 	•	Create pull request
 	•	Run tests and fix failures
-	•	Onboard new developer  ￼
+	•	Onboard new developer
 
 ⸻
 
-✅ 使用技巧
-	•	命令可以作为团队共享的脚本提示，标准化重复性任务。  ￼
-	•	你也可以将命令存放到版本控制中，让其他协作者共享。  ￼
-	•	命令不仅可以触发 Cursor 聊天，还可结合终端或测试执行等流程自动化场景。  ￼
+✅ Usage Tips
+	•	Commands can serve as team-shared script prompts, standardizing repetitive tasks.
+	•	You can also store commands in version control for other collaborators to share.
+	•	Commands can not only trigger Cursor chat but also be combined with terminal or test execution for automation scenarios.
 
 ⸻
 
-📄 文件示例（规范建议）
+📄 File Example (Recommended Format)
 
-下面是一个更完整的命令文件模板：
+Here's a more complete command file template:
 
 # create-pr.md
 
-# 标题
-创建一个 pull request
+# Title
+Create a pull request
 
-## 描述
-帮我为这次变更生成一个 Pull Request 的说明，并包含 conventional commit 格式信息。
+## Description
+Help me generate a Pull Request description for this change, including conventional commit format information.
 
-## 参数（可选）
-- @branch: 分支名称
-- @issue: 关联 issue 编号
+## Parameters (Optional)
+- @branch: Branch name
+- @issue: Associated issue number
 
-## 输出
-1) PR 标题
-2) PR 描述
-3) 相关标签与检查项
+## Output
+1) PR title
+2) PR description
+3) Related tags and checklist items
 
-## 行为
-当命令执行后：
-- 自动生成 pull request 文本
-- 可粘贴到 GitHub 或其他托管平台界面
+## Behavior
+After command execution:
+- Automatically generate pull request text
+- Can be pasted into GitHub or other hosting platform interfaces
 
-
-⸻
-
-🧩 提示
-	•	命令目前仍在 Beta 阶段，未来语法与功能可能更新。  ￼
-	•	如果希望命令支持更复杂逻辑，可在 Markdown 内说明流程步骤或规范输出格式。  ￼
 
 ⸻
 
-如需进一步扩展命令功能（例如全局命令目录、命令参数化、结合自动化脚本等），我也可以帮你写具体模板或示例！
+🧩 Tips
+	•	Commands are currently in Beta stage, future syntax and functionality may be updated.
+	•	If you want commands to support more complex logic, you can specify process steps or standardize output formats within the Markdown.
+
+⸻
+
+If you need to further extend command functionality (such as global command directories, command parameterization, integration with automation scripts, etc.), I can also help you write specific templates or examples!
