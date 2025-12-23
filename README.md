@@ -119,7 +119,7 @@ npm link
 Before using the CLI, start Chrome with remote debugging enabled:
 
 ```bash
-# Default port (9222) - IMPORTANT: Include --user-data-dir to avoid conflicts
+# Default port (9222) - IMPORTANT: --user-data-dir is required for security
 chrome --remote-debugging-port=9222 --user-data-dir=/tmp/chrome-debug-profile
 
 # Custom port
@@ -136,9 +136,9 @@ chrome --remote-debugging-port=9222 --user-data-dir=/tmp/chrome-debug-profile --
 ```
 
 **Important Notes:**
-- **Always use `--user-data-dir`**: This creates a separate Chrome profile for debugging and prevents conflicts with your regular Chrome instance
+- **Always use `--user-data-dir`**: This is **required for security**. Chrome will not enable the debugging port without a specified user data directory to prevent unauthorized access to your default profile
 - **Choose a dedicated directory**: Use a path like `/tmp/chrome-debug-profile` or `/Users/$USER/chrome-profile-debug`
-- **Avoid profile conflicts**: Without `--user-data-dir`, Chrome may fail to open the debugging port if another instance is running
+- **Security requirement**: Without `--user-data-dir`, Chrome will refuse to enable remote debugging to protect your default browser profile
 
 For more details, see the [Chrome Remote Debugging documentation](https://developer.chrome.com/blog/remote-debugging-port).
 
@@ -910,7 +910,7 @@ Create a `.chrome-cdp-cli.json` file in your project root or home directory:
 
 ```bash
 # Clone repository
-git clone https://github.com/nickxiao42/chrome-devtools-cli.git
+git clone https://github.com/nicoster/chrome-devtools-cli.git
 cd chrome-devtools-cli
 
 # Install dependencies
@@ -1030,14 +1030,14 @@ console.log(result);
 
 1. **Connection Refused**
    - Ensure Chrome is running with `--remote-debugging-port=9222 --user-data-dir=/tmp/chrome-debug`
-   - **Always include `--user-data-dir`** to avoid profile conflicts
+   - **Always include `--user-data-dir`** - it's required for security (Chrome won't enable debugging port without it)
    - Check if the port is correct and not blocked by firewall
    - Verify no other Chrome instances are using the same debugging port
 
 2. **Chrome Won't Start Debugging Port**
    - **Most common cause**: Missing `--user-data-dir` parameter
    - **Solution**: Use a dedicated profile directory: `--user-data-dir=/tmp/chrome-debug-profile`
-   - **Why needed**: Prevents conflicts with existing Chrome instances
+   - **Why needed**: Chrome requires `--user-data-dir` for security - it will not enable the debugging port without it to protect your default browser profile
    - See [Chrome Remote Debugging documentation](https://developer.chrome.com/blog/remote-debugging-port) for details
 
 3. **Command Timeout**

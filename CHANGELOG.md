@@ -5,6 +5,15 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.8.1] - 2024-12-23
+
+### Enhanced
+- **Documentation**: Clarified security requirements for Chrome setup
+  - Updated README to emphasize that `--user-data-dir` is required for security, not just to avoid conflicts
+  - Chrome will not enable the debugging port without `--user-data-dir` to protect the default browser profile
+  - Fixed repository URL from nickxiao42 to nicoster in development setup instructions
+  - Improved troubleshooting section with accurate security-focused explanations
+
 ## [1.8.0] - 2024-12-23
 
 ### Fixed
