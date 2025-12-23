@@ -227,6 +227,22 @@ export class TakeSnapshotHandler implements ICommandHandler {
     }
 
     // Return snapshot data if no filename provided
+    // If format is not html, return text snapshot directly as string
+    if (snapshotArgs.format !== 'html' && typeof processedSnapshot === 'object' && processedSnapshot !== null) {
+      const snapshotObj = processedSnapshot as { snapshot?: string; url?: string; title?: string };
+      if (snapshotObj.snapshot && typeof snapshotObj.snapshot === 'string') {
+        return {
+          success: true,
+          data: {
+            snapshot: snapshotObj.snapshot,
+            format: 'text',
+            documentsCount: response.documents.length,
+            nodesCount: response.documents[0]?.nodes?.nodeName?.length || 0
+          }
+        };
+      }
+    }
+    
     return {
       success: true,
       data: {
@@ -249,33 +265,28 @@ export class TakeSnapshotHandler implements ICommandHandler {
       throw new Error('Failed to get document root');
     }
 
-    // Get the outer HTML of the document
-    const htmlResponse = await client.send('DOM.getOuterHTML', { 
-      nodeId: docResponse.root.nodeId 
-    }) as DOMGetOuterHTMLResponse;
-
-    if (!htmlResponse || !htmlResponse.outerHTML) {
-      throw new Error('Failed to get document HTML');
-    }
+    const url = await this.getCurrentURL(client);
+    const title = await this.getCurrentTitle(client);
 
     let processedSnapshot: unknown;
     
     if (snapshotArgs.format === 'html') {
+      // Get the outer HTML of the document
+      const htmlResponse = await client.send('DOM.getOuterHTML', { 
+        nodeId: docResponse.root.nodeId 
+      }) as DOMGetOuterHTMLResponse;
+
+      if (!htmlResponse || !htmlResponse.outerHTML) {
+        throw new Error('Failed to get document HTML');
+      }
       processedSnapshot = htmlResponse.outerHTML;
     } else {
-      // JSON format - create a structured representation
+      // Build text tree representation from DOM tree
+      const textSnapshot = this.buildTextFromDOMNode(docResponse.root, url, title);
       processedSnapshot = {
-        metadata: {
-          captureTime: new Date().toISOString(),
-          method: 'DOM.getOuterHTML',
-          documentsCount: 1
-        },
-        documents: [{
-          url: await this.getCurrentURL(client),
-          title: await this.getCurrentTitle(client),
-          html: htmlResponse.outerHTML,
-          domTree: docResponse.root
-        }]
+        url,
+        title,
+        snapshot: textSnapshot
       };
     }
 
@@ -293,6 +304,20 @@ export class TakeSnapshotHandler implements ICommandHandler {
     }
 
     // Return snapshot data if no filename provided
+    // If format is not html, return text snapshot directly as string
+    if (snapshotArgs.format !== 'html' && typeof processedSnapshot === 'object' && processedSnapshot !== null) {
+      const snapshotObj = processedSnapshot as { snapshot?: string; url?: string; title?: string };
+      if (snapshotObj.snapshot && typeof snapshotObj.snapshot === 'string') {
+        return {
+          success: true,
+          data: {
+            snapshot: snapshotObj.snapshot,
+            format: 'text'
+          }
+        };
+      }
+    }
+
     return {
       success: true,
       data: {
@@ -367,11 +392,13 @@ export class TakeSnapshotHandler implements ICommandHandler {
     // Create LLM-friendly text representation
     const textSnapshot = this.createTextSnapshot(doc, response.strings);
     
-    return {
+    const result = {
       url: doc.documentURL,
       title: doc.title,
       snapshot: textSnapshot
     };
+    
+    return result;
   }
 
   /**
@@ -387,7 +414,7 @@ export class TakeSnapshotHandler implements ICommandHandler {
     const nodeTree = this.buildNodeTree(doc, strings);
     
     // Convert to text representation
-    let output = `PAGE: ${doc.title || 'Untitled'} (${doc.documentURL})\n`;
+    let output = `PAGE: ${doc.title || 'Untitled'}\n`;
     
     // Find body or root content
     const bodyNode = this.findBodyNode(nodeTree);
@@ -436,14 +463,14 @@ export class TakeSnapshotHandler implements ICommandHandler {
         }
       }
 
-      // Extract essential attributes
+      // Extract essential attributes (excluding style, but including class)
       if (nodes.attributes?.[i]) {
         const attrs = nodes.attributes[i];
         for (let j = 0; j < attrs.length; j += 2) {
           const name = strings[parseInt(attrs[j])];
           const value = strings[parseInt(attrs[j + 1])];
           
-          // Only keep attributes useful for LLM understanding
+          // Only keep attributes useful for LLM understanding (excluding style, but including class)
           if (['id', 'class', 'type', 'name', 'href', 'src', 'alt', 'placeholder', 'value', 'title'].includes(name)) {
             node.attributes[name] = value;
           }
@@ -515,51 +542,62 @@ export class TakeSnapshotHandler implements ICommandHandler {
    * Check if a node should be included in the text representation
    */
   private shouldIncludeNode(node: any): boolean {
-    // Skip script, style, meta, etc.
-    const skipTags = ['script', 'style', 'meta', 'link', 'head', 'noscript', 'svg', 'path'];
+    // Skip script, style, meta, link, head, noscript
+    const skipTags = ['script', 'style', 'meta', 'link', 'head', 'noscript'];
     if (skipTags.includes(node.nodeName)) {
       return false;
     }
+    
+    // Don't skip elements with style attribute - just don't display the style attribute value
+    // The element itself should still be shown
 
     // Skip empty text nodes
-    if (node.nodeType === 3 && !node.textContent) {
-      return false;
+    if (node.nodeType === 3) {
+      const text = (node.textContent || '').trim();
+      return text.length > 0;
     }
 
-    // Skip empty containers with no meaningful children
-    if (node.nodeType === 1 && !node.textContent && node.children.length === 0) {
-      return false;
-    }
-
+    // Include all element nodes (even if empty, they might have structure)
     return true;
   }
 
   /**
    * Render a node as text with proper indentation and formatting
    */
-  private renderNodeAsText(node: any, depth: number): string {
+  private renderNodeAsText(node: any, depth: number, isLast: boolean = false, parentIsLast: boolean[] = []): string {
     if (!this.shouldIncludeNode(node)) {
       return '';
     }
 
-    const indent = '│   '.repeat(depth);
-    const prefix = depth > 0 ? '├── ' : '';
+    // Build indent based on parent chain
+    let indent = '';
+    for (let i = 0; i < parentIsLast.length; i++) {
+      indent += parentIsLast[i] ? '    ' : '│   ';
+    }
+    const prefix = depth > 0 ? (isLast ? '└── ' : '├── ') : '';
     let output = '';
 
     if (node.nodeType === 3) {
       // Text node
       if (node.textContent) {
-        output += `${indent}${prefix}"${node.textContent}"\n`;
+        const truncatedText = this.truncateText(node.textContent.trim(), 40);
+        output += `${indent}${prefix}"${truncatedText}"\n`;
       }
     } else if (node.nodeType === 1) {
       // Element node
       const tag = node.nodeName.toUpperCase();
       let description = tag;
 
-      // Add meaningful attributes
+      // Add meaningful attributes (excluding style, but including class)
       const attrs = [];
       if (node.attributes.id) attrs.push(`#${node.attributes.id}`);
-      if (node.attributes.class) attrs.push(`.${node.attributes.class.split(' ')[0]}`);
+      if (node.attributes.class) {
+        // Display all classes as .class1 .class2 .class3
+        const classes = node.attributes.class.split(/\s+/).filter((c: string) => c.trim().length > 0);
+        classes.forEach((cls: string) => {
+          attrs.push(`.${cls.trim()}`);
+        });
+      }
       if (node.attributes.type) attrs.push(`[${node.attributes.type}]`);
       if (node.attributes.name) attrs.push(`name="${node.attributes.name}"`);
       
@@ -569,41 +607,64 @@ export class TakeSnapshotHandler implements ICommandHandler {
 
       // Add special content for specific elements
       if (node.nodeName === 'img' && node.attributes.alt) {
-        description += `: "${node.attributes.alt}"`;
+        const altText = this.truncateText(node.attributes.alt, 40);
+        description += `: "${altText}"`;
       } else if (node.nodeName === 'a' && node.attributes.href) {
         description += `: "${node.attributes.href}"`;
       } else if (['input', 'textarea'].includes(node.nodeName)) {
         if (node.attributes.placeholder) {
-          description += `: "${node.attributes.placeholder}"`;
+          const placeholderText = this.truncateText(node.attributes.placeholder, 40);
+          description += `: "${placeholderText}"`;
         } else if (node.inputValue) {
-          description += `: "${node.inputValue}"`;
+          const inputText = this.truncateText(node.inputValue, 40);
+          description += `: "${inputText}"`;
+        } else if (node.nodeName === 'textarea') {
+          // For textarea, also check text content from children
+          const textContent = this.extractTextContent(node);
+          if (textContent) {
+            const truncatedText = this.truncateText(textContent, 40);
+            description += `: "${truncatedText}"`;
+          }
         }
         if (node.checked) description += ' [checked]';
       } else if (node.nodeName === 'button' || ['h1', 'h2', 'h3', 'h4', 'h5', 'h6'].includes(node.nodeName)) {
         // For buttons and headings, show text content inline
         const textContent = this.extractTextContent(node);
         if (textContent) {
-          description += `: "${textContent}"`;
+          const truncatedText = this.truncateText(textContent, 40);
+          description += `: "${truncatedText}"`;
         }
       }
 
       output += `${indent}${prefix}${description}\n`;
 
+      // For textarea, don't render children (content already shown in description)
+      if (node.nodeName === 'textarea') {
+        return output;
+      }
+
       // Render children
       const meaningfulChildren = node.children.filter((child: any) => this.shouldIncludeNode(child));
       
-      // For elements like P, DIV, SPAN - show text content directly if no complex children
-      if (['p', 'div', 'span', 'li', 'td', 'th'].includes(node.nodeName)) {
+      // For elements with only text content and no complex children, show text inline
+      if (meaningfulChildren.length === 0) {
         const textContent = this.extractTextContent(node);
-        if (textContent && meaningfulChildren.length <= 1) {
-          output += `${indent}│   └── "${textContent}"\n`;
+        if (textContent && textContent.trim().length > 0) {
+          const truncatedText = this.truncateText(textContent.trim(), 40);
+          output += `${indent}│   └── "${truncatedText}"\n`;
           return output;
         }
-      }
-
-      // Render child nodes
-      for (const child of meaningfulChildren) {
-        output += this.renderNodeAsText(child, depth + 1);
+        // If no text content, still show the element (it might have structure or attributes)
+        // Don't return early, just continue (element already displayed above)
+        return output;
+      } else {
+        // Render child nodes
+        const newParentIsLast = [...parentIsLast, isLast];
+        for (let i = 0; i < meaningfulChildren.length; i++) {
+          const child = meaningfulChildren[i];
+          const childIsLast = i === meaningfulChildren.length - 1;
+          output += this.renderNodeAsText(child, depth + 1, childIsLast, newParentIsLast);
+        }
       }
     }
 
@@ -626,6 +687,227 @@ export class TakeSnapshotHandler implements ICommandHandler {
     
     for (const child of node.children) {
       text += this.extractTextContent(child) + ' ';
+    }
+    
+    return text.trim().replace(/\s+/g, ' ');
+  }
+
+  /**
+   * Truncate text to specified length
+   */
+  private truncateText(text: string, maxLength: number): string {
+    if (!text) return '';
+    if (text.length <= maxLength) return text;
+    return text.substring(0, maxLength) + '...';
+  }
+
+  /**
+   * Build text tree representation from DOM.getDocument node structure
+   */
+  private buildTextFromDOMNode(root: any, _url: string, title: string): string {
+    let output = `PAGE: ${title || 'Untitled'}\n`;
+    
+    // Find body or main content
+    const bodyNode = this.findBodyInDOMTree(root);
+    if (bodyNode) {
+      output += this.renderDOMNodeAsText(bodyNode, 0);
+    } else {
+      // Fallback: render root children
+      if (root.children) {
+        for (const child of root.children) {
+          if (this.shouldIncludeDOMNode(child)) {
+            output += this.renderDOMNodeAsText(child, 0);
+          }
+        }
+      }
+    }
+    
+    return output;
+  }
+
+  /**
+   * Find body node in DOM tree
+   */
+  private findBodyInDOMTree(node: any): any | null {
+    if (node.nodeName && node.nodeName.toLowerCase() === 'body') {
+      return node;
+    }
+    if (node.nodeName && node.nodeName.toLowerCase() === 'main') {
+      return node;
+    }
+    if (node.children) {
+      for (const child of node.children) {
+        const found = this.findBodyInDOMTree(child);
+        if (found) return found;
+      }
+    }
+    return null;
+  }
+
+  /**
+   * Check if a DOM node should be included
+   */
+  private shouldIncludeDOMNode(node: any): boolean {
+    if (!node) return false;
+    
+    const nodeName = node.nodeName ? node.nodeName.toLowerCase() : '';
+    const skipTags = ['script', 'style', 'meta', 'link', 'head', 'noscript'];
+    if (skipTags.includes(nodeName)) {
+      return false;
+    }
+
+    // Don't skip elements with style attribute - just don't display the style attribute value
+    // The element itself should still be shown
+
+    // Skip empty text nodes
+    if (node.nodeType === 3) {
+      const text = node.nodeValue || '';
+      return text.trim().length > 0;
+    }
+
+    // Include all element nodes
+    return true;
+  }
+
+  /**
+   * Render a DOM node as text with proper indentation
+   */
+  private renderDOMNodeAsText(node: any, depth: number, isLast: boolean = false, parentIsLast: boolean[] = []): string {
+    if (!this.shouldIncludeDOMNode(node)) {
+      return '';
+    }
+
+    // Build indent based on parent chain
+    let indent = '';
+    for (let i = 0; i < parentIsLast.length; i++) {
+      indent += parentIsLast[i] ? '    ' : '│   ';
+    }
+    const prefix = depth > 0 ? (isLast ? '└── ' : '├── ') : '';
+    let output = '';
+
+    if (node.nodeType === 3) {
+      // Text node
+      const text = (node.nodeValue || '').trim();
+      if (text) {
+        const truncatedText = this.truncateText(text, 40);
+        output += `${indent}${prefix}"${truncatedText}"\n`;
+      }
+    } else if (node.nodeType === 1) {
+      // Element node
+      const tag = (node.nodeName || '').toUpperCase();
+      let description = tag;
+
+      // Add attributes (excluding style, but including class)
+      const attrs = [];
+      if (node.attributes) {
+        for (let i = 0; i < node.attributes.length; i += 2) {
+          const name = node.attributes[i];
+          const value = node.attributes[i + 1];
+          if (['id', 'class', 'type', 'name', 'href', 'src', 'alt', 'placeholder', 'value', 'title'].includes(name)) {
+            if (name === 'id') attrs.push(`#${value}`);
+            else if (name === 'class') {
+              // Display all classes as .class1 .class2 .class3
+              const classes = value.split(/\s+/).filter((c: string) => c.trim().length > 0);
+              classes.forEach((cls: string) => {
+                attrs.push(`.${cls.trim()}`);
+              });
+            } else if (name === 'type') attrs.push(`[${value}]`);
+            else attrs.push(`${name}="${value}"`);
+          }
+        }
+      }
+      
+      if (attrs.length > 0) {
+        description += `(${attrs.join(' ')})`;
+      }
+
+      // Add special content for specific elements
+      const nodeName = (node.nodeName || '').toLowerCase();
+      if (nodeName === 'img' && node.attributes) {
+        const altIndex = node.attributes.indexOf('alt');
+        if (altIndex >= 0 && altIndex + 1 < node.attributes.length) {
+          const altText = this.truncateText(node.attributes[altIndex + 1], 40);
+          description += `: "${altText}"`;
+        }
+      } else if (nodeName === 'a' && node.attributes) {
+        const hrefIndex = node.attributes.indexOf('href');
+        if (hrefIndex >= 0 && hrefIndex + 1 < node.attributes.length) {
+          description += `: "${node.attributes[hrefIndex + 1]}"`;
+        }
+      } else if (['input', 'textarea'].includes(nodeName)) {
+        if (node.attributes) {
+          const placeholderIndex = node.attributes.indexOf('placeholder');
+          if (placeholderIndex >= 0 && placeholderIndex + 1 < node.attributes.length) {
+            const placeholderText = this.truncateText(node.attributes[placeholderIndex + 1], 40);
+            description += `: "${placeholderText}"`;
+          }
+        }
+        // Also check for textarea content
+        if (nodeName === 'textarea') {
+          const textContent = this.extractTextFromDOMNode(node);
+          if (textContent) {
+            const truncatedText = this.truncateText(textContent, 40);
+            description += `: "${truncatedText}"`;
+          }
+        }
+      } else if (nodeName === 'button' || ['h1', 'h2', 'h3', 'h4', 'h5', 'h6'].includes(nodeName)) {
+        const textContent = this.extractTextFromDOMNode(node);
+        if (textContent) {
+          const truncatedText = this.truncateText(textContent, 40);
+          description += `: "${truncatedText}"`;
+        }
+      }
+
+      output += `${indent}${prefix}${description}\n`;
+
+      // For textarea, don't render children (content already shown in description)
+      if (nodeName === 'textarea') {
+        return output;
+      }
+
+      // Render children
+      if (node.children) {
+        const meaningfulChildren = node.children.filter((child: any) => this.shouldIncludeDOMNode(child));
+        
+        // For elements with only text content and no complex children, show text inline
+        if (meaningfulChildren.length === 0) {
+          const textContent = this.extractTextFromDOMNode(node);
+          if (textContent && textContent.trim().length > 0) {
+            const truncatedText = this.truncateText(textContent.trim(), 40);
+            output += `${indent}│   └── "${truncatedText}"\n`;
+            return output;
+          }
+          // If no text content, still show the element (it might have structure or attributes)
+          // Don't return early, just continue (element already displayed above)
+          return output;
+        } else {
+          // Render child nodes
+          const newParentIsLast = [...parentIsLast, isLast];
+          for (let i = 0; i < meaningfulChildren.length; i++) {
+            const child = meaningfulChildren[i];
+            const childIsLast = i === meaningfulChildren.length - 1;
+            output += this.renderDOMNodeAsText(child, depth + 1, childIsLast, newParentIsLast);
+          }
+        }
+      }
+    }
+
+    return output;
+  }
+
+  /**
+   * Extract text content from DOM node
+   */
+  private extractTextFromDOMNode(node: any): string {
+    if (node.nodeType === 3) {
+      return (node.nodeValue || '').trim();
+    }
+    
+    let text = '';
+    if (node.children) {
+      for (const child of node.children) {
+        text += this.extractTextFromDOMNode(child) + ' ';
+      }
     }
     
     return text.trim().replace(/\s+/g, ' ');
@@ -829,7 +1111,7 @@ export class TakeSnapshotHandler implements ICommandHandler {
     }
 
     // Validate format
-    if (snapshotArgs.format !== undefined && !['json', 'html'].includes(snapshotArgs.format)) {
+    if (snapshotArgs.format !== undefined && !['json', 'html', 'text'].includes(snapshotArgs.format)) {
       return false;
     }
 

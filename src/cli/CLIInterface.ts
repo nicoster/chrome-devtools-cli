@@ -431,6 +431,11 @@ export class CLIInterface implements ICLIInterface {
     if (result.data && typeof result.data === 'object') {
       const data = result.data as any;
       
+      // Handle snapshot output - show the text representation directly
+      if (data.snapshot && typeof data.snapshot === 'string') {
+        return data.snapshot;
+      }
+      
       // Handle console messages output
       if (data.messages && Array.isArray(data.messages)) {
         output += dataSourceInfo;

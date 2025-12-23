@@ -5,6 +5,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.8.0] - 2024-12-23
+
+### Fixed
+- **Snapshot Text Output**: Fixed CLI output format to display the hierarchical text representation directly
+  - When using `--format text` (default), snapshot now shows the tree-like structure directly
+  - No longer wraps the text snapshot in JSON when displaying in terminal
+  - Maintains JSON structure when using `--format json` or saving to files
+  - Perfect for direct viewing of page structure in terminal
+
+### Enhanced
+- **CLI Output Formatting**: Improved text format handling for snapshot command results
+
 ## [1.7.9] - 2024-12-23
 
 ### Enhanced
