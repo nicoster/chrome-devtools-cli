@@ -15,7 +15,8 @@ describe('Type Definitions', () => {
         outputFormat: 'json',
         verbose: true,
         quiet: false,
-        timeout: 30000
+        timeout: 30000,
+        debug: false
       };
 
       expect(config.host).toBe('localhost');
@@ -24,6 +25,7 @@ describe('Type Definitions', () => {
       expect(config.verbose).toBe(true);
       expect(config.quiet).toBe(false);
       expect(config.timeout).toBe(30000);
+      expect(config.debug).toBe(false);
     });
   });
 

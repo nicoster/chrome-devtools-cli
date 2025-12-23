@@ -29,5 +29,6 @@ export const DEFAULT_CLI_CONFIG: CLIConfig = {
   outputFormat: 'text',
   verbose: false,
   quiet: false,
-  timeout: 30000
+  timeout: 30000,
+  debug: false
 };

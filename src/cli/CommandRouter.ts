@@ -242,25 +242,32 @@ export class CommandRouter {
   private async executeWithTimeout(handler: any, command: CLICommand): Promise<CommandResult> {
     const timeout = command.config.timeout;
     
-    console.log(`[DEBUG] CommandRouter.executeWithTimeout called for command: ${command.name}, timeout: ${timeout}ms`);
+    // Configure logger based on debug flag
+    if (command.config.debug) {
+      this.logger.setLevel(3); // DEBUG level
+    } else {
+      this.logger.setLevel(2); // INFO level
+    }
+    
+    this.logger.debug(`CommandRouter.executeWithTimeout called for command: ${command.name}, timeout: ${timeout}ms`);
     
     // Create timeout promise
     const timeoutPromise = new Promise<CommandResult>((_, reject) => {
       setTimeout(() => {
-        console.log(`[DEBUG] Command timeout reached for: ${command.name} after ${timeout}ms`);
+        this.logger.debug(`Command timeout reached for: ${command.name} after ${timeout}ms`);
         reject(new Error(`Command timeout after ${timeout}ms`));
       }, timeout);
     });
 
     // Create execution promise
-    console.log(`[DEBUG] Starting handler execution for: ${command.name}`);
+    this.logger.debug(`Starting handler execution for: ${command.name}`);
     const executionPromise = handler.execute(this.client!, command.args);
 
     // Race between execution and timeout
     try {
       const result = await Promise.race([executionPromise, timeoutPromise]);
       
-      console.log(`[DEBUG] Command completed successfully for: ${command.name}`);
+      this.logger.debug(`Command completed successfully for: ${command.name}`);
       
       // Ensure result has proper structure
       if (!result || typeof result !== 'object') {
@@ -278,7 +285,7 @@ export class CommandRouter {
 
       return result;
     } catch (error) {
-      console.log(`[DEBUG] Command execution error for: ${command.name}:`, error);
+      this.logger.debug(`Command execution error for: ${command.name}:`, error);
       
       if (error instanceof Error && error.message.includes('timeout')) {
         return {
@@ -307,6 +314,7 @@ Global Options:
   -v, --verbose            Enable verbose logging
   -q, --quiet              Enable quiet mode
   -t, --timeout <ms>       Command timeout in milliseconds (default: 30000)
+  -d, --debug              Enable debug logging
   -c, --config <path>      Configuration file path
   -V, --version            Show version number
 

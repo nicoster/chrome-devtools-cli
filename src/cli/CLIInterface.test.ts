@@ -17,6 +17,7 @@ describe('CLIInterface', () => {
       expect(result.config.host).toBe('localhost');
       expect(result.config.port).toBe(9222);
       expect(result.config.outputFormat).toBe('text');
+      expect(result.config.debug).toBe(false);
     });
 
     it('should parse command with options correctly', () => {
@@ -36,6 +37,19 @@ describe('CLIInterface', () => {
       expect(result.config.port).toBe(9224);
       expect(result.config.outputFormat).toBe('json');
       expect(result.config.verbose).toBe(true);
+      expect(result.config.debug).toBe(false);
+    });
+
+    it('should parse debug flag correctly', () => {
+      const result = cli.parseArgs(['node', 'script.js', '--debug', 'help']);
+      
+      expect(result.config.debug).toBe(true);
+    });
+
+    it('should parse short debug flag correctly', () => {
+      const result = cli.parseArgs(['node', 'script.js', '-d', 'help']);
+      
+      expect(result.config.debug).toBe(true);
     });
 
     it('should default to help command when no command provided', () => {

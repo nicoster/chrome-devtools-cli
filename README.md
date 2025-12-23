@@ -1,41 +1,16 @@
 # Chrome DevTools CLI
 
+A command-line tool for browser automation via Chrome DevTools Protocol (CDP). Designed for developers who need reliable, scriptable browser control with both dedicated commands and flexible JavaScript execution.
 
-A command-line tool designed specifically for Large Language Models (LLMs) and AI-assisted development. Controls Chrome browser via Chrome DevTools Protocol (CDP) with an **eval-first design philosophy** - most automation tasks use JavaScript execution because LLMs excel at writing and validating scripts quickly.
+## 🤔 Why This Tool Exists
 
-## 🚀 Built for LLMs - Eval-First Design Philosophy
+**The honest story:** I started using `chrome-devtools-mcp` like everyone else. It worked great... until it didn't. One day it just stopped working - Cursor showed 26 tools available, everything looked normal, but every single tool call threw errors. Classic black box problem: you can't debug what you can't see inside.
 
-**This tool is specifically designed for Large Language Models (LLMs) and AI-assisted development.**
+**The MCP reality check:** Model Context Protocol sounded promising, but let's be real - it's not exactly taking the world by storm. Meanwhile, Anthropic introduced the SKILL concept, which actually makes sense for how LLMs work. And what pairs perfectly with Skills? Good old-fashioned command-line tools. They're debuggable, efficient, and you can actually see what's happening when things go wrong.
 
-### Why Most Commands Use Eval
+**The pragmatic solution:** Instead of wrestling with mysterious MCP failures, why not build a CLI that just works? One that you can debug, extend, and actually understand. Plus, when your AI assistant needs to automate a browser, it can just write the command and execute it - no black boxes, no mysterious failures, just straightforward automation.
 
-**The core design principle:** Most browser automation tasks are accomplished through the `eval` command rather than dedicated CLI commands. This is intentional and optimized for LLM workflows:
-
-1. **🧠 LLMs Excel at JavaScript**: Large Language Models are exceptionally good at writing JavaScript code. They can generate complex automation scripts, handle async operations, and adapt to different scenarios - all in JavaScript.
-
-2. **⚡ Rapid Script Validation**: LLMs can write a script, test it immediately with `eval`, see the results, and refine it in seconds. This iterative loop is where LLMs shine.
-
-3. **🔄 Maximum Flexibility**: Instead of waiting for specific commands to be implemented, LLMs can accomplish any browser task through JavaScript execution. Need to click an element? `document.querySelector('#btn').click()`. Need to wait for content? `await new Promise(...)`. Need complex data extraction? Just write the JavaScript.
-
-4. **🎯 Perfect for AI Workflows**: When you ask Claude or Cursor to automate a browser task, they can write the JavaScript directly - no need to learn complex CLI syntax or wait for feature implementations.
-
-### IDE Integration for LLM Workflows
-
-**Built-in support for AI development environments:**
-
-- **🖥️ Cursor Commands**: Install with `install-cursor-command` - brings browser automation directly into Cursor's command palette
-- **🤖 Claude Skills**: Install with `install-claude-skill` - enables Claude to use browser automation in conversations
-- **⚡ Seamless Integration**: AI assistants can generate automation scripts and execute them instantly through these integrations
-
-**Why this matters:** When LLMs are integrated into your IDE, they can write browser automation scripts as part of your development workflow. The eval-first approach means they can accomplish any task without waiting for specific command implementations.
-
-### The LLM Advantage
-
-- **🧠 Natural Language → JavaScript**: Ask an LLM "click the submit button" → it generates `document.querySelector('#submit').click()`
-- **⚡ Instant Testing**: Write, execute, see results, refine - all in seconds
-- **🔄 Iterative Refinement**: LLMs can adjust scripts based on results immediately
-- **📚 Context-Aware**: AI understands your project and can write automation scripts that fit your specific needs
-- **🎯 No Learning Curve**: LLMs already know JavaScript - no need to learn CLI-specific syntax
+**The result:** A tool that's both powerful enough for complex automation and simple enough that you (and your AI assistant) can actually use it without pulling your hair out.
 
 ## Implementation Status
 
@@ -51,39 +26,39 @@ A command-line tool designed specifically for Large Language Models (LLMs) and A
 - 🛠️ **IDE Integration**: Install Cursor commands and Claude skills with directory validation and --force option
 - 📦 **Build System**: Complete TypeScript build pipeline with testing framework
 
-### 🚧 Eval-First Design - LLM-Optimized Features
+### 🚧 Available via JavaScript Execution
 
-These features use the `eval` command by design (not as workarounds) - this is the intended approach for LLM-assisted development:
+For maximum flexibility, many advanced features are available through the `eval` command. This approach is particularly powerful for AI assistants and complex automation scenarios:
 
 - 📄 **Page Navigation**: `eval "window.location.href = 'https://example.com'"`
 - 🚀 **Performance Data**: `eval "performance.now()"` or `eval "performance.getEntriesByType('navigation')"`
 - 📱 **User Agent**: `eval "navigator.userAgent"`
 - 🌐 **Network Requests**: `eval "fetch('/api').then(r => r.json())"`
 
-**Why this design is optimal for LLMs:**
+**Why JavaScript execution is powerful:**
 
-1. **LLMs are JavaScript experts**: They can write complex automation scripts instantly
-2. **Rapid validation**: Write → Execute → See Results → Refine - perfect for LLM workflows
-3. **No feature waiting**: LLMs can accomplish any task through JavaScript without waiting for CLI command implementations
-4. **Natural workflow**: When you ask an LLM to automate something, it writes JavaScript - exactly what `eval` executes
-5. **Maximum flexibility**: Any browser API, any complexity level, any scenario - all through JavaScript
+1. **Universal capability**: Any browser API, any complexity level, any scenario
+2. **Rapid prototyping**: Write → Execute → See Results → Refine
+3. **AI-friendly**: Perfect for AI assistants that excel at JavaScript
+4. **No waiting**: Accomplish tasks immediately without waiting for feature implementations
+5. **Maximum flexibility**: Handle edge cases and custom scenarios easily
 
-**This is not a limitation - it's a feature designed specifically for AI-assisted development.**
+**This provides both dedicated commands for common tasks and unlimited flexibility through JavaScript execution.**
 
-### 🎯 IDE Integration - Built for LLM Workflows
+### 🎯 IDE Integration - Built for Modern Development
 
 **Why we support Cursor Commands & Claude Skills:**
 
-This tool is designed for LLM-assisted development. The IDE integrations (`install-cursor-command` and `install-claude-skill`) bring browser automation directly into AI-powered development environments:
+This tool integrates seamlessly with modern AI-powered development environments. The IDE integrations (`install-cursor-command` and `install-claude-skill`) bring browser automation directly into your workflow:
 
-- **🔄 Seamless LLM Workflow**: AI assistants can write and execute browser automation scripts directly in your IDE
-- **🧠 AI-Native Design**: The eval-first approach means LLMs can accomplish any browser task through JavaScript
-- **⚡ Instant Script Validation**: LLMs write JavaScript → execute via eval → see results → refine - all in real-time
-- **📚 Context-Aware Automation**: AI understands your project context and can generate relevant automation scripts
-- **🎯 Natural Language → Automation**: Ask "click the submit button" → AI generates `document.querySelector('#submit').click()` → executes instantly
+- **🔄 Seamless Workflow**: AI assistants can write and execute browser automation scripts directly in your IDE
+- **🧠 Natural Integration**: JavaScript execution means AI can accomplish any browser task
+- **⚡ Instant Execution**: Write scripts → execute via commands → see results → refine in real-time
+- **📚 Context-Aware**: AI understands your project context and generates relevant automation
+- **🎯 Natural Language → Automation**: Ask "click the submit button" → AI generates and executes the solution
 - **🤖 Perfect for AI Assistants**: Claude and Cursor can use browser automation as part of their toolset
 
-**The integration exists because this tool is built for LLMs - the eval-first design and IDE integrations work together to enable AI-powered browser automation.**
+**The integration exists because modern development is AI-assisted - these tools work together to enable efficient browser automation.**
 
 ### ⏳ Not Yet Implemented
 
@@ -144,18 +119,28 @@ npm link
 Before using the CLI, start Chrome with remote debugging enabled:
 
 ```bash
-# Default port (9222)
-chrome --remote-debugging-port=9222
+# Default port (9222) - IMPORTANT: Include --user-data-dir to avoid conflicts
+chrome --remote-debugging-port=9222 --user-data-dir=/tmp/chrome-debug-profile
 
 # Custom port
-chrome --remote-debugging-port=9223
+chrome --remote-debugging-port=9223 --user-data-dir=/tmp/chrome-debug-profile
 
 # Headless mode
-chrome --headless --remote-debugging-port=9222
+chrome --headless --remote-debugging-port=9222 --user-data-dir=/tmp/chrome-debug-profile
 
 # With additional flags for automation
-chrome --remote-debugging-port=9222 --no-first-run --no-default-browser-check
+chrome --remote-debugging-port=9222 --user-data-dir=/tmp/chrome-debug-profile --no-first-run --no-default-browser-check
+
+# macOS example with full path and logging
+/Applications/Google\ Chrome.app/Contents/MacOS/Google\ Chrome --remote-debugging-port=9222 --user-data-dir=/Users/$USER/chrome-profile-debug > /tmp/chrome.log 2>&1 &
 ```
+
+**Important Notes:**
+- **Always use `--user-data-dir`**: This creates a separate Chrome profile for debugging and prevents conflicts with your regular Chrome instance
+- **Choose a dedicated directory**: Use a path like `/tmp/chrome-debug-profile` or `/Users/$USER/chrome-profile-debug`
+- **Avoid profile conflicts**: Without `--user-data-dir`, Chrome may fail to open the debugging port if another instance is running
+
+For more details, see the [Chrome Remote Debugging documentation](https://developer.chrome.com/blog/remote-debugging-port).
 
 ## Quick Start
 
@@ -437,7 +422,7 @@ chrome-cdp-cli install_cursor_command --force
 chrome-cdp-cli install_claude_skill --force
 ```
 
-### 🚧 Available via Eval Workarounds
+### 🚧 Available via JavaScript Execution
 
 #### Page Management
 ```bash
@@ -464,7 +449,7 @@ chrome-cdp-cli click "#button"
 chrome-cdp-cli hover ".menu-item"
 chrome-cdp-cli fill "#email" "user@example.com"
 
-# Via eval (still available for complex scenarios)
+# Via JavaScript execution (flexible for complex scenarios)
 chrome-cdp-cli eval "document.querySelector('#button').click()"
 chrome-cdp-cli eval "document.querySelector('.menu-item').dispatchEvent(new MouseEvent('mouseover'))"
 chrome-cdp-cli eval "document.querySelector('#email').value = 'user@example.com'"
@@ -492,7 +477,7 @@ chrome-cdp-cli fill_form --fields '[
 chrome-cdp-cli fill "#name" "John Doe"
 chrome-cdp-cli fill "#email" "john@example.com"
 
-# Via eval (for complex form operations)
+# Via JavaScript execution (for complex form operations)
 chrome-cdp-cli eval "
 document.querySelector('#name').value = 'John Doe';
 document.querySelector('#email').value = 'john@example.com';
@@ -505,7 +490,7 @@ chrome-cdp-cli eval "document.querySelector('#myform').submit()"
 # Select dropdown option (native)
 chrome-cdp-cli fill "#dropdown" "option1"
 
-# Select dropdown option (via eval)
+# Select dropdown option (via JavaScript execution)
 chrome-cdp-cli eval "document.querySelector('#dropdown').value = 'option1'"
 
 # Check checkbox
@@ -690,25 +675,25 @@ new Promise(resolve => {
    - Quiet and verbose modes
    - Custom output templates
 
-### Why Eval-First Design? (Built for LLMs)
+### Why JavaScript Execution? (Built for Modern Development)
 
-**This is not a workaround - it's the core design philosophy optimized for LLM workflows:**
+**This is not a workaround - it's a core design philosophy optimized for modern development workflows:**
 
-1. **🧠 LLMs are JavaScript Experts**: Large Language Models excel at writing JavaScript. They can generate complex automation scripts, handle async operations, and adapt to different scenarios - all naturally in JavaScript.
+1. **🧠 Universal Language**: JavaScript is the language of the web. Developers and AI assistants alike excel at writing JavaScript for browser automation.
 
-2. **⚡ Rapid Script Validation**: The perfect workflow for LLMs: Write JavaScript → Execute via `eval` → See Results → Refine. This iterative loop is where LLMs shine.
+2. **⚡ Rapid Prototyping**: The perfect workflow: Write JavaScript → Execute → See Results → Refine. This iterative loop is ideal for both human developers and AI assistants.
 
 3. **🔄 Maximum Flexibility**: Any browser task, any complexity, any scenario - all through JavaScript. No waiting for specific command implementations.
 
-4. **🤖 AI-Native Workflow**: When you ask Claude or Cursor to automate something, they write JavaScript - exactly what `eval` executes. Perfect alignment.
+4. **🤖 AI-Native Workflow**: When you ask Claude or Cursor to automate something, they naturally write JavaScript - exactly what the `eval` command executes.
 
 5. **📚 Natural Language → Automation**: "Click the submit button" → AI generates `document.querySelector('#submit').click()` → Executes instantly.
 
 6. **🎯 Context-Aware**: AI understands your project and can write automation scripts that fit your specific needs.
 
-7. **⚡ Instant Iteration**: LLMs can adjust scripts based on results immediately - no need to wait for feature releases.
+7. **⚡ Instant Iteration**: Both developers and AI can adjust scripts based on results immediately - no need to wait for feature releases.
 
-**This tool is built for LLM-assisted development. The eval-first approach, combined with IDE integrations (Cursor commands & Claude skills), creates a seamless workflow where AI assistants can automate browser tasks as part of your development process.**
+**This tool bridges the gap between dedicated commands for common tasks and unlimited flexibility through JavaScript execution, making it perfect for both traditional development and AI-assisted workflows.**
 
 ## Form Filling & Element Interaction
 
@@ -1044,18 +1029,26 @@ console.log(result);
 ### Common Issues
 
 1. **Connection Refused**
-   - Ensure Chrome is running with `--remote-debugging-port=9222`
+   - Ensure Chrome is running with `--remote-debugging-port=9222 --user-data-dir=/tmp/chrome-debug`
+   - **Always include `--user-data-dir`** to avoid profile conflicts
    - Check if the port is correct and not blocked by firewall
+   - Verify no other Chrome instances are using the same debugging port
 
-2. **Command Timeout**
+2. **Chrome Won't Start Debugging Port**
+   - **Most common cause**: Missing `--user-data-dir` parameter
+   - **Solution**: Use a dedicated profile directory: `--user-data-dir=/tmp/chrome-debug-profile`
+   - **Why needed**: Prevents conflicts with existing Chrome instances
+   - See [Chrome Remote Debugging documentation](https://developer.chrome.com/blog/remote-debugging-port) for details
+
+3. **Command Timeout**
    - Increase timeout with `--timeout` option
    - Check if the page is responsive
 
-3. **Element Not Found**
+4. **Element Not Found**
    - Verify CSS selectors are correct
    - Use `wait_for` command to wait for dynamic elements
 
-4. **Permission Denied**
+5. **Permission Denied**
    - Ensure Chrome has necessary permissions
    - Check file system permissions for screenshot output
 
@@ -1077,31 +1070,6 @@ npm run package
 npm run prepublishOnly
 ```
 
-## Publishing to npm
-
-To make this tool available via `npx`, you need to publish it to npm:
-
-```bash
-# 1. Login to npm (one time setup)
-npm login
-
-# 2. Publish the package
-npm publish
-
-# 3. Users can then use it with npx
-npx chrome-cdp-cli eval "document.title"
-```
-
-**Note**: The package name `chrome-cdp-cli` uses a clean, descriptive approach. This approach:
-
-- ✅ **Professional naming** that clearly indicates Chrome DevTools Protocol CLI
-- ✅ **Works with npx**: `npx chrome-cdp-cli eval "document.title"`
-- ✅ **Simple installation**: `npm install -g chrome-cdp-cli`
-- ✅ **Short and memorable** compared to longer alternatives
-
-Alternative naming examples:
-1. **Scoped name**: `@nickxiao42/chrome-devtools-cli`
-2. **Longer descriptive**: `chrome-automation-cli`
 
 ## Contributing
 

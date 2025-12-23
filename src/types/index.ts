@@ -6,6 +6,7 @@ export interface CLIConfig {
   verbose: boolean;       // 详细日志
   quiet: boolean;         // 静默模式
   timeout: number;        // 命令超时（毫秒）
+  debug: boolean;         // 调试模式
 }
 
 export interface CLICommand {

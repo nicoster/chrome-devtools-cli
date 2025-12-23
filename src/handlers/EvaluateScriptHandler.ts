@@ -1,6 +1,7 @@
 import { ICommandHandler } from '../interfaces/CommandHandler';
 import { CDPClient, CommandResult } from '../types';
 import { ProxyClient } from '../client/ProxyClient';
+import { Logger } from '../utils/logger';
 import { promises as fs } from 'fs';
 import fetch from 'node-fetch';
 
@@ -55,17 +56,37 @@ export class EvaluateScriptHandler implements ICommandHandler {
   readonly name = 'eval';
   private proxyClient: ProxyClient;
   private useProxy: boolean;
+  private logger: Logger;
 
-  constructor(useProxy: boolean = false) {
+  constructor(useProxy: boolean = false, debug: boolean = false) {
     this.proxyClient = new ProxyClient();
     this.useProxy = useProxy;
+    this.logger = new Logger();
+    
+    // Configure logger based on debug flag
+    if (debug) {
+      this.logger.setLevel(3); // DEBUG level
+    } else {
+      this.logger.setLevel(2); // INFO level
+    }
+  }
+
+  /**
+   * Set debug mode
+   */
+  setDebug(debug: boolean): void {
+    if (debug) {
+      this.logger.setLevel(3); // DEBUG level
+    } else {
+      this.logger.setLevel(2); // INFO level
+    }
   }
 
   /**
    * Execute JavaScript code in the browser
    */
   async execute(client: CDPClient, args: unknown): Promise<CommandResult> {
-    console.log('[DEBUG] EvaluateScriptHandler.execute called with args:', args);
+    this.logger.debug('EvaluateScriptHandler.execute called with args:', args);
     
     const scriptArgs = args as EvaluateScriptArgs;
 
@@ -84,20 +105,20 @@ export class EvaluateScriptHandler implements ICommandHandler {
       };
     }
 
-    console.log('[DEBUG] Arguments validated, useProxy:', this.useProxy);
+    this.logger.debug('Arguments validated, useProxy:', this.useProxy);
 
     try {
       // Try proxy first if enabled
       if (this.useProxy) {
-        console.log('[DEBUG] Checking proxy availability...');
+        this.logger.debug('Checking proxy availability...');
         const proxyAvailable = await this.proxyClient.isProxyAvailable();
-        console.log('[DEBUG] Proxy available:', proxyAvailable);
+        this.logger.debug('Proxy available:', proxyAvailable);
         
         if (proxyAvailable) {
           console.log('[INFO] Using proxy connection for script evaluation');
-          console.log('[DEBUG] About to call executeWithProxy...');
+          this.logger.debug('About to call executeWithProxy...');
           const result = await this.executeWithProxy(scriptArgs);
-          console.log('[DEBUG] executeWithProxy returned:', result);
+          this.logger.debug('executeWithProxy returned:', result);
           return result;
         } else {
           console.warn('[WARN] Proxy not available, falling back to direct CDP connection');
@@ -108,7 +129,7 @@ export class EvaluateScriptHandler implements ICommandHandler {
     }
 
     // Fallback to direct CDP
-    console.log('[DEBUG] Falling back to direct CDP');
+    this.logger.debug('Falling back to direct CDP');
     return await this.executeWithDirectCDP(client, scriptArgs);
   }
 
@@ -117,7 +138,7 @@ export class EvaluateScriptHandler implements ICommandHandler {
    */
   private async executeWithProxy(scriptArgs: EvaluateScriptArgs): Promise<CommandResult> {
     try {
-      console.log('[DEBUG] Starting executeWithProxy');
+      this.logger.debug('Starting executeWithProxy');
       
       // Get the JavaScript code to execute
       let expression: string;
@@ -127,12 +148,12 @@ export class EvaluateScriptHandler implements ICommandHandler {
         expression = scriptArgs.expression!;
       }
 
-      console.log('[DEBUG] Expression to execute:', expression.substring(0, 100));
+      this.logger.debug('Expression to execute:', expression.substring(0, 100));
 
       // Connect to Chrome through the proxy
-      console.log('[DEBUG] Creating new proxy connection...');
+      this.logger.debug('Creating new proxy connection...');
       const connectionId = await this.proxyClient.connect('localhost', 9222);
-      console.log(`[DEBUG] Created new proxy connection: ${connectionId}`);
+      this.logger.debug(`Created new proxy connection: ${connectionId}`);
 
       try {
         // Execute script through HTTP API instead of WebSocket
@@ -147,7 +168,7 @@ export class EvaluateScriptHandler implements ICommandHandler {
         await this.proxyClient.disconnect();
       }
     } catch (error) {
-      console.log('[DEBUG] Error in executeWithProxy:', error);
+      this.logger.debug('Error in executeWithProxy:', error);
       return {
         success: false,
         error: error instanceof Error ? error.message : String(error)

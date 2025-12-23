@@ -5,6 +5,38 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.7] - 2024-12-23
+
+### Enhanced
+- **Chrome Setup Documentation**: Improved Chrome debugging setup instructions
+  - Added mandatory `--user-data-dir` parameter to all Chrome startup examples
+  - Explained why `--user-data-dir` is required to avoid profile conflicts
+  - Added macOS-specific example with full path and logging
+  - Updated troubleshooting section with common Chrome startup issues
+  - Added reference to official Chrome Remote Debugging documentation
+  - Updated postinstall quick start message to include `--user-data-dir`
+
+### Fixed
+- **Setup Instructions**: Resolved common Chrome debugging port setup issues
+  - Users will no longer encounter "connection refused" errors due to missing `--user-data-dir`
+  - Clear guidance on creating dedicated Chrome profiles for debugging
+  - Better error prevention through improved documentation
+
+## [1.7.6] - 2024-12-23
+
+### Added
+- **Debug Logging Control**: Added `--debug` / `-d` flag to control debug output
+  - Debug logs are now suppressed by default for cleaner output
+  - Use `--debug` or `-d` flag to enable detailed debug logging
+  - Structured logging format with timestamps and proper log levels
+  - Updated CLI argument parsing and configuration system
+
+### Fixed
+- **Excessive Debug Output**: Resolved issue where debug logs appeared by default
+  - Replaced hardcoded console.log debug statements with proper logger calls
+  - Debug mode now properly configures all handlers and components
+  - Clean output by default, verbose debugging only when requested
+
 ## [1.7.5] - 2024-12-23
 
 ### Fixed

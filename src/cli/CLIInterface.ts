@@ -18,6 +18,7 @@ interface ConfigFile {
   verbose?: boolean;
   quiet?: boolean;
   timeout?: number;
+  debug?: boolean;
 }
 
 /**
@@ -55,6 +56,7 @@ export class CLIInterface implements ICLIInterface {
       .option('-v, --verbose', 'Enable verbose logging', DEFAULT_CLI_CONFIG.verbose)
       .option('-q, --quiet', 'Enable quiet mode', DEFAULT_CLI_CONFIG.quiet)
       .option('-t, --timeout <timeout>', 'Command timeout in milliseconds', (value) => parseInt(value, 10), DEFAULT_CLI_CONFIG.timeout)
+      .option('-d, --debug', 'Enable debug logging', DEFAULT_CLI_CONFIG.debug)
       .option('-c, --config <config>', 'Configuration file path');
   }
 
@@ -85,7 +87,12 @@ export class CLIInterface implements ICLIInterface {
         
         if (arg.startsWith('--')) {
           const optionName = arg.substring(2);
-          if (i + 1 < args.length && !args[i + 1].startsWith('-')) {
+          // Handle boolean flags that don't take values
+          const booleanFlags = ['verbose', 'quiet', 'debug'];
+          if (booleanFlags.includes(optionName)) {
+            options[optionName] = true;
+            i++;
+          } else if (i + 1 < args.length && !args[i + 1].startsWith('-')) {
             options[optionName] = args[i + 1];
             i += 2;
           } else {
@@ -94,7 +101,12 @@ export class CLIInterface implements ICLIInterface {
           }
         } else if (arg.startsWith('-') && arg.length > 1) {
           const shortOption = arg.substring(1);
-          if (i + 1 < args.length && !args[i + 1].startsWith('-')) {
+          // Handle boolean flags that don't take values
+          const booleanShortFlags = ['v', 'q', 'd'];
+          if (booleanShortFlags.includes(shortOption)) {
+            options[shortOption] = true;
+            i++;
+          } else if (i + 1 < args.length && !args[i + 1].startsWith('-')) {
             options[shortOption] = args[i + 1];
             i += 2;
           } else {
@@ -114,6 +126,7 @@ export class CLIInterface implements ICLIInterface {
       if (options.v) options.verbose = true;
       if (options.q) options.quiet = true;
       if (options.t) options.timeout = parseInt(options.t, 10);
+      if (options.d) options.debug = true;
       if (options.c) options.config = options.c;
 
       // Parse numeric options
@@ -180,7 +193,8 @@ export class CLIInterface implements ICLIInterface {
       outputFormat: cliOptions.format || fileConfig.outputFormat || DEFAULT_CLI_CONFIG.outputFormat,
       verbose: cliOptions.verbose || fileConfig.verbose || DEFAULT_CLI_CONFIG.verbose,
       quiet: cliOptions.quiet || fileConfig.quiet || DEFAULT_CLI_CONFIG.quiet,
-      timeout: cliOptions.timeout || fileConfig.timeout || DEFAULT_CLI_CONFIG.timeout
+      timeout: cliOptions.timeout || fileConfig.timeout || DEFAULT_CLI_CONFIG.timeout,
+      debug: cliOptions.debug || fileConfig.debug || DEFAULT_CLI_CONFIG.debug
     };
   }
 
@@ -231,6 +245,10 @@ export class CLIInterface implements ICLIInterface {
 
     if (config.timeout !== undefined && (typeof config.timeout !== 'number' || config.timeout < 1)) {
       throw new Error('Configuration "timeout" must be a positive number');
+    }
+
+    if (config.debug !== undefined && typeof config.debug !== 'boolean') {
+      throw new Error('Configuration "debug" must be a boolean');
     }
   }
 

@@ -256,8 +256,6 @@ export class Logger {
   }
 
   // Enhanced logging methods with structured data support
-  error(message: string, error?: Error, context?: { component?: string; connectionId?: string; clientId?: string; data?: any }): void;
-  error(message: string, data?: any, context?: { component?: string; connectionId?: string; clientId?: string }): void;
   error(message: string, errorOrData?: Error | any, context?: { component?: string; connectionId?: string; clientId?: string; data?: any }): void {
     if (this.config.level >= LogLevel.ERROR) {
       let error: Error | undefined;

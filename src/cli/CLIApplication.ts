@@ -73,15 +73,40 @@ export class CLIApplication {
   }
 
   /**
+   * Configure debug mode for all handlers that support it
+   */
+  private configureDebugMode(debug: boolean): void {
+    const registry = this.cli.getRegistry();
+    const handlerNames = registry.getCommandNames();
+    
+    for (const handlerName of handlerNames) {
+      const handler = registry.get(handlerName);
+      if (handler && typeof (handler as any).setDebug === 'function') {
+        (handler as any).setDebug(debug);
+      }
+    }
+  }
+
+  /**
    * Run the CLI application with given arguments
    */
   async run(argv: string[]): Promise<number> {
     try {
-      console.log('[DEBUG] CLIApplication.run called with argv:', argv);
-      
       // Parse command line arguments
       const command = this.cli.parseArgs(argv);
-      console.log('[DEBUG] Parsed command:', command);
+      
+      // Configure logger based on debug flag
+      if (command.config.debug) {
+        this.logger.setLevel(3); // DEBUG level
+      } else {
+        this.logger.setLevel(2); // INFO level
+      }
+      
+      // Configure debug mode for all handlers
+      this.configureDebugMode(command.config.debug);
+      
+      this.logger.debug('CLIApplication.run called with argv:', argv);
+      this.logger.debug('Parsed command:', command);
 
       // Enable proxy manager logging if verbose mode
       if (command.config.verbose) {
@@ -89,19 +114,19 @@ export class CLIApplication {
       }
 
       // Ensure proxy is ready for all commands (seamless experience)
-      console.log('[DEBUG] Ensuring proxy is ready...');
+      this.logger.debug('Ensuring proxy is ready...');
       await this.ensureProxyReady();
 
       // Handle connection for commands that need it
       if (this.needsConnection(command.name)) {
-        console.log('[DEBUG] Command needs connection, ensuring connection...');
+        this.logger.debug('Command needs connection, ensuring connection...');
         await this.ensureConnection(command);
       }
 
       // Execute the command
-      console.log('[DEBUG] Executing command via CLI interface...');
+      this.logger.debug('Executing command via CLI interface...');
       const result = await this.cli.execute(command);
-      console.log('[DEBUG] Command execution result:', result);
+      this.logger.debug('Command execution result:', result);
 
       // Output the result
       this.outputResult(result, command);
@@ -110,7 +135,7 @@ export class CLIApplication {
       return result.exitCode || (result.success ? ExitCode.SUCCESS : ExitCode.GENERAL_ERROR);
 
     } catch (error) {
-      console.log('[DEBUG] Error in CLIApplication.run:', error);
+      this.logger.debug('Error in CLIApplication.run:', error);
       const errorMessage = error instanceof Error ? error.message : String(error);
       
       // Output error
