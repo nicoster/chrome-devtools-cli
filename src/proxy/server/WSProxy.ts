@@ -333,8 +333,10 @@ export class WSProxy {
         if (cdpConnection.connection.readyState === WebSocket.OPEN) {
           cdpConnection.connection.send(message);
           proxyConnection.messageCount++;
+          console.log(`[DEBUG] Forwarded CDP command from client ${proxyConnection.id}: ${cdpCommand.method} (id: ${cdpCommand.id})`);
           this.logger.debug(`Forwarded CDP command from client ${proxyConnection.id}: ${cdpCommand.method} (id: ${cdpCommand.id})`);
         } else {
+          console.log(`[DEBUG] CDP connection ${connectionId} is not open, readyState: ${cdpConnection.connection.readyState}`);
           this.logger.warn(`CDP connection ${connectionId} is not open, cannot forward command`);
           clientWs.send(JSON.stringify({
             error: { code: -32001, message: 'CDP connection unavailable' },
@@ -367,14 +369,21 @@ export class WSProxy {
         // Handle CDP responses (have an 'id' field) vs events (no 'id' field)
         if (this.isCDPResponse(cdpMessage)) {
           // This is a response to a command - forward to the specific client
+          console.log(`[DEBUG] Received CDP response for client ${proxyConnection.id}: id ${cdpMessage.id}`);
           if (clientWs.readyState === WebSocket.OPEN) {
             clientWs.send(message);
             proxyConnection.messageCount++;
+            console.log(`[DEBUG] Forwarded CDP response to client ${proxyConnection.id}: id ${cdpMessage.id}`);
             this.logger.debug(`Forwarded CDP response to client ${proxyConnection.id}: id ${cdpMessage.id}`);
+          } else {
+            console.log(`[DEBUG] Client WebSocket is not open for ${proxyConnection.id}, readyState: ${clientWs.readyState}`);
           }
         } else if (this.isCDPEvent(cdpMessage)) {
           // This is an event - handle via event forwarding system
+          console.log(`[DEBUG] Received CDP event: ${cdpMessage.method}`);
           this.forwardEventToSubscribedClients(connectionId, cdpMessage, message);
+        } else {
+          console.log(`[DEBUG] Received unknown CDP message type:`, cdpMessage);
         }
       } catch (error) {
         this.logger.error(`Error forwarding message to client ${proxyConnection.id}:`, error);
@@ -382,6 +391,7 @@ export class WSProxy {
     };
 
     // Add message handler to CDP connection
+    console.log(`[DEBUG] Adding message handler to CDP connection ${connectionId} for proxy ${proxyConnection.id}`);
     cdpConnection.connection.on('message', cdpMessageHandler);
 
     // Clean up handler when proxy connection closes

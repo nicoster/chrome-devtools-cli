@@ -77,17 +77,17 @@ A persistent connection proxy server that solves the console monitoring historic
 4. WHEN a CLI client sends GET /api/health/:connectionId, THE Proxy_Server SHALL return the connection status and health information
 5. WHEN a CLI client sends DELETE /api/connection/:connectionId, THE Proxy_Server SHALL close the connection and clean up stored data
 
-### Requirement 6: WebSocket Command Proxying
+### Requirement 6: HTTP-Based CDP Command Execution
 
-**User Story:** As a CLI client, I want to send CDP commands through the proxy server, so that I can execute browser automation while benefiting from persistent connections.
+**User Story:** As a CLI client, I want to send CDP commands through the proxy server via HTTP API, so that I can execute browser automation while benefiting from persistent connections without WebSocket complexity.
 
 #### Acceptance Criteria
 
-1. WHEN a CLI client establishes a WebSocket connection to the proxy, THE Proxy_Server SHALL create a bidirectional proxy to the actual CDP connection
-2. WHEN a CLI client sends a CDP command through the proxy, THE Proxy_Server SHALL forward it to Chrome and return the response
-3. WHEN Chrome sends events through CDP, THE Proxy_Server SHALL forward them to all connected CLI clients
-4. WHEN a CLI client disconnects, THE Proxy_Server SHALL maintain the underlying CDP connection for other clients
-5. WHEN CDP command execution fails, THE Proxy_Server SHALL return appropriate error responses to the CLI client
+1. WHEN a CLI client sends a CDP command to the proxy via HTTP POST to /api/execute/:connectionId, THE Proxy_Server SHALL execute it on the target Chrome connection and return the response
+2. WHEN a CLI client submits a CDP command, THE Proxy_Server SHALL forward it to Chrome and return the response within the specified timeout using Long Polling approach
+3. WHEN Chrome sends events through CDP, THE Proxy_Server SHALL continue forwarding them to the message store for historical access
+4. WHEN multiple CLI clients send commands concurrently to the same connection, THE Proxy_Server SHALL handle them independently using proper response routing
+5. WHEN CDP command execution fails or times out, THE Proxy_Server SHALL return appropriate error responses to the CLI client
 
 ### Requirement 7: Connection Health Monitoring
 
@@ -157,6 +157,6 @@ A persistent connection proxy server that solves the console monitoring historic
 
 1. WHEN the proxy server starts, THE Proxy_Server SHALL bind only to localhost interface to prevent external access
 2. WHEN API requests are received, THE Proxy_Server SHALL validate request format and reject malformed requests
-3. WHEN WebSocket connections are established, THE Proxy_Server SHALL validate connection parameters
+3. WHEN HTTP command execution requests are received, THE Proxy_Server SHALL validate command parameters and connection IDs
 4. WHEN file operations are performed, THE Proxy_Server SHALL operate only within allowed directories
 5. WHEN sensitive data is logged, THE Proxy_Server SHALL sanitize or redact sensitive information

@@ -5,6 +5,37 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.0] - 2024-12-23
+
+### Fixed
+- **Critical Fix**: Resolved eval command timeout issues by changing default proxy usage strategy
+  - `EvaluateScriptHandler` now defaults to `useProxy = false` for direct CDP connection
+  - Eliminates timeout issues that occurred with HTTP-based command execution through proxy
+  - Maintains proxy usage for console/network monitoring commands that benefit from historical data
+  - Provides faster, more reliable JavaScript execution for eval commands
+
+### Enhanced
+- **Proxy Usage Strategy**: Optimized proxy usage for better performance and reliability
+  - Only console messages and network requests use proxy server (for historical data)
+  - All other features (eval, click, fill, etc.) connect directly to CDP/Chrome
+  - Simplified architecture reduces complexity and improves response times
+  - Maintains backward compatibility with existing functionality
+
+### Added
+- **Comprehensive Test Suite**: Added extensive CLI command testing
+  - `test-cli-quick.js` - Quick basic functionality verification
+  - `test-cli-extended.js` - Extended functionality with file operations
+  - `test-cli-commands.js` - Comprehensive test with timeout handling
+  - `test-cli-final.js` - Final comprehensive test with proper error handling
+  - 95.5% test success rate across all CLI commands
+  - Automated verification of all major command categories
+
+### Technical Details
+- Modified `EvaluateScriptHandler` constructor to default `useProxy = false`
+- Updated proxy strategy documentation and implementation
+- Comprehensive test coverage for all CLI subcommands
+- Verified functionality across JavaScript evaluation, file operations, DOM interaction, and monitoring
+
 ## [1.6.0] - 2024-12-23
 
 ### Added

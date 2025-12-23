@@ -103,36 +103,36 @@ This implementation plan breaks down the Persistent Connection Proxy Server into
   - Test error handling and validation
   - Test edge cases and malformed requests
 
-- [x] 4. WebSocket Proxy Implementation
-  - Implement bidirectional WebSocket proxying between CLI and CDP
+- [x] 4. HTTP Command Execution Implementation
+  - Implement HTTP-based command execution using Long Polling approach
   - _Requirements: 6.1, 6.2, 6.3, 6.4, 6.5_
 
-- [x] 4.1 Create WebSocket server for CLI connections
-  - Set up WebSocket server alongside HTTP server
-  - Implement connection authentication and routing
-  - Add connection lifecycle management
+- [x] 4.1 Create CommandExecutionService for HTTP-based commands
+  - Implement HTTP endpoint for CDP command execution
+  - Add command queuing and response matching
+  - Handle concurrent command execution from multiple clients
   - _Requirements: 6.1, 6.4_
 
-- [x] 4.2 Implement CDP command proxying
-  - Forward CDP commands from CLI to Chrome
-  - Forward CDP responses from Chrome to CLI
-  - Handle command/response ID matching
+- [x] 4.2 Implement CDP command execution with proper response routing
+  - Send CDP commands to Chrome and wait for responses
+  - Match responses to correct HTTP requests using command IDs
+  - Handle command timeouts and error responses
   - _Requirements: 6.2_
 
-- [x] 4.3 Implement CDP event forwarding
-  - Forward CDP events from Chrome to all connected CLI clients
-  - Handle event filtering and routing
-  - Manage client subscriptions
+- [x] 4.3 Add command execution API endpoint
+  - POST /api/execute/:connectionId for command execution
+  - Implement request validation and timeout handling
+  - Add proper error responses for invalid commands
   - _Requirements: 6.3_
 
-- [ ]* 4.4 Write property test for WebSocket proxy bidirectionality
-  - **Property 8: WebSocket Proxy Bidirectionality**
+- [ ]* 4.4 Write property test for HTTP command execution reliability
+  - **Property 8: HTTP Command Execution Reliability**
   - **Validates: Requirements 6.1, 6.2, 6.3**
 
-- [ ]* 4.5 Write unit tests for WebSocket proxy
-  - Test command forwarding accuracy
-  - Test event broadcasting
-  - Test client connection management
+- [ ]* 4.5 Write unit tests for command execution service
+  - Test command execution accuracy
+  - Test timeout handling
+  - Test concurrent command execution
 
 - [x] 5. Checkpoint - Core Functionality Complete
   - Ensure all core proxy server functionality is working
@@ -158,6 +158,7 @@ This implementation plan breaks down the Persistent Connection Proxy Server into
   - Update GetConsoleMessageHandler to use proxy API
   - Update ListNetworkRequestsHandler to use proxy API
   - Update GetNetworkRequestHandler to use proxy API
+  - Update EvaluateScriptHandler to use HTTP command execution
   - _Requirements: 9.2, 9.4_
 
 - [x] 6.4 Implement fallback to direct CDP connections

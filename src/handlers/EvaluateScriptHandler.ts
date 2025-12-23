@@ -1,7 +1,6 @@
 import { ICommandHandler } from '../interfaces/CommandHandler';
 import { CDPClient, CommandResult } from '../types';
 import { ProxyClient } from '../client/ProxyClient';
-import { WebSocket } from 'ws';
 import { promises as fs } from 'fs';
 import fetch from 'node-fetch';
 
@@ -57,7 +56,7 @@ export class EvaluateScriptHandler implements ICommandHandler {
   private proxyClient: ProxyClient;
   private useProxy: boolean;
 
-  constructor(useProxy: boolean = true) {
+  constructor(useProxy: boolean = false) {
     this.proxyClient = new ProxyClient();
     this.useProxy = useProxy;
   }
@@ -66,6 +65,8 @@ export class EvaluateScriptHandler implements ICommandHandler {
    * Execute JavaScript code in the browser
    */
   async execute(client: CDPClient, args: unknown): Promise<CommandResult> {
+    console.log('[DEBUG] EvaluateScriptHandler.execute called with args:', args);
+    
     const scriptArgs = args as EvaluateScriptArgs;
 
     // Validate arguments
@@ -83,13 +84,21 @@ export class EvaluateScriptHandler implements ICommandHandler {
       };
     }
 
+    console.log('[DEBUG] Arguments validated, useProxy:', this.useProxy);
+
     try {
       // Try proxy first if enabled
       if (this.useProxy) {
+        console.log('[DEBUG] Checking proxy availability...');
         const proxyAvailable = await this.proxyClient.isProxyAvailable();
+        console.log('[DEBUG] Proxy available:', proxyAvailable);
+        
         if (proxyAvailable) {
           console.log('[INFO] Using proxy connection for script evaluation');
-          return await this.executeWithProxy(scriptArgs);
+          console.log('[DEBUG] About to call executeWithProxy...');
+          const result = await this.executeWithProxy(scriptArgs);
+          console.log('[DEBUG] executeWithProxy returned:', result);
+          return result;
         } else {
           console.warn('[WARN] Proxy not available, falling back to direct CDP connection');
         }
@@ -99,14 +108,17 @@ export class EvaluateScriptHandler implements ICommandHandler {
     }
 
     // Fallback to direct CDP
+    console.log('[DEBUG] Falling back to direct CDP');
     return await this.executeWithDirectCDP(client, scriptArgs);
   }
 
   /**
-   * Execute script through proxy
+   * Execute script through proxy using HTTP API
    */
   private async executeWithProxy(scriptArgs: EvaluateScriptArgs): Promise<CommandResult> {
     try {
+      console.log('[DEBUG] Starting executeWithProxy');
+      
       // Get the JavaScript code to execute
       let expression: string;
       if (scriptArgs.file) {
@@ -115,43 +127,27 @@ export class EvaluateScriptHandler implements ICommandHandler {
         expression = scriptArgs.expression!;
       }
 
-      // Get existing connections from proxy API
-      const response = await fetch('http://localhost:9223/api/connections');
-      if (!response.ok) {
-        throw new Error('Failed to get proxy connections');
-      }
-      
-      const result = await response.json();
-      if (!result.success || !result.data.connections || result.data.connections.length === 0) {
-        throw new Error('No active proxy connections found');
-      }
+      console.log('[DEBUG] Expression to execute:', expression.substring(0, 100));
 
-      // Use the first available healthy connection
-      const connection = result.data.connections.find((conn: any) => conn.isHealthy);
-      if (!connection) {
-        throw new Error('No healthy proxy connections found');
-      }
-
-      console.log(`[INFO] Using existing proxy connection: ${connection.id}`);
-
-      // Set the connection ID for WebSocket creation
-      (this.proxyClient as any).connectionId = connection.id;
-
-      // Create WebSocket proxy connection
-      const ws = await this.proxyClient.createWebSocketProxy();
+      // Connect to Chrome through the proxy
+      console.log('[DEBUG] Creating new proxy connection...');
+      const connectionId = await this.proxyClient.connect('localhost', 9222);
+      console.log(`[DEBUG] Created new proxy connection: ${connectionId}`);
 
       try {
-        const result = await this.executeScriptThroughProxy(ws, expression, scriptArgs);
+        // Execute script through HTTP API instead of WebSocket
+        const result = await this.executeScriptThroughHTTP(connectionId, expression, scriptArgs);
         
         return {
           success: true,
           data: result
         };
       } finally {
-        // Clean up
-        ws.close();
+        // Disconnect from proxy (this will also release the CLI client)
+        await this.proxyClient.disconnect();
       }
     } catch (error) {
+      console.log('[DEBUG] Error in executeWithProxy:', error);
       return {
         success: false,
         error: error instanceof Error ? error.message : String(error)
@@ -160,61 +156,21 @@ export class EvaluateScriptHandler implements ICommandHandler {
   }
 
   /**
-   * Execute script through proxy WebSocket
+   * Execute script through proxy HTTP API
    */
-  private async executeScriptThroughProxy(ws: WebSocket, expression: string, args: EvaluateScriptArgs): Promise<any> {
-    return new Promise((resolve, reject) => {
-      const commandId = Date.now();
-      const timeout = args.timeout || 30000;
-      const awaitPromise = args.awaitPromise ?? true;
-      const returnByValue = args.returnByValue ?? true;
+  private async executeScriptThroughHTTP(connectionId: string, expression: string, args: EvaluateScriptArgs): Promise<any> {
+    const timeout = args.timeout || 30000;
+    const awaitPromise = args.awaitPromise ?? true;
+    const returnByValue = args.returnByValue ?? true;
 
-      const timeoutHandle = setTimeout(() => {
-        reject(new Error(`Script execution timeout after ${timeout}ms`));
-      }, timeout);
+    console.log(`[DEBUG] Starting HTTP script execution, timeout: ${timeout}ms`);
+    console.log(`[DEBUG] Expression: ${expression.substring(0, 100)}${expression.length > 100 ? '...' : ''}`);
 
-      ws.on('message', (data) => {
-        try {
-          const response = JSON.parse(data.toString());
-          
-          if (response.id === commandId) {
-            clearTimeout(timeoutHandle);
-            
-            if (response.error) {
-              reject(new Error(`CDP Error: ${response.error.message}`));
-              return;
-            }
+    try {
+      // Use the proxy client's HTTP API to execute the command
+      const proxyUrl = this.proxyClient.getConfig().proxyUrl;
+      const commandId = Date.now() + Math.floor(Math.random() * 10000);
 
-            const result = response.result;
-            if (result.exceptionDetails) {
-              const error = new Error(result.result?.description || 'Script execution failed');
-              (error as any).exceptionDetails = result.exceptionDetails;
-              reject(error);
-              return;
-            }
-
-            // Handle the result
-            let value = result.result?.value;
-            if (result.result?.type === 'undefined') {
-              value = undefined;
-            } else if (result.result?.unserializableValue) {
-              value = result.result.unserializableValue;
-            }
-
-            resolve(value);
-          }
-        } catch (error) {
-          clearTimeout(timeoutHandle);
-          reject(new Error(`Failed to parse CDP response: ${error instanceof Error ? error.message : error}`));
-        }
-      });
-
-      ws.on('error', (error) => {
-        clearTimeout(timeoutHandle);
-        reject(new Error(`WebSocket error: ${error.message}`));
-      });
-
-      // Send the Runtime.evaluate command
       const command = {
         id: commandId,
         method: 'Runtime.evaluate',
@@ -227,8 +183,72 @@ export class EvaluateScriptHandler implements ICommandHandler {
         }
       };
 
-      ws.send(JSON.stringify(command));
-    });
+      console.log(`[DEBUG] Sending HTTP command to ${proxyUrl}/api/execute/${connectionId}`);
+
+      const controller = new AbortController();
+      const timeoutHandle = setTimeout(() => controller.abort(), timeout);
+
+      try {
+        const response = await fetch(`${proxyUrl}/api/execute/${connectionId}`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'x-client-id': `eval_handler_${Date.now()}`
+          },
+          body: JSON.stringify({
+            command,
+            timeout
+          }),
+          signal: controller.signal
+        });
+
+        clearTimeout(timeoutHandle);
+
+        if (!response.ok) {
+          const errorData = await response.json().catch(() => ({}));
+          throw new Error(`HTTP ${response.status}: ${errorData.error || response.statusText}`);
+        }
+
+        const result = await response.json();
+        console.log(`[DEBUG] HTTP command response:`, result);
+
+        if (!result.success) {
+          throw new Error(`Command execution failed: ${result.error || 'Unknown error'}`);
+        }
+
+        const commandResult = result.data.result;
+        if (result.data.error) {
+          throw new Error(`CDP Error: ${result.data.error.message}`);
+        }
+
+        // Handle the result similar to WebSocket approach
+        if (commandResult.exceptionDetails) {
+          console.log(`[DEBUG] Exception details:`, commandResult.exceptionDetails);
+          const error = new Error(commandResult.result?.description || 'Script execution failed');
+          (error as any).exceptionDetails = commandResult.exceptionDetails;
+          throw error;
+        }
+
+        // Handle the result
+        let value = commandResult.result?.value;
+        if (commandResult.result?.type === 'undefined') {
+          value = undefined;
+        } else if (commandResult.result?.unserializableValue) {
+          value = commandResult.result.unserializableValue;
+        }
+
+        console.log(`[DEBUG] Successful HTTP result:`, value);
+        return value;
+
+      } catch (error) {
+        clearTimeout(timeoutHandle);
+        throw error;
+      }
+
+    } catch (error) {
+      console.log(`[DEBUG] Error in HTTP script execution:`, error);
+      throw error;
+    }
   }
 
   /**

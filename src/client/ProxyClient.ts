@@ -254,27 +254,36 @@ export class ProxyClient {
       throw new Error('No active connection. Call connect() first.');
     }
 
+    console.log(`[DEBUG] Creating WebSocket proxy for connection: ${this.connectionId}`);
+
     try {
       const wsUrl = this.config.proxyUrl.replace('http://', 'ws://').replace('https://', 'wss://');
-      const ws = new WebSocket(`${wsUrl}/ws/${this.connectionId}`);
+      const fullWsUrl = `${wsUrl}/ws/${this.connectionId}`;
+      console.log(`[DEBUG] WebSocket URL: ${fullWsUrl}`);
+      
+      const ws = new WebSocket(fullWsUrl);
 
       return new Promise((resolve, reject) => {
         const timeout = setTimeout(() => {
+          console.log(`[DEBUG] WebSocket connection timeout for ${this.connectionId}`);
           reject(new Error('WebSocket connection timeout'));
         }, 10000);
 
         ws.on('open', () => {
+          console.log(`[DEBUG] WebSocket connection opened for ${this.connectionId}`);
           clearTimeout(timeout);
           this.wsConnection = ws;
           resolve(ws);
         });
 
         ws.on('error', (error) => {
+          console.log(`[DEBUG] WebSocket connection error for ${this.connectionId}:`, error);
           clearTimeout(timeout);
           reject(error);
         });
       });
     } catch (error) {
+      console.log(`[DEBUG] Failed to create WebSocket proxy for ${this.connectionId}:`, error);
       throw new Error(`Failed to create WebSocket proxy: ${error instanceof Error ? error.message : error}`);
     }
   }
@@ -320,6 +329,27 @@ export class ProxyClient {
    */
   async disconnect(): Promise<void> {
     try {
+      // Release CLI client first if we have a connection
+      if (this.connectionId) {
+        try {
+          const controller = new AbortController();
+          const timeout = setTimeout(() => controller.abort(), 5000);
+          
+          await fetch(`${this.config.proxyUrl}/api/client/release`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'x-client-id': `proxy_client_${Date.now()}`
+            },
+            signal: controller.signal
+          });
+          
+          clearTimeout(timeout);
+        } catch (error) {
+          // Ignore errors when releasing client
+        }
+      }
+
       // Close WebSocket connection if active
       if (this.wsConnection) {
         this.wsConnection.close();

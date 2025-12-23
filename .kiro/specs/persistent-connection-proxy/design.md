@@ -2,7 +2,7 @@
 
 ## Overview
 
-The Persistent Connection Proxy Server is a local HTTP/WebSocket server that solves the console monitoring historical messages problem by maintaining continuous CDP connections and accumulating console messages and network requests. The proxy server acts as an intermediary between chrome-cdp-cli processes and Chrome browser instances, enabling true connection sharing and complete historical data access.
+The Persistent Connection Proxy Server is a local HTTP server that solves the console monitoring historical messages problem by maintaining continuous CDP connections and accumulating console messages and network requests. The proxy server acts as an intermediary between chrome-cdp-cli processes and Chrome browser instances, enabling true connection sharing and complete historical data access.
 
 **Core Design Principles:**
 - **Connection Persistence**: Maintain CDP connections across multiple CLI command executions
@@ -18,13 +18,13 @@ The system uses a proxy server architecture with the following components:
 ```
 ┌─────────────────────────────────────────┐
 │  chrome-cdp-cli (Process 1, 2, 3...)   │
-│  └─> HTTP/WebSocket → Proxy Server     │
+│  └─> HTTP API → Proxy Server           │
 └─────────────────────────────────────────┘
-              ↓ (HTTP/WebSocket)
+              ↓ (HTTP)
 ┌─────────────────────────────────────────┐
 │  Proxy Server (localhost:9223)         │
 │  ├─ HTTP API Server                     │
-│  ├─ WebSocket Proxy                     │
+│  ├─ Command Execution Service           │
 │  ├─ CDP Connection Pool                 │
 │  ├─ Message Store                       │
 │  └─ Health Monitor                      │
@@ -48,8 +48,8 @@ The system uses a proxy server architecture with the following components:
 3. Message Capture:
    Chrome → CDP Events → Proxy → Store in Memory → Serve to CLI
 
-4. Command Proxying:
-   CLI → WebSocket → Proxy → CDP → Chrome → Response → Proxy → CLI
+4. Command Execution:
+   CLI → HTTP POST → Command Execution Service → CDP → Chrome → Response → CLI
 ```
 
 ## Components and Interfaces
@@ -240,36 +240,45 @@ class ProxyAPIServer {
 }
 ```
 
-### 6. WebSocket Proxy (WSProxy)
+### 6. Command Execution Service (CommandExecutionService)
 
-Handles bidirectional WebSocket proxying between CLI clients and CDP connections.
+Handles HTTP-based command execution using Long Polling approach to avoid WebSocket message routing complexity.
 
 ```typescript
-interface ProxyWebSocketConnection {
-  id: string;
-  clientWs: WebSocket;
+interface CommandExecutionRequest {
   connectionId: string;
-  createdAt: number;
-  messageCount: number;
+  command: {
+    id: number | string;
+    method: string;
+    params?: any;
+  };
+  timeout?: number;
 }
 
-class WSProxy {
-  private connections: Map<string, ProxyWebSocketConnection> = new Map();
-  private wsServer: WebSocketServer;
+interface CommandExecutionResponse {
+  success: boolean;
+  result?: any;
+  error?: {
+    code: number;
+    message: string;
+  };
+  executionTime: number;
+}
+
+class CommandExecutionService {
   private connectionPool: ConnectionPool;
+  private pendingCommands: Map<string, PendingCommand> = new Map();
   
-  start(server: http.Server): void;
-  stop(): void;
-  handleConnection(ws: WebSocket, request: http.IncomingMessage): void;
-  forwardMessage(proxyId: string, message: string): void;
-  closeProxyConnection(proxyId: string): void;
-  getActiveProxyConnections(): ProxyWebSocketConnection[];
+  async executeCommand(request: CommandExecutionRequest): Promise<CommandExecutionResponse>;
+  private sendCDPCommand(connectionId: string, command: any): Promise<any>;
+  private waitForResponse(commandId: string, timeout: number): Promise<any>;
+  cleanup(): void;
 }
 ```
 
 ### 7. CLI Integration (ProxyClient)
 
-Client-side integration for chrome-cdp-cli to use the proxy server.
+Client-side integration for chrome-cdp-cli to use the proxy server with HTTP-based command execution.
 
 ```typescript
 interface ProxyClientConfig {
@@ -281,13 +290,12 @@ interface ProxyClientConfig {
 class ProxyClient {
   private config: ProxyClientConfig;
   private connectionId?: string;
-  private wsConnection?: WebSocket;
   
   async ensureProxyRunning(): Promise<boolean>;
   async connect(host: string, port: number, targetId?: string): Promise<string>;
   async getConsoleMessages(filter?: ConsoleMessageFilter): Promise<StoredConsoleMessage[]>;
   async getNetworkRequests(filter?: NetworkRequestFilter): Promise<StoredNetworkRequest[]>;
-  async createWebSocketProxy(): Promise<WebSocket>;
+  async executeCommand(command: any, timeout?: number): Promise<any>;
   async healthCheck(): Promise<boolean>;
   async disconnect(): Promise<void>;
 }
@@ -312,6 +320,28 @@ interface ConnectionMetrics {
   clientCount: number;
   lastActivity: number;
   reconnectionCount: number;
+}
+```
+
+### Command Execution
+
+```typescript
+interface PendingCommand {
+  id: string;
+  connectionId: string;
+  command: any;
+  timestamp: number;
+  timeout: number;
+  resolve: (value: any) => void;
+  reject: (error: Error) => void;
+}
+
+interface CommandExecutionMetrics {
+  totalCommands: number;
+  successfulCommands: number;
+  failedCommands: number;
+  averageExecutionTime: number;
+  timeoutCount: number;
 }
 ```
 
@@ -394,8 +424,8 @@ interface ProxyConfiguration {
 *For any* valid API request to the proxy server, the response should follow the defined APIResponse format and include appropriate success/error information
 **Validates: Requirements 5.1, 5.2, 5.3, 5.4, 5.5**
 
-### Property 8: WebSocket Proxy Bidirectionality
-*For any* CDP command sent through the WebSocket proxy, the command should be forwarded to Chrome and the response should be returned to the CLI client without modification
+### Property 8: HTTP Command Execution Reliability
+*For any* CDP command sent through the HTTP command execution endpoint, the command should be forwarded to Chrome and the response should be returned to the CLI client without modification, with proper timeout handling
 **Validates: Requirements 6.1, 6.2, 6.3**
 
 ### Property 9: Configuration Override Consistency

@@ -270,33 +270,42 @@ export class ConnectionPool {
 
       // Send a simple CDP command to test the connection
       // Use integer ID for CDP command
-      const messageId = Math.floor(Date.now() % 1000000) + Math.floor(Math.random() * 1000);
+      const messageId = Math.floor(Date.now() % 1000000) + Math.floor(Math.random() * 10000); // Add more randomness
       const testMessage = {
         id: messageId,
         method: 'Runtime.evaluate',
         params: { expression: '1+1' }
       };
 
+      console.log(`[DEBUG] Health check starting for connection ${connectionId} with message ID: ${messageId}`);
+
       // Create a promise that resolves when we get a response
       const healthCheckPromise = new Promise<boolean>((resolve) => {
         const timeout = setTimeout(() => {
+          console.log(`[DEBUG] Health check timeout for connection ${connectionId}, message ID: ${messageId}`);
           resolve(false);
         }, 5000);
 
         const messageHandler = (data: WebSocket.Data) => {
           try {
             const response = JSON.parse(data.toString());
+            console.log(`[DEBUG] Health check received message for connection ${connectionId}, response ID: ${response.id}, expected: ${messageId}`);
+            
             if (response.id === testMessage.id) {
               clearTimeout(timeout);
               connection.connection.off('message', messageHandler);
-              resolve(response.result && !response.error);
+              const isHealthy = response.result && !response.error;
+              console.log(`[DEBUG] Health check result for connection ${connectionId}: ${isHealthy}`);
+              resolve(isHealthy);
             }
           } catch (error) {
+            console.log(`[DEBUG] Health check message parsing error for connection ${connectionId}:`, error);
             // Ignore parsing errors for other messages
           }
         };
 
         connection.connection.on('message', messageHandler);
+        console.log(`[DEBUG] Sending health check command for connection ${connectionId}:`, testMessage);
         connection.connection.send(JSON.stringify(testMessage));
       });
 

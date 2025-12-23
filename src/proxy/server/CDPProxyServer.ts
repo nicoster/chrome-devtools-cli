@@ -204,6 +204,9 @@ export class CDPProxyServer {
       // Stop WebSocket proxy
       this.wsProxy.stop();
 
+      // Cleanup API server resources
+      this.apiServer.cleanup();
+
       // Close WebSocket server
       if (this.wsServer) {
         this.wsServer.close();

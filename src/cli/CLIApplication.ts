@@ -77,8 +77,11 @@ export class CLIApplication {
    */
   async run(argv: string[]): Promise<number> {
     try {
+      console.log('[DEBUG] CLIApplication.run called with argv:', argv);
+      
       // Parse command line arguments
       const command = this.cli.parseArgs(argv);
+      console.log('[DEBUG] Parsed command:', command);
 
       // Enable proxy manager logging if verbose mode
       if (command.config.verbose) {
@@ -86,15 +89,19 @@ export class CLIApplication {
       }
 
       // Ensure proxy is ready for all commands (seamless experience)
+      console.log('[DEBUG] Ensuring proxy is ready...');
       await this.ensureProxyReady();
 
       // Handle connection for commands that need it
       if (this.needsConnection(command.name)) {
+        console.log('[DEBUG] Command needs connection, ensuring connection...');
         await this.ensureConnection(command);
       }
 
       // Execute the command
+      console.log('[DEBUG] Executing command via CLI interface...');
       const result = await this.cli.execute(command);
+      console.log('[DEBUG] Command execution result:', result);
 
       // Output the result
       this.outputResult(result, command);
@@ -103,6 +110,7 @@ export class CLIApplication {
       return result.exitCode || (result.success ? ExitCode.SUCCESS : ExitCode.GENERAL_ERROR);
 
     } catch (error) {
+      console.log('[DEBUG] Error in CLIApplication.run:', error);
       const errorMessage = error instanceof Error ? error.message : String(error);
       
       // Output error

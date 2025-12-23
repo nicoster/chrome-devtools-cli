@@ -156,6 +156,48 @@ export interface HealthCheckResult {
 }
 
 // ============================================================================
+// Command Execution Types
+// ============================================================================
+
+export interface CommandExecutionRequest {
+  connectionId: string;
+  command: {
+    id: number | string;
+    method: string;
+    params?: any;
+  };
+  timeout?: number;
+}
+
+export interface CommandExecutionResponse {
+  success: boolean;
+  result?: any;
+  error?: {
+    code: number;
+    message: string;
+  };
+  executionTime: number;
+}
+
+export interface PendingCommand {
+  id: string;
+  connectionId: string;
+  command: any;
+  timestamp: number;
+  timeout: number;
+  resolve: (value: any) => void;
+  reject: (error: Error) => void;
+}
+
+export interface CommandExecutionMetrics {
+  totalCommands: number;
+  successfulCommands: number;
+  failedCommands: number;
+  averageExecutionTime: number;
+  timeoutCount: number;
+}
+
+// ============================================================================
 // WebSocket Proxy Types
 // ============================================================================
 

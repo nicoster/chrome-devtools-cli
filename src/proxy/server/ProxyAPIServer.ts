@@ -5,12 +5,13 @@
  */
 
 import express from 'express';
-import { APIResponse, ConnectRequest, ConnectResponse, ConsoleMessageFilter, NetworkRequestFilter } from '../types/ProxyTypes';
+import { APIResponse, ConnectRequest, ConnectResponse, ConsoleMessageFilter, NetworkRequestFilter, CommandExecutionRequest, CommandExecutionResponse } from '../types/ProxyTypes';
 import { ConnectionPool } from './ConnectionPool';
 import { MessageStore } from './MessageStore';
 import { HealthMonitor } from './HealthMonitor';
 import { PerformanceMonitor } from './PerformanceMonitor';
 import { SecurityManager } from './SecurityManager';
+import { CommandExecutionService } from './CommandExecutionService';
 import { Logger } from '../../utils/logger';
 
 export class ProxyAPIServer {
@@ -19,6 +20,7 @@ export class ProxyAPIServer {
   private healthMonitor?: HealthMonitor;
   private performanceMonitor?: PerformanceMonitor;
   private securityManager: SecurityManager;
+  private commandExecutionService: CommandExecutionService;
   private logger: Logger;
 
   constructor(
@@ -33,6 +35,7 @@ export class ProxyAPIServer {
     this.healthMonitor = healthMonitor;
     this.performanceMonitor = performanceMonitor;
     this.securityManager = securityManager || new SecurityManager();
+    this.commandExecutionService = new CommandExecutionService(connectionPool);
     this.logger = new Logger();
   }
 
@@ -53,6 +56,13 @@ export class ProxyAPIServer {
     app.get('/api/network/:connectionId', this.validateConnectionId.bind(this), this.handleGetNetworkRequests.bind(this));
     app.get('/api/health/:connectionId', this.validateConnectionId.bind(this), this.handleHealthCheck.bind(this));
 
+    // Command execution
+    app.post('/api/execute/:connectionId', this.securityManager.getStrictRateLimiter(), this.validateConnectionId.bind(this), this.validateCommandExecutionRequest.bind(this), this.handleCommandExecution.bind(this));
+    
+    // CLI client management
+    app.post('/api/client/release', this.handleReleaseCLIClient.bind(this));
+    app.get('/api/client/status', this.handleGetCLIClientStatus.bind(this));
+
     // Health monitoring endpoints
     app.get('/api/health', this.handleServerHealth.bind(this));
     app.get('/api/health/detailed', this.handleDetailedHealthCheck.bind(this));
@@ -71,6 +81,21 @@ export class ProxyAPIServer {
     app.get('/api/status', this.handleServerStatus.bind(this));
 
     this.logger.info('API routes configured with enhanced security measures');
+  }
+
+  /**
+   * Cleanup resources
+   */
+  cleanup(): void {
+    this.commandExecutionService.cleanup();
+    this.logger.info('ProxyAPIServer cleanup completed');
+  }
+
+  /**
+   * Get command execution service for external access
+   */
+  getCommandExecutionService(): CommandExecutionService {
+    return this.commandExecutionService;
   }
 
   /**
@@ -341,6 +366,99 @@ export class ProxyAPIServer {
       res.status(500).json({
         success: false,
         error: error instanceof Error ? error.message : 'Failed to close connection',
+        timestamp: Date.now()
+      });
+    }
+  }
+
+  /**
+   * Handle CDP command execution
+   */
+  private async handleCommandExecution(
+    req: express.Request<{connectionId: string}, APIResponse<CommandExecutionResponse>, CommandExecutionRequest>,
+    res: express.Response<APIResponse<CommandExecutionResponse>>
+  ): Promise<void> {
+    try {
+      const { connectionId } = req.params;
+      const { command, timeout } = req.body;
+
+      // Generate or extract client ID from request headers or IP
+      const clientId = req.headers['x-client-id'] as string || `client_${req.ip}_${Date.now()}`;
+
+      // Check if connection exists
+      const connection = this.connectionPool.getConnectionInfo(connectionId);
+      if (!connection) {
+        res.status(404).json({
+          success: false,
+          error: 'Connection not found',
+          timestamp: Date.now()
+        });
+        return;
+      }
+
+      if (!connection.isHealthy) {
+        res.status(503).json({
+          success: false,
+          error: 'Connection is not healthy',
+          timestamp: Date.now()
+        });
+        return;
+      }
+
+      this.logger.debug(`Executing CDP command: ${command.method}`, {
+        connectionId,
+        method: command.method,
+        hasParams: !!command.params,
+        timeout: timeout || 30000,
+        clientId
+      });
+
+      // Execute command through CommandExecutionService with client ID
+      const executionRequest: CommandExecutionRequest = {
+        connectionId,
+        command,
+        timeout
+      };
+
+      const result = await this.commandExecutionService.executeCommand(executionRequest, clientId);
+
+      // Return appropriate status code based on result
+      const statusCode = result.success ? 200 : (result.error?.code || 500);
+
+      res.status(statusCode).json({
+        success: result.success,
+        data: result,
+        timestamp: Date.now()
+      });
+
+      this.logger.debug(`CDP command execution completed: ${command.method}`, {
+        connectionId,
+        success: result.success,
+        executionTime: result.executionTime,
+        statusCode,
+        clientId
+      });
+
+    } catch (error) {
+      this.logger.error('Command execution API error:', error);
+      
+      let statusCode = 500;
+      let errorMessage = error instanceof Error ? error.message : 'Command execution failed';
+
+      // Map specific errors to appropriate status codes
+      if (errorMessage.includes('Another CLI client')) {
+        statusCode = 409; // Conflict
+      } else if (errorMessage.includes('timeout')) {
+        statusCode = 408;
+      } else if (errorMessage.includes('not found')) {
+        statusCode = 404;
+      } else if (errorMessage.includes('not healthy')) {
+        statusCode = 503;
+      }
+
+      res.status(statusCode).json({
+        success: false,
+        error: errorMessage,
         timestamp: Date.now()
       });
     }
@@ -880,6 +998,108 @@ export class ProxyAPIServer {
     next();
   }
 
+  /**
+   * Validate command execution request body
+   */
+  private validateCommandExecutionRequest(req: express.Request, res: express.Response, next: express.NextFunction): void {
+    const { command, timeout } = req.body;
+
+    // Validate command object
+    if (!command || typeof command !== 'object') {
+      this.logger.logSecurityEvent('invalid_command_request', 'Missing or invalid command object', {
+        command,
+        ip: req.ip
+      });
+      
+      res.status(400).json({
+        success: false,
+        error: 'Command is required and must be an object',
+        timestamp: Date.now()
+      });
+      return;
+    }
+
+    // Validate command method
+    if (!command.method || typeof command.method !== 'string' || command.method.trim() === '') {
+      this.logger.logSecurityEvent('invalid_command_request', 'Missing or invalid command method', {
+        method: command.method,
+        ip: req.ip
+      });
+      
+      res.status(400).json({
+        success: false,
+        error: 'Command method is required and must be a non-empty string',
+        timestamp: Date.now()
+      });
+      return;
+    }
+
+    // Validate command method format (should be Domain.method)
+    const methodRegex = /^[A-Za-z][A-Za-z0-9]*\.[A-Za-z][A-Za-z0-9]*$/;
+    if (!methodRegex.test(command.method)) {
+      this.logger.logSecurityEvent('invalid_command_method', 'Command method has invalid format', {
+        method: command.method,
+        ip: req.ip
+      });
+      
+      res.status(400).json({
+        success: false,
+        error: 'Command method must be in format "Domain.method" (e.g., "Runtime.evaluate")',
+        timestamp: Date.now()
+      });
+      return;
+    }
+
+    // Validate command ID if provided
+    if (command.id !== undefined && (typeof command.id !== 'number' && typeof command.id !== 'string')) {
+      this.logger.logSecurityEvent('invalid_command_request', 'Invalid command ID type', {
+        commandId: command.id,
+        ip: req.ip
+      });
+      
+      res.status(400).json({
+        success: false,
+        error: 'Command ID must be a number or string if provided',
+        timestamp: Date.now()
+      });
+      return;
+    }
+
+    // Validate timeout if provided
+    if (timeout !== undefined) {
+      if (typeof timeout !== 'number' || timeout <= 0 || timeout > 300000) { // Max 5 minutes
+        this.logger.logSecurityEvent('invalid_command_request', 'Invalid timeout value', {
+          timeout,
+          ip: req.ip
+        });
+        
+        res.status(400).json({
+          success: false,
+          error: 'Timeout must be a positive number between 1 and 300000 (5 minutes)',
+          timestamp: Date.now()
+        });
+        return;
+      }
+    }
+
+    // Validate params if provided (should be an object or undefined)
+    if (command.params !== undefined && (command.params === null || (typeof command.params !== 'object' && !Array.isArray(command.params)))) {
+      this.logger.logSecurityEvent('invalid_command_request', 'Invalid command params', {
+        paramsType: typeof command.params,
+        ip: req.ip
+      });
+      
+      res.status(400).json({
+        success: false,
+        error: 'Command params must be an object or array if provided',
+        timestamp: Date.now()
+      });
+      return;
+    }
+
+    next();
+  }
+
   // ============================================================================
   // API Handlers
   // ============================================================================
@@ -1183,6 +1403,76 @@ export class ProxyAPIServer {
       return `${hours} hour${hours > 1 ? 's' : ''}`;
     } else {
       return `${minutes} minute${minutes > 1 ? 's' : ''}`;
+    }
+  }
+
+  // ============================================================================
+  // CLI Client Management Endpoints
+  // ============================================================================
+
+  /**
+   * Handle CLI client release
+   */
+  private async handleReleaseCLIClient(
+    req: express.Request,
+    res: express.Response
+  ): Promise<void> {
+    try {
+      const clientId = req.headers['x-client-id'] as string || `client_${req.ip}_${Date.now()}`;
+      
+      this.commandExecutionService.releaseActiveCLIClient(clientId);
+
+      this.logger.info(`CLI client released: ${clientId}`);
+
+      res.json({
+        success: true,
+        data: { 
+          message: 'CLI client released successfully',
+          clientId 
+        },
+        timestamp: Date.now()
+      });
+
+    } catch (error) {
+      this.logger.error('Release CLI client API error:', error);
+      res.status(500).json({
+        success: false,
+        error: error instanceof Error ? error.message : 'Failed to release CLI client',
+        timestamp: Date.now()
+      });
+    }
+  }
+
+  /**
+   * Handle CLI client status check
+   */
+  private async handleGetCLIClientStatus(
+    _req: express.Request,
+    res: express.Response
+  ): Promise<void> {
+    try {
+      const activeCLIClient = this.commandExecutionService.getActiveCLIClient();
+      const hasActiveClient = this.commandExecutionService.hasActiveCLIClient();
+      const pendingCommandsCount = this.commandExecutionService.getPendingCommandsCount();
+
+      res.json({
+        success: true,
+        data: {
+          hasActiveClient,
+          activeCLIClient,
+          pendingCommandsCount,
+          singleClientMode: true
+        },
+        timestamp: Date.now()
+      });
+
+    } catch (error) {
+      this.logger.error('Get CLI client status API error:', error);
+      res.status(500).json({
+        success: false,
+        error: error instanceof Error ? error.message : 'Failed to get CLI client status',
+        timestamp: Date.now()
+      });
     }
   }
 }
