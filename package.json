@@ -1,7 +1,7 @@
 {
   "name": "chrome-cdp-cli",
-  "version": "1.7.2",
-  "description": "LLM-first browser automation CLI via Chrome DevTools Protocol. Eval-first design optimized for AI assistants - LLMs write JavaScript scripts for rapid validation. Features: JavaScript execution, element interaction, screenshots, DOM snapshots, console/network monitoring. Built-in IDE integration for Cursor and Claude.",
+  "version": "1.7.3",
+  "description": "Browser automation CLI via Chrome DevTools Protocol. Designed for developers and AI assistants - combines dedicated commands for common tasks with flexible JavaScript execution for complex scenarios. Features: element interaction, screenshots, DOM snapshots, console/network monitoring. Built-in IDE integration for Cursor and Claude.",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "bin": {

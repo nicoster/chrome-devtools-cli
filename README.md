@@ -1,10 +1,7 @@
 # Chrome DevTools CLI
 
-**Built for LLMs - Eval-First Browser Automation**
 
 A command-line tool designed specifically for Large Language Models (LLMs) and AI-assisted development. Controls Chrome browser via Chrome DevTools Protocol (CDP) with an **eval-first design philosophy** - most automation tasks use JavaScript execution because LLMs excel at writing and validating scripts quickly.
-
-**Why eval-first?** LLMs are exceptional at writing JavaScript. This tool leverages that strength by using `eval` for most operations, enabling AI assistants (Claude, Cursor, etc.) to write automation scripts instantly and test them in real-time. Includes built-in IDE integrations: install Cursor commands and Claude skills directly.
 
 ## 🚀 Built for LLMs - Eval-First Design Philosophy
 

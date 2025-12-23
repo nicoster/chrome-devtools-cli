@@ -5,6 +5,21 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.3] - 2024-12-23
+
+### Enhanced
+- **Documentation**: Rewrote README.md with improved messaging and clearer positioning
+  - Added honest "Why This Tool Exists" section explaining the motivation behind the project
+  - Removed excessive "eval-first" emphasis in favor of balanced approach
+  - Repositioned as a tool for modern development (both human and AI-assisted)
+  - Improved tone with natural, humorous English while maintaining technical accuracy
+  - Better explanation of JavaScript execution as a feature, not a workaround
+
+### Changed
+- **Package Description**: Updated to reflect balanced approach between dedicated commands and flexible JavaScript execution
+- **Messaging**: Shifted from "LLM-first" to "developer and AI assistant friendly"
+- **Positioning**: Emphasized reliability, debuggability, and practical automation over theoretical AI optimization
+
 ## [1.7.2] - 2024-12-23
 
 ### Enhanced
