@@ -63,7 +63,7 @@ export class Logger {
       maxFileSize: 10 * 1024 * 1024, // 10MB default
       maxFiles: 5,
       enableConsole: true,
-      enableStructured: true,
+      enableStructured: false,
       ...config
     };
 

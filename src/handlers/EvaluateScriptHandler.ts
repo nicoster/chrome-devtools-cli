@@ -253,7 +253,7 @@ export class EvaluateScriptHandler implements ICommandHandler {
         // Handle the result
         let value = commandResult.result?.value;
         if (commandResult.result?.type === 'undefined') {
-          value = undefined;
+          value = '';
         } else if (commandResult.result?.unserializableValue) {
           value = commandResult.result.unserializableValue;
         }
@@ -365,6 +365,14 @@ export class EvaluateScriptHandler implements ICommandHandler {
     awaitPromise: boolean,
     returnByValue: boolean
   ): Promise<CommandResult> {
+    // Set up console output redirection
+    const consoleHandler = (params: unknown) => {
+      this.handleConsoleOutput(params);
+    };
+
+    // Register console event listener
+    client.on('Runtime.consoleAPICalled', consoleHandler);
+
     try {
       const response = (await client.send('Runtime.evaluate', {
         expression,
@@ -407,6 +415,80 @@ export class EvaluateScriptHandler implements ICommandHandler {
           error instanceof Error ? error.message : String(error)
         }`
       };
+    } finally {
+      // Clean up console event listener
+      client.off('Runtime.consoleAPICalled', consoleHandler);
+    }
+  }
+
+  /**
+   * Handle console output from Runtime.consoleAPICalled events
+   */
+  private handleConsoleOutput(params: unknown): void {
+    try {
+      const consoleParams = params as {
+        type: string;
+        args: Array<{
+          type: string;
+          value?: unknown;
+          description?: string;
+        }>;
+        timestamp?: number;
+      };
+
+      // Format console message
+      const messageText = this.formatConsoleArgs(consoleParams.args || []);
+      const messageType = this.mapConsoleType(consoleParams.type);
+
+      // Output to stdout or stderr based on message type
+      if (messageType === 'log' || messageType === 'info' || messageType === 'debug') {
+        process.stdout.write(messageText + '\n');
+      } else {
+        // warn and error go to stderr
+        process.stderr.write(messageText + '\n');
+      }
+    } catch (error) {
+      // Silently ignore formatting errors to avoid breaking script execution
+      this.logger.debug('Error handling console output:', error);
+    }
+  }
+
+  /**
+   * Format console arguments into a readable string
+   */
+  private formatConsoleArgs(args: Array<{
+    type: string;
+    value?: unknown;
+    description?: string;
+  }>): string {
+    return args.map(arg => {
+      if (arg.value !== undefined) {
+        if (typeof arg.value === 'string') {
+          return arg.value;
+        }
+        return JSON.stringify(arg.value);
+      }
+      return arg.description || '';
+    }).join(' ');
+  }
+
+  /**
+   * Map CDP console type to our console message type
+   */
+  private mapConsoleType(cdpType: string): 'log' | 'info' | 'warn' | 'error' | 'debug' {
+    switch (cdpType) {
+      case 'log':
+        return 'log';
+      case 'info':
+        return 'info';
+      case 'warning':
+        return 'warn';
+      case 'error':
+        return 'error';
+      case 'debug':
+        return 'debug';
+      default:
+        return 'log';
     }
   }
 
@@ -447,7 +529,12 @@ export class EvaluateScriptHandler implements ICommandHandler {
   private formatResult(result: RuntimeEvaluateResponse['result']): unknown {
     // Check if result exists
     if (!result) {
-      return 'undefined';
+      return '';
+    }
+
+    // Check if result is undefined
+    if (result.type === 'undefined') {
+      return '';
     }
 
     // If returnByValue is true, the value is already serialized
@@ -464,7 +551,7 @@ export class EvaluateScriptHandler implements ICommandHandler {
       };
     }
 
-    // For undefined, null, etc.
+    // For null, etc.
     return result.description || result.type;
   }
 
