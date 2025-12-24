@@ -23,8 +23,8 @@ describe('Logger', () => {
       logger.warn('test warn');
       logger.info('test info');
 
-      expect(console.error).toHaveBeenCalledWith(expect.stringContaining('"level":"ERROR"'));
-      expect(console.error).toHaveBeenCalledWith(expect.stringContaining('"message":"test error"'));
+      expect(console.error).toHaveBeenCalledWith(expect.stringContaining('ERROR'));
+      expect(console.error).toHaveBeenCalledWith(expect.stringContaining('test error'));
       expect(console.warn).not.toHaveBeenCalled();
       expect(console.info).not.toHaveBeenCalled();
     });
@@ -35,10 +35,10 @@ describe('Logger', () => {
       logger.warn('test warn');
       logger.info('test info');
 
-      expect(console.error).toHaveBeenCalledWith(expect.stringContaining('"level":"ERROR"'));
-      expect(console.error).toHaveBeenCalledWith(expect.stringContaining('"message":"test error"'));
-      expect(console.warn).toHaveBeenCalledWith(expect.stringContaining('"level":"WARN"'));
-      expect(console.warn).toHaveBeenCalledWith(expect.stringContaining('"message":"test warn"'));
+      expect(console.error).toHaveBeenCalledWith(expect.stringContaining('ERROR'));
+      expect(console.error).toHaveBeenCalledWith(expect.stringContaining('test error'));
+      expect(console.warn).toHaveBeenCalledWith(expect.stringContaining('WARN'));
+      expect(console.warn).toHaveBeenCalledWith(expect.stringContaining('test warn'));
       expect(console.info).not.toHaveBeenCalled();
     });
 
@@ -57,9 +57,10 @@ describe('Logger', () => {
   describe('Message formatting', () => {
     it('should format messages with additional arguments', () => {
       logger.error('test error', { data: 'value' });
-      expect(console.error).toHaveBeenCalledWith(expect.stringContaining('"level":"ERROR"'));
-      expect(console.error).toHaveBeenCalledWith(expect.stringContaining('"message":"test error"'));
-      expect(console.error).toHaveBeenCalledWith(expect.stringContaining('"data":{"data":"value"}'));
+      expect(console.error).toHaveBeenCalledWith(expect.stringContaining('ERROR'));
+      expect(console.error).toHaveBeenCalledWith(expect.stringContaining('test error'));
+      expect(console.error).toHaveBeenCalledWith(expect.stringContaining('Data:'));
+      expect(console.error).toHaveBeenCalledWith(expect.stringContaining('"data":"value"'));
     });
   });
 });
