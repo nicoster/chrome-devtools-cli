@@ -5,6 +5,19 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.9.0] - 2024-12-24
+
+### Added
+- **Console Output Redirection**: Eval command now automatically captures and redirects console output to CLI stdout
+  - `console.log()`, `console.info()`, `console.debug()` output to stdout
+  - `console.warn()`, `console.error()` output to stderr
+  - No need to modify scripts - console output is captured automatically via CDP events
+  - Works with both direct CDP and proxy connections
+
+### Changed
+- **Eval Return Value**: Eval command now returns empty string instead of 'undefined' when script result is undefined
+- **Logger Default Format**: Changed default logger format from JSON to plain text for better readability
+
 ## [1.8.1] - 2024-12-23
 
 ### Enhanced
