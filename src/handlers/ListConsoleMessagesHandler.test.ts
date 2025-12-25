@@ -330,7 +330,7 @@ describe('ListConsoleMessagesHandler', () => {
   describe('getHelp', () => {
     it('should return help text', () => {
       const help = handler.getHelp();
-      expect(help).toContain('list_console_messages');
+      expect(help).toContain('console');
       expect(help).toContain('--types');
       expect(help).toContain('--textPattern');
       expect(help).toContain('--maxMessages');

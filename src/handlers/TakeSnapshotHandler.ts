@@ -8,7 +8,7 @@ import { dirname } from 'path';
  */
 export interface TakeSnapshotArgs {
   filename?: string;           // Output filename (optional)
-  format?: 'json' | 'html';   // Output format (default: json)
+  format?: 'text' | 'html' | 'json';   // Output format (default: text)
   includeStyles?: boolean;     // Include computed styles (default: true)
   includeAttributes?: boolean; // Include DOM attributes (default: true)
   includePaintOrder?: boolean; // Include paint order (default: false)
@@ -219,7 +219,7 @@ export class TakeSnapshotHandler implements ICommandHandler {
         data: {
           message: `DOM snapshot saved to ${snapshotArgs.filename}`,
           filename: snapshotArgs.filename,
-          format: snapshotArgs.format || 'json',
+          format: snapshotArgs.format || 'text',
           documentsCount: response.documents.length,
           nodesCount: response.documents[0]?.nodes?.nodeName?.length || 0
         }
@@ -247,7 +247,7 @@ export class TakeSnapshotHandler implements ICommandHandler {
       success: true,
       data: {
         snapshot: processedSnapshot,
-        format: snapshotArgs.format || 'json',
+        format: snapshotArgs.format || 'text',
         documentsCount: response.documents.length,
         nodesCount: response.documents[0]?.nodes?.nodeName?.length || 0
       }
@@ -298,7 +298,7 @@ export class TakeSnapshotHandler implements ICommandHandler {
         data: {
           message: `DOM snapshot saved to ${snapshotArgs.filename}`,
           filename: snapshotArgs.filename,
-          format: snapshotArgs.format || 'json'
+          format: snapshotArgs.format || 'text'
         }
       };
     }
@@ -322,7 +322,7 @@ export class TakeSnapshotHandler implements ICommandHandler {
       success: true,
       data: {
         snapshot: processedSnapshot,
-        format: snapshotArgs.format || 'json'
+        format: snapshotArgs.format || 'text'
       }
     };
   }
@@ -1080,8 +1080,23 @@ export class TakeSnapshotHandler implements ICommandHandler {
       let content: string;
       if (format === 'html') {
         content = snapshotData as string;
+      } else if (format === 'text' || !format) {
+        // Default text format - extract text snapshot if available
+        if (typeof snapshotData === 'object' && snapshotData !== null) {
+          const snapshotObj = snapshotData as { snapshot?: string; url?: string; title?: string };
+          if (snapshotObj.snapshot && typeof snapshotObj.snapshot === 'string') {
+            content = snapshotObj.snapshot;
+          } else {
+            // Fallback to JSON if text snapshot not available
+            content = JSON.stringify(snapshotData, null, 2);
+          }
+        } else if (typeof snapshotData === 'string') {
+          content = snapshotData;
+        } else {
+          content = JSON.stringify(snapshotData, null, 2);
+        }
       } else {
-        // Default JSON format
+        // JSON format
         content = JSON.stringify(snapshotData, null, 2);
       }
 
@@ -1149,14 +1164,14 @@ Usage:
 
 Arguments:
   --filename <path>           Output filename (if not provided, returns data directly)
-  --format <json|html>        Output format (default: json with text snapshot)
+  --format <text|html|json>  Output format (default: text)
   --include-styles            Include computed styles (default: true)
   --include-attributes        Include DOM attributes (default: true)
   --include-paint-order       Include paint order information (default: false)
   --include-text-index        Include additional DOM tree data (default: false)
 
 Output Format:
-  The default JSON output contains a text-based representation of the page structure
+  The default text output contains a text-based representation of the page structure
   that LLMs can easily understand, showing:
   - Page hierarchy with indentation
   - Element types and key attributes
@@ -1183,11 +1198,14 @@ Examples:
   # Get text-based page structure
   snapshot
 
-  # Save to file
-  snapshot --filename page-structure.json
+  # Save to file (default: text format)
+  snapshot --filename page-structure.txt
 
   # HTML representation
   snapshot --format html --filename page-structure.html
+
+  # JSON format
+  snapshot --format json --filename page-structure.json
 
 Note:
   This format provides a "text screenshot" that LLMs can easily parse to understand

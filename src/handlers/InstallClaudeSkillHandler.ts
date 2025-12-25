@@ -145,109 +145,267 @@ Examples:
 
   private generateClaudeSkill(): ClaudeSkillConfig {
     return {
-      name: 'cdp-cli',
-      description: 'Chrome browser automation and testing using DevTools Protocol. Use when user needs to control Chrome browser, execute JavaScript, take screenshots, interact with elements, monitor console/network, upload files, handle dialogs, or perform comprehensive web automation tasks.',
-      instructions: `# Chrome Browser Automation
+      name: 'cdp-cli-enhanced',
+      description: 'Advanced Chrome browser automation using enhanced DevTools CLI v2.0 with configuration management, error handling, contextual help, and comprehensive testing workflows. Use for complex web automation, testing, form handling, performance monitoring, and CI/CD integration.',
+      instructions: `# Enhanced Chrome Browser Automation
 
 ## Instructions
-Use this skill when the user needs to:
-- Execute JavaScript code in Chrome browser
-- Take screenshots of web pages and DOM snapshots
-- Interact with page elements (click, hover, fill forms, drag & drop)
-- Simulate keyboard input and handle file uploads
-- Wait for elements and handle browser dialogs
-- Monitor console messages and network requests
-- Perform comprehensive web automation and testing
+Use this skill when the user needs advanced browser automation with:
+- Configuration-driven workflows with profiles and aliases
+- Enhanced error handling with contextual help and recovery
+- Comprehensive testing with evidence capture
+- Performance monitoring and metrics collection
+- CI/CD integration with structured reporting
+- Plugin-based extensibility for custom commands
 
-## Complete Command List
+## Enhanced CLI Features (v2.0)
+
+### Configuration Management
+Use YAML/JSON configuration files with profiles for different environments:
+
+\`\`\`yaml
+# .chrome-cdp-cli.yaml
+profiles:
+  development:
+    host: localhost
+    port: 9222
+    debug: true
+    verbose: true
+  
+  testing:
+    host: test-chrome
+    port: 9223
+    quiet: true
+    outputFormat: json
+  
+  production:
+    host: prod-chrome
+    port: 9222
+    quiet: true
+    timeout: 60000
+
+aliases:
+  health-check: eval "document.readyState === 'complete'"
+  capture-evidence: screenshot --filename evidence-$(date +%s).png
+  check-console: console --types error
+
+commands:
+  screenshot:
+    defaults:
+      format: png
+      quality: 95
+      fullPage: true
+\`\`\`
+
+### Enhanced Global Options
+- \`--profile <name>\`: Use configuration profile
+- \`--config <path>\`: Specify configuration file
+- \`--debug\`: Enable debug mode with detailed logging
+- \`--verbose\`: Enable verbose output with timing
+- \`--quiet\`: Silent mode for CI/CD
+- \`--format <json|text|yaml>\`: Enhanced output formats
+- \`--help topic <topic>\`: Get contextual help on topics
+
+### Advanced Error Handling
+The CLI provides contextual help and suggestions when commands fail:
+
+\`\`\`bash
+# Automatic contextual help on errors
+chrome-cdp-cli click "#nonexistent-element"
+# Shows: selector validation tips, alternatives, related help topics
+
+# Debug mode for detailed error information
+chrome-cdp-cli --debug --verbose click "#problematic-element"
+# Shows: execution logs, CDP messages, timing information
+\`\`\`
+
+## Complete Command Reference
 
 ### JavaScript Execution
-- **eval**: Execute JavaScript code in browser context
-  \`chrome-cdp-cli eval "document.title"\`
-  \`chrome-cdp-cli eval "fetch('/api/data').then(r => r.json())"\`
+- **eval**: Execute JavaScript code with enhanced error handling
+  \`chrome-cdp-cli --profile development eval "document.title"\`
+  \`chrome-cdp-cli --format json eval "performance.timing"\`
+  \`chrome-cdp-cli eval --file automation-script.js\`
 
-### Visual Capture
-- **screenshot**: Capture page screenshots
-  \`chrome-cdp-cli screenshot --filename page.png\`
-- **snapshot**: Capture complete DOM snapshots with layout info
-  \`chrome-cdp-cli snapshot --filename dom-snapshot.json\`
+### Visual Capture with Enhanced Options
+- **screenshot**: Advanced screenshot capture
+  \`chrome-cdp-cli --profile testing screenshot --filename test-result.png\`
+  \`chrome-cdp-cli screenshot --full-page --format jpeg --quality 90\`
+- **snapshot**: Complete DOM snapshots with metadata
+  \`chrome-cdp-cli --format json snapshot --filename dom-analysis.json\`
 
-### Element Interaction
-- **click**: Click on elements using CSS selectors
-  \`chrome-cdp-cli click "#submit-button"\`
-- **hover**: Hover over elements
-  \`chrome-cdp-cli hover "#dropdown-trigger"\`
-- **fill**: Fill form fields with text
-  \`chrome-cdp-cli fill "#username" "john@example.com"\`
-- **fill_form**: Fill multiple form fields at once
-  \`chrome-cdp-cli fill_form '{"#username": "john", "#password": "secret"}'\`
+### Enhanced Element Interaction
+- **click**: Click with retry and error recovery
+  \`chrome-cdp-cli --debug click "#submit-button"\`
+  \`chrome-cdp-cli click ".slow-loading-button" --timeout 15000\`
+- **hover**: Hover with timing control
+  \`chrome-cdp-cli hover "#dropdown-trigger" --timeout 5000\`
+- **fill**: Form filling with validation
+  \`chrome-cdp-cli fill "#username" "john@example.com" --no-clear\`
+- **fill_form**: Batch form operations with error handling
+  \`chrome-cdp-cli fill_form --fields-file form-data.json --continue-on-error\`
 
 ### Advanced Interactions
-- **drag**: Perform drag and drop operations
-  \`chrome-cdp-cli drag "#draggable" "#dropzone"\`
-- **press_key**: Simulate keyboard input with modifiers
-  \`chrome-cdp-cli press_key "Enter"\`
-  \`chrome-cdp-cli press_key "a" --modifiers Ctrl\`
-- **upload_file**: Upload files to file input elements
+- **drag**: Enhanced drag and drop
+  \`chrome-cdp-cli --verbose drag "#draggable" "#dropzone"\`
+- **press_key**: Keyboard simulation with element targeting
+  \`chrome-cdp-cli press_key "Enter" --selector "#search-input"\`
+  \`chrome-cdp-cli press_key "s" --modifiers Ctrl,Shift\`
+- **upload_file**: File upload with validation
   \`chrome-cdp-cli upload_file "input[type='file']" "./document.pdf"\`
-- **wait_for**: Wait for elements to appear or meet conditions
-  \`chrome-cdp-cli wait_for "#loading" --condition hidden\`
+- **wait_for**: Advanced waiting with conditions
+  \`chrome-cdp-cli wait_for "#loading" --condition hidden --timeout 30000\`
   \`chrome-cdp-cli wait_for "#submit-btn" --condition enabled\`
-- **handle_dialog**: Handle browser dialogs (alert, confirm, prompt)
-  \`chrome-cdp-cli handle_dialog accept\`
-  \`chrome-cdp-cli handle_dialog accept --text "user input"\`
+- **handle_dialog**: Dialog handling with text input
+  \`chrome-cdp-cli handle_dialog accept --text "confirmation text"\`
 
-### Monitoring
-- **get_console_message**: Get latest console message
-  \`chrome-cdp-cli get_console_message\`
-- **list_console_messages**: List all console messages
-  \`chrome-cdp-cli list_console_messages --type error\`
-- **get_network_request**: Get latest network request
-  \`chrome-cdp-cli get_network_request\`
-- **list_network_requests**: List all network requests
-  \`chrome-cdp-cli list_network_requests --method POST\`
+### Enhanced Monitoring
+- **console**: Console monitoring with filtering
+  \`chrome-cdp-cli --format json console --latest\`
+  \`chrome-cdp-cli console --types error,warn\`
+- **network**: Network monitoring with filters
+  \`chrome-cdp-cli --format json network --latest\`
+  \`chrome-cdp-cli network --filter '{"methods":["POST"],"statusCodes":[200,201]}'\`
 
-### IDE Integration
-- **install_cursor_command**: Install Cursor IDE commands
-  \`chrome-cdp-cli install_cursor_command\`
-- **install_claude_skill**: Install Claude Code skills
-  \`chrome-cdp-cli install_claude_skill --skill-type personal\`
+### Help System
+- **help**: Comprehensive help with topics
+  \`chrome-cdp-cli help\` - General help with categorized commands
+  \`chrome-cdp-cli help eval\` - Command-specific help with examples
+  \`chrome-cdp-cli help topic configuration\` - Configuration management
+  \`chrome-cdp-cli help topic selectors\` - CSS selector guide
+  \`chrome-cdp-cli help topic automation\` - Best practices
+  \`chrome-cdp-cli help topic debugging\` - Troubleshooting guide
 
-## Common Automation Patterns
+## Enhanced Automation Workflows
 
-### Form Testing Workflow
-1. Wait for form: \`wait_for "#login-form" --condition visible\`
-2. Fill fields: \`fill "#email" "test@example.com"\`
-3. Submit: \`click "#submit-button"\`
-4. Verify: \`wait_for "#success" --condition visible\`
-5. Capture: \`screenshot --filename result.png\`
+### Configuration-Driven Testing
+\`\`\`bash
+# Load testing profile
+chrome-cdp-cli --profile testing --config test-config.yaml
 
-### File Upload Testing
-1. Trigger upload: \`click "#upload-button"\`
-2. Upload file: \`upload_file "input[type='file']" "./test.pdf"\`
-3. Wait for completion: \`wait_for ".upload-success" --condition visible\`
-4. Verify: \`eval "document.querySelector('.file-name').textContent"\`
+# Execute test suite with error recovery
+chrome-cdp-cli eval --file test-suite.js || {
+  echo "Test failed, capturing evidence..."
+  chrome-cdp-cli capture-evidence
+  chrome-cdp-cli check-console
+  exit 1
+}
 
-### Dialog Handling
-1. Trigger action: \`click "#delete-button"\`
-2. Handle confirmation: \`handle_dialog accept\`
-3. Wait for result: \`wait_for "#deleted-message" --condition visible\`
+# Generate structured report
+chrome-cdp-cli --format json eval "generateTestReport()" > test-results.json
+\`\`\`
 
-### Keyboard Navigation
-1. Focus element: \`click "#search-input"\`
-2. Type text: \`press_key "search term"\`
-3. Use shortcuts: \`press_key "a" --modifiers Ctrl\` (select all)
-4. Submit: \`press_key "Enter"\`
+### Performance Monitoring Workflow
+\`\`\`bash
+# Set up performance monitoring
+chrome-cdp-cli --profile performance --verbose
 
-## Prerequisites
-Chrome browser must be running with DevTools enabled:
-\`chrome --remote-debugging-port=9222\`
+# Navigate and collect metrics
+chrome-cdp-cli eval "window.location.href = 'https://example.com'"
+chrome-cdp-cli wait_for "#main-content" --timeout 30000
 
-## Global Options
-All commands support:
-- \`--host <hostname>\`: Chrome host (default: localhost)
-- \`--port <number>\`: Chrome port (default: 9222)
-- \`--format <json|text>\`: Output format
+# Collect comprehensive performance data
+chrome-cdp-cli --format json eval "
+  const timing = performance.timing;
+  const navigation = performance.getEntriesByType('navigation')[0];
+  const resources = performance.getEntriesByType('resource');
+  
+  return {
+    loadTime: timing.loadEventEnd - timing.navigationStart,
+    domContentLoaded: timing.domContentLoadedEventEnd - timing.navigationStart,
+    firstPaint: navigation.loadEventEnd,
+    resourceCount: resources.length,
+    resourceSizes: resources.map(r => ({name: r.name, size: r.transferSize}))
+  };
+" > performance-metrics.json
+\`\`\`
+
+### Advanced Form Testing
+\`\`\`bash
+# Configure for form testing
+chrome-cdp-cli --profile development --debug
+
+# Batch form filling with comprehensive error handling
+chrome-cdp-cli fill_form --fields-file form-test-data.json --continue-on-error --timeout 15000
+
+# Validate form submission with evidence capture
+chrome-cdp-cli click "#submit-button"
+chrome-cdp-cli wait_for ".success-message, .error-message" --timeout 10000
+
+# Capture validation results
+chrome-cdp-cli --format json eval "
+  const form = document.querySelector('#test-form');
+  const errors = Array.from(form.querySelectorAll('.error')).map(e => e.textContent);
+  const success = document.querySelector('.success-message');
+  return { 
+    errors, 
+    success: !!success, 
+    timestamp: new Date().toISOString(),
+    formData: new FormData(form)
+  };
+" > validation-results.json
+\`\`\`
+
+### CI/CD Integration
+\`\`\`bash
+# Headless Chrome setup for CI
+chrome --headless --remote-debugging-port=9222 --user-data-dir=/tmp/chrome-ci &
+
+# Execute tests with CI profile
+chrome-cdp-cli --profile ci --quiet eval --file ci-test-suite.js
+
+# Generate JUnit-compatible reports
+chrome-cdp-cli --format json eval "generateJUnitReport()" > test-results.xml
+
+# Capture evidence on failures
+if [ $? -ne 0 ]; then
+  chrome-cdp-cli screenshot --filename failure-evidence.png
+  chrome-cdp-cli console --types error > console-errors.json
+fi
+\`\`\`
+
+## Enhanced Prerequisites
+
+### Chrome Setup with Security
+\`\`\`bash
+# Always use --user-data-dir for security (required)
+chrome --remote-debugging-port=9222 --user-data-dir=/tmp/chrome-debug
+
+# Headless mode for CI/CD
+chrome --headless --remote-debugging-port=9222 --user-data-dir=/tmp/chrome-ci
+
+# With additional automation flags
+chrome --remote-debugging-port=9222 --user-data-dir=/tmp/chrome-debug --no-first-run --no-default-browser-check
+\`\`\`
+
+### Configuration File Setup
+Create \`.chrome-cdp-cli.yaml\` in your project root with appropriate profiles for your environments.
+
+## Documentation and Support
+
+### Available Help Topics
+- \`configuration\` - YAML configuration, profiles, environment setup
+- \`selectors\` - CSS selector guide and best practices
+- \`automation\` - Browser automation workflows and patterns
+- \`debugging\` - Troubleshooting and error resolution
+- \`scripting\` - Integration with scripts and CI/CD
+- \`performance\` - Performance monitoring and optimization
+
+### Contextual Help
+Commands automatically provide contextual help when they fail, including:
+- Specific error analysis and suggestions
+- Alternative approaches and workarounds
+- Related commands and help topics
+- Configuration recommendations
+
+### Plugin System
+Extend functionality with plugins:
+\`chrome-cdp-cli --plugin-dir ./plugins custom-command\`
+
+For comprehensive documentation, see:
+- Configuration Guide: docs/CONFIGURATION.md
+- Plugin Development: docs/PLUGIN_DEVELOPMENT.md
+- Advanced Help Topics: \`chrome-cdp-cli help topic <topic>\`
 - \`--verbose\`: Enable detailed logging
 - \`--timeout <ms>\`: Operation timeout`,
       allowedTools: ['Execute', 'Read', 'Write']
@@ -258,6 +416,9 @@ All commands support:
     const frontmatter = `---
 name: ${skill.name}
 description: ${skill.description}
+version: 2.0.0
+category: browser-automation
+tools: [chrome-cdp-cli]
 ${skill.allowedTools ? `allowedTools: [${skill.allowedTools.map(t => `"${t}"`).join(', ')}]` : ''}
 ---
 
@@ -412,18 +573,18 @@ chrome-cdp-cli snapshot --filename form-state.json
 
 ### Console Messages
 \`\`\`bash
-chrome-cdp-cli get_console_message
-chrome-cdp-cli list_console_messages
-chrome-cdp-cli list_console_messages --type error
-chrome-cdp-cli list_console_messages --type warn
+chrome-cdp-cli console --latest
+chrome-cdp-cli console
+chrome-cdp-cli console --types error
+chrome-cdp-cli console --types warn
 \`\`\`
 
 ### Network Requests
 \`\`\`bash
-chrome-cdp-cli get_network_request
-chrome-cdp-cli list_network_requests
-chrome-cdp-cli list_network_requests --method POST
-chrome-cdp-cli list_network_requests --method GET
+chrome-cdp-cli network --latest
+chrome-cdp-cli network
+chrome-cdp-cli network --filter '{"methods":["POST"]}'
+chrome-cdp-cli network --filter '{"methods":["GET"]}'
 \`\`\`
 
 ## Complete Workflow Examples
@@ -447,7 +608,7 @@ chrome-cdp-cli wait_for "#dashboard" --condition visible --timeout 10000
 chrome-cdp-cli screenshot --filename login-success.png
 
 # 6. Check for any errors
-chrome-cdp-cli list_console_messages --type error
+chrome-cdp-cli console --types error
 \`\`\`
 
 ### File Upload Workflow
@@ -761,39 +922,25 @@ Handle browser dialogs (alert, confirm, prompt).
 
 ### Monitoring
 
-#### get_console_message
-Get the latest console message.
+#### console
+List console messages or get the latest message.
 
-**Syntax:** \`chrome-cdp-cli get_console_message [options]\`
-
-**Options:**
-- \`--type <log|info|warn|error>\`: Filter by message type
-
-#### list_console_messages
-List all console messages.
-
-**Syntax:** \`chrome-cdp-cli list_console_messages [options]\`
+**Syntax:** \`chrome-cdp-cli console [options]\`
 
 **Options:**
-- \`--type <log|info|warn|error>\`: Filter by message type
-- \`--limit <number>\`: Maximum number of messages to return
+- \`--latest\`: Get only the latest message
+- \`--types <types>\`: Filter by message types (comma-separated: log,info,warn,error,debug)
+- \`--textPattern <pattern>\`: Filter by text pattern (regex)
+- \`--maxMessages <count>\`: Maximum number of messages to return
 
-#### get_network_request
-Get the latest network request.
+#### network
+List network requests or get the latest request.
 
-**Syntax:** \`chrome-cdp-cli get_network_request [options]\`
-
-**Options:**
-- \`--method <GET|POST|PUT|DELETE>\`: Filter by HTTP method
-
-#### list_network_requests
-List all network requests.
-
-**Syntax:** \`chrome-cdp-cli list_network_requests [options]\`
+**Syntax:** \`chrome-cdp-cli network [options]\`
 
 **Options:**
-- \`--method <GET|POST|PUT|DELETE>\`: Filter by HTTP method
-- \`--limit <number>\`: Maximum number of requests to return
+- \`--latest\`: Get only the latest request
+- \`--filter <json>\`: Filter requests (JSON string with methods, urlPattern, statusCodes, etc.)
 
 ### IDE Integration
 
@@ -955,7 +1102,7 @@ Element is present and disabled (for form elements):
     chrome-cdp-cli screenshot --filename test-result.png
     
     # Check for errors
-    chrome-cdp-cli list_console_messages --type error
+    chrome-cdp-cli console --types error
 \`\`\`
 
 ### Automated Testing Script
@@ -1000,7 +1147,7 @@ chrome-cdp-cli screenshot --filename final-state.png
 chrome-cdp-cli snapshot --filename final-dom.json
 
 # Check for errors
-ERROR_COUNT=$(chrome-cdp-cli list_console_messages --type error | jq length)
+ERROR_COUNT=$(chrome-cdp-cli console --types error | jq length)
 if [ "$ERROR_COUNT" -gt 0 ]; then
   echo "Test failed: $ERROR_COUNT console errors found"
   exit 1

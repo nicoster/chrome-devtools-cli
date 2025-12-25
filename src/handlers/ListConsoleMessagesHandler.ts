@@ -5,10 +5,10 @@ import { ProxyClient } from '../client/ProxyClient';
 import { ConsoleMessageFilter as ProxyConsoleMessageFilter } from '../proxy/types/ProxyTypes';
 
 /**
- * Handler for listing all console messages
+ * Handler for listing console messages
  */
 export class ListConsoleMessagesHandler implements ICommandHandler {
-  readonly name = 'list_console_messages';
+  readonly name = 'console';
   private consoleMonitor: ConsoleMonitor | null = null;
   private proxyClient: ProxyClient | null = null;
 
@@ -21,6 +21,7 @@ export class ListConsoleMessagesHandler implements ICommandHandler {
         startTime?: number;
         endTime?: number;
         startMonitoring?: boolean;
+        latest?: boolean;
         host?: string;
         port?: number;
         targetId?: string;
@@ -77,7 +78,9 @@ export class ListConsoleMessagesHandler implements ICommandHandler {
       if (params.textPattern) {
         filter.textPattern = params.textPattern;
       }
-      if (params.maxMessages && params.maxMessages > 0) {
+      if (params.latest) {
+        filter.maxMessages = 1;
+      } else if (params.maxMessages && params.maxMessages > 0) {
         filter.maxMessages = params.maxMessages;
       }
       if (params.startTime) {
@@ -89,6 +92,31 @@ export class ListConsoleMessagesHandler implements ICommandHandler {
 
       // Get messages from proxy
       const messages = await this.proxyClient.getConsoleMessages(filter);
+
+      // If latest is requested, return single message object instead of array
+      if (params.latest) {
+        const latestMessage = messages.length > 0 ? messages[messages.length - 1] : null;
+        if (!latestMessage) {
+          return {
+            success: true,
+            data: null,
+            dataSource: 'proxy',
+            hasHistoricalData: true
+          };
+        }
+        return {
+          success: true,
+          data: {
+            type: latestMessage.type,
+            text: latestMessage.text,
+            args: latestMessage.args,
+            timestamp: latestMessage.timestamp,
+            stackTrace: latestMessage.stackTrace
+          },
+          dataSource: 'proxy',
+          hasHistoricalData: true
+        };
+      }
 
       return {
         success: true,
@@ -143,6 +171,31 @@ export class ListConsoleMessagesHandler implements ICommandHandler {
     }
     if (params.endTime) {
       filter.endTime = params.endTime;
+    }
+
+    // If latest is requested, get single message
+    if (params.latest) {
+      const latestMessage = this.consoleMonitor.getLatestMessage(filter);
+      if (!latestMessage) {
+        return {
+          success: true,
+          data: null,
+          dataSource: 'direct',
+          hasHistoricalData: false
+        };
+      }
+      return {
+        success: true,
+        data: {
+          type: latestMessage.type,
+          text: latestMessage.text,
+          args: latestMessage.args,
+          timestamp: latestMessage.timestamp,
+          stackTrace: latestMessage.stackTrace
+        },
+        dataSource: 'direct',
+        hasHistoricalData: false
+      };
     }
 
     // Get filtered messages
@@ -211,16 +264,22 @@ export class ListConsoleMessagesHandler implements ICommandHandler {
       return false;
     }
 
+    // Validate latest if provided
+    if (params.latest !== undefined && typeof params.latest !== 'boolean') {
+      return false;
+    }
+
     return true;
   }
 
   getHelp(): string {
-    return `list_console_messages - List all captured console messages
+    return `console - List console messages
     
 Usage:
-  list_console_messages [options]
+  console [options]
   
 Options:
+  --latest                Get only the latest console message
   --types <types>         Filter by message types (comma-separated: log,info,warn,error,debug)
   --textPattern <pattern> Filter by text pattern (regex)
   --maxMessages <count>   Maximum number of messages to return
@@ -229,10 +288,12 @@ Options:
   --startMonitoring       Start monitoring if not already active
   
 Examples:
-  list_console_messages
-  list_console_messages --types error,warn
-  list_console_messages --textPattern "API" --maxMessages 10
-  list_console_messages --startTime 1640995200000
+  console
+  console --latest
+  console --types error,warn
+  console --latest --type error
+  console --textPattern "API" --maxMessages 10
+  console --startTime 1640995200000
 
 Note: This command now uses the proxy server when available, providing access to
 historical console messages from connection establishment. When proxy is unavailable,

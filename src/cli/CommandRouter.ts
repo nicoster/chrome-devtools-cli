@@ -12,7 +12,9 @@ export enum ExitCode {
   CONNECTION_ERROR = 3,
   TIMEOUT_ERROR = 4,
   VALIDATION_ERROR = 5,
-  FILE_ERROR = 6
+  FILE_ERROR = 6,
+  CONFIG_ERROR = 7,
+  INVALID_ARGUMENTS = 8
 }
 
 /**
@@ -360,10 +362,8 @@ For more information about a specific command, use:
       'snapshot': 'Capture DOM snapshot with structure and styles',
       'console-messages': 'Get console messages',
       'network-requests': 'Get network requests',
-      'get_console_message': 'Get the latest console message',
-      'list_console_messages': 'List all console messages with filtering',
-      'get_network_request': 'Get the latest network request',
-      'list_network_requests': 'List all network requests with filtering',
+      'console': 'List console messages',
+      'network': 'List network requests',
       'install_cursor_command': 'Install Cursor IDE commands for Chrome automation',
       'install_claude_skill': 'Install Claude Code skill for Chrome automation',
       'help': 'Show help information'

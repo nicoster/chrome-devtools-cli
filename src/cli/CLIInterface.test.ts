@@ -102,14 +102,16 @@ describe('CLIInterface', () => {
       const result = { success: false, error: 'Something went wrong' };
       const output = cli.formatOutput(result, 'text');
       
-      expect(output).toBe('Error: Something went wrong');
+      expect(output).toBe('❌ Error: Something went wrong');
     });
 
     it('should format error result as JSON', () => {
       const result = { success: false, error: 'Something went wrong' };
       const output = cli.formatOutput(result, 'json');
       
-      expect(output).toBe(JSON.stringify(result, null, 2));
+      // The JSON output includes exitCode when formatting through OutputManager
+      const expectedResult = { ...result, exitCode: 1 };
+      expect(output).toBe(JSON.stringify(expectedResult, null, 2));
     });
 
     it('should handle null/undefined data', () => {
@@ -123,7 +125,8 @@ describe('CLIInterface', () => {
       const result = { success: true, data: { key: 'value' } };
       const output = cli.formatOutput(result, 'text');
       
-      expect(output).toBe(JSON.stringify({ key: 'value' }, null, 2));
+      // The new OutputManager formats objects differently
+      expect(output).toBe('Object with 1 properties: key');
     });
   });
 

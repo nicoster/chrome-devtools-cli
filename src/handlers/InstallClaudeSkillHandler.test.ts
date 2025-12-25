@@ -63,7 +63,7 @@ describe('InstallClaudeSkillHandler', () => {
         skillType: 'project',
         directory: '.claude/skills/cdp-cli',
         files: ['SKILL.md'],
-        skillName: 'cdp-cli'
+        skillName: 'cdp-cli-enhanced'
       });
 
       // Verify directory creation
@@ -218,8 +218,8 @@ describe('InstallClaudeSkillHandler', () => {
 
       // Verify YAML frontmatter structure
       expect(markdownContent).toMatch(/^---\n/);
-      expect(markdownContent).toContain('name: cdp-cli');
-      expect(markdownContent).toContain('description: Chrome browser automation');
+      expect(markdownContent).toContain('name: cdp-cli-enhanced');
+      expect(markdownContent).toContain('description: Advanced Chrome browser automation');
       expect(markdownContent).toContain('allowedTools:');
       expect(markdownContent).toMatch(/---\n\n/);
     });
@@ -237,11 +237,11 @@ describe('InstallClaudeSkillHandler', () => {
       const markdownContent = skillCall![1] as string;
 
       // Verify instructions content
-      expect(markdownContent).toContain('# Chrome Browser Automation');
+      expect(markdownContent).toContain('# Enhanced Chrome Browser Automation');
       expect(markdownContent).toContain('## Instructions');
-      expect(markdownContent).toContain('## Complete Command List');
-      expect(markdownContent).toContain('## Common Automation Patterns');
-      expect(markdownContent).toContain('## Prerequisites');
+      expect(markdownContent).toContain('## Enhanced CLI Features (v2.0)');
+      expect(markdownContent).toContain('## Enhanced Automation Workflows');
+      expect(markdownContent).toContain('## Enhanced Prerequisites');
       expect(markdownContent).toContain('chrome-cdp-cli eval');
       expect(markdownContent).toContain('--remote-debugging-port=9222');
     });

@@ -122,24 +122,25 @@ Examples:
       {
         name: 'cdp-cli',
         description: 'Chrome DevTools Protocol CLI Tool',
-        instructions: `Control Chrome browser through Chrome DevTools Protocol, supporting complete automation operations.
+        instructions: `Control Chrome browser through Chrome DevTools Protocol for browser automation.
 
-## Complete Command List
+## Available Commands
 
-### 1. JavaScript Execution
-- **eval** - Execute JavaScript code and return results, supports async code and Promises
+### JavaScript Execution
+- **eval** - Execute JavaScript code and return results
   \`chrome-cdp-cli eval "document.title"\`
   \`chrome-cdp-cli eval "fetch('/api/data').then(r => r.json())"\`
 
-### 2. Page Screenshots and Snapshots
-- **screenshot** - Capture page screenshot and save to file
+### Screenshots and Snapshots
+- **screenshot** - Capture page screenshot
   \`chrome-cdp-cli screenshot --filename page.png\`
   \`chrome-cdp-cli screenshot --filename fullpage.png --full-page\`
 
-- **snapshot** - Capture complete DOM snapshot (including structure, styles, layout)
-  \`chrome-cdp-cli snapshot --filename dom-snapshot.json\`
+- **snapshot** - Capture complete DOM snapshot
+  \`chrome-cdp-cli snapshot\`
+  \`chrome-cdp-cli snapshot --filename dom-snapshot.txt\`
 
-### 3. Element Interaction
+### Element Interaction
 - **click** - Click page elements
   \`chrome-cdp-cli click "#submit-button"\`
   \`chrome-cdp-cli click ".menu-item" --timeout 10000\`
@@ -154,7 +155,7 @@ Examples:
 - **fill_form** - Batch fill forms
   \`chrome-cdp-cli fill_form '{"#username": "john", "#password": "secret"}'\`
 
-### 4. Advanced Interactions
+### Advanced Interactions
 - **drag** - Drag and drop operations
   \`chrome-cdp-cli drag "#draggable" "#dropzone"\`
 
@@ -173,96 +174,61 @@ Examples:
   \`chrome-cdp-cli handle_dialog accept\`
   \`chrome-cdp-cli handle_dialog accept --text "user input"\`
 
-### 5. Monitoring Features
-- **get_console_message** - Get latest console message
-  \`chrome-cdp-cli get_console_message\`
+### Monitoring
+- **console** - List console messages or get latest
+  \`chrome-cdp-cli console --latest\`
+  \`chrome-cdp-cli console --types error\`
 
-- **list_console_messages** - List all console messages
-  \`chrome-cdp-cli list_console_messages --type error\`
+- **network** - List network requests or get latest
+  \`chrome-cdp-cli network --latest\`
+  \`chrome-cdp-cli network --filter '{"methods":["POST"]}'\`
 
-- **get_network_request** - Get latest network request
-  \`chrome-cdp-cli get_network_request\`
+## Common Options
 
-- **list_network_requests** - List all network requests
-  \`chrome-cdp-cli list_network_requests --method POST\`
-
-### 6. IDE Integration
-- **install_cursor_command** - Install Cursor commands
-  \`chrome-cdp-cli install_cursor_command\`
-
-- **install_claude_skill** - Install Claude skills
-  \`chrome-cdp-cli install_claude_skill --skill-type personal\`
+- \`--host <hostname>\`: Chrome DevTools host (default: localhost)
+- \`--port <number>\`: Chrome DevTools port (default: 9222)
+- \`--timeout <ms>\`: Command timeout
 
 ## Common Workflows
 
-### Complete Form Testing Workflow
+### Form Testing
 \`\`\`bash
-# 1. Wait for page to load
 chrome-cdp-cli wait_for "#login-form" --condition visible
-
-# 2. Fill form
 chrome-cdp-cli fill "#email" "test@example.com"
 chrome-cdp-cli fill "#password" "password123"
-
-# 3. Submit form
 chrome-cdp-cli click "#submit-button"
-
-# 4. Wait for result and take screenshot
 chrome-cdp-cli wait_for "#success-message" --condition visible
 chrome-cdp-cli screenshot --filename login-success.png
-
-# 5. Check console errors
-chrome-cdp-cli list_console_messages --type error
+chrome-cdp-cli console --types error
 \`\`\`
 
-### File Upload Testing
+### File Upload
 \`\`\`bash
-# 1. Click upload button
 chrome-cdp-cli click "#upload-trigger"
-
-# 2. Upload file
 chrome-cdp-cli upload_file "input[type='file']" "./test-document.pdf"
-
-# 3. Wait for upload completion
 chrome-cdp-cli wait_for ".upload-success" --condition visible
-
-# 4. Verify result
 chrome-cdp-cli eval "document.querySelector('.file-name').textContent"
 \`\`\`
 
-### Drag and Drop Interaction Testing
+### Drag and Drop
 \`\`\`bash
-# 1. Wait for elements to be available
 chrome-cdp-cli wait_for "#draggable-item" --condition visible
 chrome-cdp-cli wait_for "#drop-zone" --condition visible
-
-# 2. Perform drag and drop
 chrome-cdp-cli drag "#draggable-item" "#drop-zone"
-
-# 3. Verify drag result
 chrome-cdp-cli eval "document.querySelector('#drop-zone').children.length"
 \`\`\`
 
-### Keyboard Navigation Testing
+### Keyboard Input
 \`\`\`bash
-# 1. Focus on input field
 chrome-cdp-cli click "#search-input"
-
-# 2. Type text
 chrome-cdp-cli press_key "t"
 chrome-cdp-cli press_key "e"
 chrome-cdp-cli press_key "s"
 chrome-cdp-cli press_key "t"
-
-# 3. Use keyboard shortcuts
-chrome-cdp-cli press_key "a" --modifiers Ctrl  # Select all
-chrome-cdp-cli press_key "Enter"  # Submit
-
-# 4. Handle possible confirmation dialog
+chrome-cdp-cli press_key "a" --modifiers Ctrl
+chrome-cdp-cli press_key "Enter"
 chrome-cdp-cli handle_dialog accept
-\`\`\`
-
-Commands automatically connect to Chrome instance running on localhost:9222.`,
+\`\`\``,
         examples: [
           'chrome-cdp-cli eval "document.title"',
           'chrome-cdp-cli screenshot --filename page.png',
@@ -273,8 +239,8 @@ Commands automatically connect to Chrome instance running on localhost:9222.`,
           'chrome-cdp-cli upload_file "input[type=file]" "./doc.pdf"',
           'chrome-cdp-cli wait_for "#loading" --condition hidden',
           'chrome-cdp-cli handle_dialog accept',
-          'chrome-cdp-cli get_console_message',
-          'chrome-cdp-cli list_network_requests'
+          'chrome-cdp-cli console --latest',
+          'chrome-cdp-cli network'
         ]
       }
     ];
@@ -290,73 +256,6 @@ ${command.instructions}
 ## Usage Examples
 
 ${examples}
-
-## Prerequisites
-
-Ensure Chrome browser is started with remote debugging enabled:
-
-\`\`\`bash
-chrome --remote-debugging-port=9222
-\`\`\`
-
-Or on macOS:
-
-\`\`\`bash
-/Applications/Google\\ Chrome.app/Contents/MacOS/Google\\ Chrome --remote-debugging-port=9222
-\`\`\`
-
-## Global Options
-
-All commands support the following global options:
-
-- \`--host <hostname>\`: Chrome DevTools host address (default: localhost)
-- \`--port <number>\`: Chrome DevTools port (default: 9222)
-- \`--format <json|text>\`: Output format (default: json)
-- \`--verbose\`: Enable verbose logging
-- \`--quiet\`: Silent mode
-- \`--timeout <ms>\`: Command timeout
-
-## Common Workflows
-
-### Web Automation Testing
-\`\`\`bash
-# 1. Navigate to page and take screenshot
-chrome-cdp-cli eval "window.location.href = 'https://example.com'"
-chrome-cdp-cli screenshot --filename before.png
-
-# 2. Fill form
-chrome-cdp-cli eval "document.querySelector('#email').value = 'test@example.com'"
-chrome-cdp-cli eval "document.querySelector('#password').value = 'password123'"
-
-# 3. Submit and check results
-chrome-cdp-cli eval "document.querySelector('#submit').click()"
-chrome-cdp-cli screenshot --filename after.png
-chrome-cdp-cli list_console_messages --type error
-\`\`\`
-
-### API Call Monitoring
-\`\`\`bash
-# 1. Start monitoring network requests
-chrome-cdp-cli eval "fetch('/api/users').then(r => r.json())"
-
-# 2. View network requests
-chrome-cdp-cli list_network_requests --method POST
-
-# 3. Get latest request details
-chrome-cdp-cli get_network_request
-\`\`\`
-
-### Page Analysis
-\`\`\`bash
-# 1. Get basic page information
-chrome-cdp-cli eval "({title: document.title, url: location.href, links: document.querySelectorAll('a').length})"
-
-# 2. Capture complete page structure
-chrome-cdp-cli snapshot --filename page-analysis.json
-
-# 3. Check console errors
-chrome-cdp-cli list_console_messages --type error
-\`\`\`
 `;
   }
 

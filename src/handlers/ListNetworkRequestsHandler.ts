@@ -4,10 +4,10 @@ import { ProxyClient } from '../client/ProxyClient';
 import { NetworkRequestFilter as ProxyNetworkRequestFilter } from '../proxy/types/ProxyTypes';
 
 /**
- * Handler for listing all network requests
+ * Handler for listing network requests
  */
 export class ListNetworkRequestsHandler {
-  name = 'list_network_requests';
+  name = 'network';
   private networkMonitor: NetworkMonitor | null = null;
   private proxyClient: ProxyClient | null = null;
 
@@ -22,6 +22,7 @@ export class ListNetworkRequestsHandler {
           startTime?: number;
           endTime?: number;
         };
+        latest?: boolean;
         host?: string;
         port?: number;
         targetId?: string;
@@ -77,13 +78,32 @@ export class ListNetworkRequestsHandler {
         methods: params.filter.methods,
         urlPattern: params.filter.urlPattern,
         statusCodes: params.filter.statusCodes,
-        maxRequests: params.filter.maxRequests,
+        maxRequests: params.latest ? 1 : params.filter.maxRequests,
         startTime: params.filter.startTime,
         endTime: params.filter.endTime,
-      } : undefined;
+      } : params.latest ? { maxRequests: 1 } : undefined;
 
       // Get network requests from proxy
       const requests = await this.proxyClient.getNetworkRequests(filter);
+
+      // If latest is requested, return single request object instead of array
+      if (params.latest) {
+        const latestRequest = requests.length > 0 ? requests[requests.length - 1] : null;
+        if (!latestRequest) {
+          return {
+            success: true,
+            data: null,
+            dataSource: 'proxy',
+            hasHistoricalData: true
+          };
+        }
+        return {
+          success: true,
+          data: latestRequest,
+          dataSource: 'proxy',
+          hasHistoricalData: true
+        };
+      }
 
       return {
         success: true,
@@ -125,6 +145,25 @@ export class ListNetworkRequestsHandler {
       startTime: params.filter.startTime,
       endTime: params.filter.endTime,
     } : undefined;
+
+    // If latest is requested, get single request
+    if (params.latest) {
+      const latestRequest = this.networkMonitor.getLatestRequest(filter);
+      if (!latestRequest) {
+        return {
+          success: true,
+          data: null,
+          dataSource: 'direct',
+          hasHistoricalData: false
+        };
+      }
+      return {
+        success: true,
+        data: latestRequest,
+        dataSource: 'direct',
+        hasHistoricalData: false
+      };
+    }
 
     // Get all network requests
     const requests = this.networkMonitor.getRequests(filter);

@@ -236,7 +236,7 @@ async function testConsoleMessages() {
   await new Promise(resolve => setTimeout(resolve, 1000));
   
   // Then try to retrieve them
-  const result = await executeCommand('list_console_messages');
+  const result = await executeCommand('console');
   return {
     success: result.success,
     reason: result.success ? null : `Console messages command failed: ${result.stderr}`
@@ -254,7 +254,7 @@ async function testNetworkRequests() {
   await new Promise(resolve => setTimeout(resolve, 1000));
   
   // Then try to retrieve them
-  const result = await executeCommand('list_network_requests');
+  const result = await executeCommand('network');
   return {
     success: result.success,
     reason: result.success ? null : `Network requests command failed: ${result.stderr}`

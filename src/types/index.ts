@@ -2,7 +2,7 @@
 export interface CLIConfig {
   host: string;           // Chrome 主机地址，默认 localhost
   port: number;           // DevTools 端口，默认 9222
-  outputFormat: 'json' | 'text';  // 输出格式
+  outputFormat: 'json' | 'text' | 'yaml';  // 输出格式
   verbose: boolean;       // 详细日志
   quiet: boolean;         // 静默模式
   timeout: number;        // 命令超时（毫秒）

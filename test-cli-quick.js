@@ -52,10 +52,10 @@ const tests = [
   ['eval "2 + 2"', 'Basic eval'],
   ['eval "document.title"', 'Document title eval'],
   ['eval "console.log(\\"Hello from CLI test\\")"', 'Console log eval'],
-  ['list_console_messages', 'List console messages'],
-  ['list_network_requests', 'List network requests'],
-  ['get_console_message', 'Get latest console message'],
-  ['get_network_request', 'Get latest network request']
+  ['console', 'List console messages'],
+  ['console --latest', 'Get latest console message'],
+  ['network', 'List network requests'],
+  ['network --latest', 'Get latest network request']
 ];
 
 for (const [command, description] of tests) {

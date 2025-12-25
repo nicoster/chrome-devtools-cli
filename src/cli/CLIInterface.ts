@@ -4,6 +4,7 @@ import { ICLIInterface, DEFAULT_CLI_CONFIG } from '../interfaces/CLIInterface';
 import { CLICommand, CLIConfig, CommandResult, CDPClient } from '../types';
 import { CommandRegistry } from './CommandRegistry';
 import { CommandRouter } from './CommandRouter';
+import { OutputManager } from './OutputManager';
 
 // Import package.json to get version dynamically
 const packageJson = require('../../package.json');
@@ -29,11 +30,13 @@ export class CLIInterface implements ICLIInterface {
   private program: Command;
   private registry: CommandRegistry;
   private router: CommandRouter;
+  private outputManager: OutputManager;
 
   constructor() {
     this.program = new Command();
     this.registry = new CommandRegistry();
     this.router = new CommandRouter(this.registry);
+    this.outputManager = new OutputManager();
     this.setupProgram();
   }
 
@@ -52,7 +55,7 @@ export class CLIInterface implements ICLIInterface {
     this.program
       .option('-h, --host <host>', 'Chrome host address', DEFAULT_CLI_CONFIG.host)
       .option('-p, --port <port>', 'DevTools port', (value) => parseInt(value, 10), DEFAULT_CLI_CONFIG.port)
-      .option('-f, --format <format>', 'Output format (json|text)', DEFAULT_CLI_CONFIG.outputFormat)
+      .option('-f, --format <format>', 'Output format (json|text|yaml)', DEFAULT_CLI_CONFIG.outputFormat)
       .option('-v, --verbose', 'Enable verbose logging', DEFAULT_CLI_CONFIG.verbose)
       .option('-q, --quiet', 'Enable quiet mode', DEFAULT_CLI_CONFIG.quiet)
       .option('-t, --timeout <timeout>', 'Command timeout in milliseconds', (value) => parseInt(value, 10), DEFAULT_CLI_CONFIG.timeout)
@@ -231,8 +234,8 @@ export class CLIInterface implements ICLIInterface {
       throw new Error('Configuration "port" must be a number between 1 and 65535');
     }
 
-    if (config.outputFormat !== undefined && !['json', 'text'].includes(config.outputFormat)) {
-      throw new Error('Configuration "outputFormat" must be "json" or "text"');
+    if (config.outputFormat !== undefined && !['json', 'text', 'yaml'].includes(config.outputFormat)) {
+      throw new Error('Configuration "outputFormat" must be "json", "text", or "yaml"');
     }
 
     if (config.verbose !== undefined && typeof config.verbose !== 'boolean') {
@@ -390,7 +393,11 @@ export class CLIInterface implements ICLIInterface {
    */
   async execute(command: CLICommand): Promise<CommandResult> {
     try {
-      return await this.router.execute(command);
+      // Start timing the operation
+      this.outputManager.startOperation(command.name, command);
+      
+      const result = await this.router.execute(command);
+      return result;
     } catch (error) {
       return {
         success: false,
@@ -404,102 +411,14 @@ export class CLIInterface implements ICLIInterface {
    * Format command output according to specified format
    */
   formatOutput(result: CommandResult, format: string): string {
-    if (format === 'json') {
-      return JSON.stringify(result, null, 2);
-    }
+    // Create a config with the specified format
+    const config: CLIConfig = {
+      ...DEFAULT_CLI_CONFIG,
+      outputFormat: format as 'json' | 'text' | 'yaml'
+    };
 
-    // Text format
-    if (!result.success) {
-      return `Error: ${result.error}`;
-    }
-
-    if (result.data === undefined || result.data === null) {
-      return 'Success';
-    }
-
-    // Handle data source and historical data indicators
-    let output = '';
-    let dataSourceInfo = '';
-    
-    // Add data source information
-    if (result.dataSource === 'proxy' && result.hasHistoricalData) {
-      dataSourceInfo = '📊 Data from proxy server (includes historical data)\n';
-    } else if (result.dataSource === 'direct' && result.hasHistoricalData === false) {
-      dataSourceInfo = '⚠️  Data from direct connection (new messages only, no historical data)\n';
-    }
-    
-    if (result.data && typeof result.data === 'object') {
-      const data = result.data as any;
-      
-      // Handle snapshot output - show the text representation directly
-      if (data.snapshot && typeof data.snapshot === 'string') {
-        return data.snapshot;
-      }
-      
-      // Handle console messages output
-      if (data.messages && Array.isArray(data.messages)) {
-        output += dataSourceInfo;
-        if (data.messages.length === 0) {
-          output += 'No console messages found.';
-        } else {
-          output += `Found ${data.messages.length} console message(s):\n\n`;
-          data.messages.forEach((msg: any, index: number) => {
-            const timestamp = new Date(msg.timestamp).toISOString();
-            output += `[${index + 1}] ${timestamp} [${msg.type.toUpperCase()}] ${msg.text}\n`;
-            if (msg.args && msg.args.length > 0) {
-              output += `    Args: ${JSON.stringify(msg.args)}\n`;
-            }
-          });
-        }
-        return output.trim();
-      }
-      
-      // Handle network requests output
-      if (data.requests && Array.isArray(data.requests)) {
-        output += dataSourceInfo;
-        if (data.requests.length === 0) {
-          output += 'No network requests found.';
-        } else {
-          output += `Found ${data.requests.length} network request(s):\n\n`;
-          data.requests.forEach((req: any, index: number) => {
-            const timestamp = new Date(req.timestamp).toISOString();
-            const status = req.status ? ` [${req.status}]` : ' [pending]';
-            output += `[${index + 1}] ${timestamp} ${req.method} ${req.url}${status}\n`;
-          });
-        }
-        return output.trim();
-      }
-      
-      // Handle single console message
-      if (data.type && data.text !== undefined && data.timestamp) {
-        output += dataSourceInfo;
-        const timestamp = new Date(data.timestamp).toISOString();
-        output += `${timestamp} [${data.type.toUpperCase()}] ${data.text}`;
-        if (data.args && data.args.length > 0) {
-          output += `\nArgs: ${JSON.stringify(data.args)}`;
-        }
-        return output;
-      }
-      
-      // Handle single network request
-      if (data.requestId && data.url && data.method) {
-        output += dataSourceInfo;
-        const timestamp = new Date(data.timestamp).toISOString();
-        const status = data.status ? ` [${data.status}]` : ' [pending]';
-        output += `${timestamp} ${data.method} ${data.url}${status}`;
-        return output;
-      }
-    }
-
-    if (typeof result.data === 'string') {
-      return result.data;
-    }
-
-    if (typeof result.data === 'object') {
-      return JSON.stringify(result.data, null, 2);
-    }
-
-    return String(result.data);
+    // Use the output manager to format with the specified config
+    return this.outputManager.formatOutput(result, config);
   }
 
   /**
@@ -553,5 +472,33 @@ export class CLIInterface implements ICLIInterface {
    */
   getRouter(): CommandRouter {
     return this.router;
+  }
+
+  /**
+   * Get the output manager
+   */
+  getOutputManager(): OutputManager {
+    return this.outputManager;
+  }
+
+  /**
+   * Format output with custom template
+   */
+  formatOutputWithTemplate(result: CommandResult, config: CLIConfig, template: string): string {
+    return this.outputManager.formatOutput(result, config, template);
+  }
+
+  /**
+   * Format error with consistent styling
+   */
+  formatError(error: string, config: CLIConfig, exitCode = 1): string {
+    return this.outputManager.formatError(error, config, exitCode);
+  }
+
+  /**
+   * Format success with consistent styling
+   */
+  formatSuccess(data: unknown, config: CLIConfig): string {
+    return this.outputManager.formatSuccess(config, data);
   }
 }

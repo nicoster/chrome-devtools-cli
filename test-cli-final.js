@@ -166,10 +166,10 @@ if (chromeConnected) {
   runCommand('eval "console.log(\\"Test log\\"); console.warn(\\"Test warning\\"); console.error(\\"Test error\\");"', 'Generate console messages', { showOutput: false });
   
   const monitoringTests = [
-    ['list_console_messages', 'List console messages'],
-    ['get_console_message', 'Get latest console message'],
-    ['list_network_requests', 'List network requests'],
-    ['get_network_request', 'Get latest network request']
+    ['console', 'List console messages'],
+    ['console --latest', 'Get latest console message'],
+    ['network', 'List network requests'],
+    ['network --latest', 'Get latest network request']
   ];
 
   for (const [command, description] of monitoringTests) {

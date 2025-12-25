@@ -1,12 +1,11 @@
-import { CLIInterface } from './CLIInterface';
+import { EnhancedCLIInterface } from './EnhancedCLIInterface';
+import { ConfigurationManager } from '../config/ConfigurationManager';
 import { ConnectionManager } from '../connection/ConnectionManager';
 import { 
   EvaluateScriptHandler, 
   TakeScreenshotHandler, 
   TakeSnapshotHandler,
-  GetConsoleMessageHandler,
   ListConsoleMessagesHandler,
-  GetNetworkRequestHandler,
   ListNetworkRequestsHandler,
   InstallCursorCommandHandler,
   InstallClaudeSkillHandler,
@@ -24,20 +23,25 @@ import { Logger } from '../utils/logger';
 import { CLICommand, CommandResult, CDPClient } from '../types';
 import { ExitCode } from './CommandRouter';
 import { ProxyManager } from '../proxy/ProxyManager';
+import { OutputManager } from './OutputManager';
 
 /**
  * Main CLI application that coordinates all components
  */
 export class CLIApplication {
-  private cli: CLIInterface;
+  private cli: EnhancedCLIInterface;
+  private configManager: ConfigurationManager;
   private connectionManager: ConnectionManager;
+  private outputManager: OutputManager;
   private logger: Logger;
   private client?: CDPClient;
   private proxyManager: ProxyManager;
 
   constructor() {
-    this.cli = new CLIInterface();
+    this.cli = new EnhancedCLIInterface();
+    this.configManager = new ConfigurationManager();
     this.connectionManager = new ConnectionManager();
+    this.outputManager = new OutputManager();
     this.logger = new Logger();
     this.proxyManager = ProxyManager.getInstance();
     this.setupHandlers();
@@ -51,9 +55,7 @@ export class CLIApplication {
     this.cli.registerHandler(new EvaluateScriptHandler());
     this.cli.registerHandler(new TakeScreenshotHandler());
     this.cli.registerHandler(new TakeSnapshotHandler());
-    this.cli.registerHandler(new GetConsoleMessageHandler());
     this.cli.registerHandler(new ListConsoleMessagesHandler());
-    this.cli.registerHandler(new GetNetworkRequestHandler());
     this.cli.registerHandler(new ListNetworkRequestsHandler());
     this.cli.registerHandler(new InstallCursorCommandHandler());
     this.cli.registerHandler(new InstallClaudeSkillHandler());
@@ -92,8 +94,41 @@ export class CLIApplication {
    */
   async run(argv: string[]): Promise<number> {
     try {
-      // Parse command line arguments
-      const command = this.cli.parseArgs(argv);
+      // Parse command line arguments using enhanced parser
+      let command: CLICommand;
+      
+      try {
+        command = this.cli.parseArgs(argv);
+      } catch (parseError) {
+        // Handle special command exceptions in test mode
+        if (parseError instanceof Error) {
+          if (parseError.message === 'VERSION_COMMAND_EXECUTED') {
+            return ExitCode.SUCCESS;
+          }
+          if (parseError.message === 'HELP_COMMAND_EXECUTED') {
+            return ExitCode.SUCCESS;
+          }
+        }
+        
+        // Enhanced error handling with contextual help
+        const errorMessage = parseError instanceof Error ? parseError.message : String(parseError);
+        console.error(errorMessage);
+        return ExitCode.INVALID_ARGUMENTS;
+      }
+      
+      // Load configuration using the new configuration manager
+      try {
+        const cliOptions = this.extractCLIOptions(argv);
+        const configSources = await this.configManager.createConfigurationSources(cliOptions);
+        const loadedConfig = await this.configManager.loadConfiguration(configSources);
+        
+        // Merge loaded configuration with parsed command config
+        command.config = { ...loadedConfig, ...command.config };
+      } catch (configError) {
+        const errorMessage = `Configuration error: ${configError instanceof Error ? configError.message : String(configError)}`;
+        console.error(this.formatError(errorMessage, command.config));
+        return ExitCode.CONFIG_ERROR;
+      }
       
       // Configure logger based on debug flag
       if (command.config.debug) {
@@ -128,7 +163,7 @@ export class CLIApplication {
       const result = await this.cli.execute(command);
       this.logger.debug('Command execution result:', result);
 
-      // Output the result
+      // Output the result using enhanced formatting
       this.outputResult(result, command);
 
       // Return appropriate exit code
@@ -138,8 +173,8 @@ export class CLIApplication {
       this.logger.debug('Error in CLIApplication.run:', error);
       const errorMessage = error instanceof Error ? error.message : String(error);
       
-      // Output error
-      console.error(`Error: ${errorMessage}`);
+      // Output error with enhanced formatting
+      console.error(this.formatError(errorMessage, { outputFormat: 'text', verbose: false, quiet: false, debug: false, host: 'localhost', port: 9222, timeout: 30000 }));
       
       // Return error exit code
       return ExitCode.GENERAL_ERROR;
@@ -239,6 +274,59 @@ export class CLIApplication {
   }
 
   /**
+   * Extract CLI options from argv for configuration loading
+   */
+  private extractCLIOptions(argv: string[]): Record<string, unknown> {
+    const options: Record<string, unknown> = {};
+    const args = argv.slice(2);
+    
+    for (let i = 0; i < args.length; i++) {
+      const arg = args[i];
+      
+      if (arg === '--config' || arg === '-c') {
+        if (i + 1 < args.length) {
+          options.configFile = args[i + 1];
+        }
+      } else if (arg === '--profile') {
+        if (i + 1 < args.length) {
+          options.profile = args[i + 1];
+        }
+      } else if (arg === '--host' || arg === '-h') {
+        if (i + 1 < args.length) {
+          options.host = args[i + 1];
+        }
+      } else if (arg === '--port' || arg === '-p') {
+        if (i + 1 < args.length) {
+          options.port = parseInt(args[i + 1], 10);
+        }
+      } else if (arg === '--timeout' || arg === '-t') {
+        if (i + 1 < args.length) {
+          options.timeout = parseInt(args[i + 1], 10);
+        }
+      } else if (arg === '--format' || arg === '-f') {
+        if (i + 1 < args.length) {
+          options.outputFormat = args[i + 1];
+        }
+      } else if (arg === '--verbose' || arg === '-v') {
+        options.verbose = true;
+      } else if (arg === '--quiet' || arg === '-q') {
+        options.quiet = true;
+      } else if (arg === '--debug' || arg === '-d') {
+        options.debug = true;
+      }
+    }
+    
+    return options;
+  }
+
+  /**
+   * Format error message with enhanced styling
+   */
+  private formatError(message: string, config: any): string {
+    return this.outputManager.formatError(message, config);
+  }
+
+  /**
    * Graceful shutdown
    */
   async shutdown(): Promise<void> {
@@ -261,8 +349,15 @@ export class CLIApplication {
   /**
    * Get CLI interface for testing
    */
-  getCLI(): CLIInterface {
+  getCLI(): EnhancedCLIInterface {
     return this.cli;
+  }
+
+  /**
+   * Get configuration manager for testing
+   */
+  getConfigurationManager(): ConfigurationManager {
+    return this.configManager;
   }
 
   /**
@@ -270,5 +365,12 @@ export class CLIApplication {
    */
   getConnectionManager(): ConnectionManager {
     return this.connectionManager;
+  }
+
+  /**
+   * Get output manager for testing
+   */
+  getOutputManager(): OutputManager {
+    return this.outputManager;
   }
 }

@@ -2,6 +2,19 @@
 
 A command-line tool for browser automation via Chrome DevTools Protocol (CDP). Designed for developers who need reliable, scriptable browser control with both dedicated commands and flexible JavaScript execution.
 
+## 🚀 Enhanced CLI Features
+
+**New in v2.0:** The CLI now includes a comprehensive refactored parameter system with:
+
+- 🔧 **Advanced Configuration Management**: YAML/JSON config files with profiles and precedence handling
+- ⚙️ **Enhanced Argument Parser**: Consistent option handling with validation and schema support  
+- 📚 **Comprehensive Help System**: Contextual help, advanced topics, and detailed examples
+- 🎯 **Standardized Output**: JSON/text formats with quiet/verbose modes and custom templates
+- 🔗 **Command Aliasing**: Built-in and custom aliases for efficient workflows
+- 🧩 **Plugin Architecture**: Extensible system for custom commands and functionality
+- 🖥️ **Interactive Mode**: Command prompt with tab completion and session management
+- ⚡ **Performance Optimizations**: Configuration caching and connection reuse
+
 ## 🤔 Why This Tool Exists
 
 **The honest story:** I started using `chrome-devtools-mcp` like everyone else. It worked great... until it didn't. One day it just stopped working - Cursor showed 26 tools available, everything looked normal, but every single tool call threw errors. Classic black box problem: you can't debug what you can't see inside.
@@ -882,27 +895,103 @@ For detailed documentation, see the [Form Filling Guide](docs/FORM_FILLING.md).
 
 ## Configuration
 
-### Configuration File
+The CLI supports comprehensive configuration management with multiple sources and precedence handling.
 
-Create a `.chrome-cdp-cli.json` file in your project root or home directory:
+### Quick Configuration
 
-```json
-{
-  "host": "localhost",
-  "port": 9222,
-  "timeout": 30000,
-  "outputFormat": "text",
-  "verbose": false,
-  "quiet": false
-}
+Create a `.chrome-cdp-cli.yaml` file in your project root or home directory:
+
+```yaml
+# Basic configuration
+host: localhost
+port: 9222
+timeout: 30000
+outputFormat: text
+verbose: false
+
+# Profiles for different environments
+profiles:
+  development:
+    debug: true
+    verbose: true
+  production:
+    quiet: true
+    outputFormat: json
+
+# Command aliases
+aliases:
+  ss: screenshot
+  js: eval
+  health: eval "document.readyState === 'complete'"
+
+# Command-specific defaults
+commands:
+  screenshot:
+    defaults:
+      format: png
+      quality: 90
 ```
 
 ### Environment Variables
 
-- `CHROME_CLI_HOST`: Default Chrome host
-- `CHROME_CLI_PORT`: Default DevTools port
-- `CHROME_CLI_TIMEOUT`: Default command timeout
-- `CHROME_CLI_FORMAT`: Default output format
+```bash
+export CHROME_CDP_CLI_HOST=localhost
+export CHROME_CDP_CLI_PORT=9222
+export CHROME_CDP_CLI_TIMEOUT=30000
+export CHROME_CDP_CLI_VERBOSE=true
+export CHROME_CDP_CLI_PROFILE=development
+```
+
+### Configuration Precedence
+
+Configuration values are resolved in order (highest to lowest priority):
+1. **Command-line arguments** (highest)
+2. **Environment variables**
+3. **Configuration files** (profile-specific, then default)
+4. **Default values** (lowest)
+
+### Advanced Configuration
+
+For comprehensive configuration options, see the [Configuration Guide](docs/CONFIGURATION.md).
+
+## Enhanced Help System
+
+The CLI includes a comprehensive help system with contextual assistance:
+
+```bash
+# General help with categorized commands
+chrome-cdp-cli help
+
+# Command-specific help with examples
+chrome-cdp-cli help eval
+chrome-cdp-cli help screenshot
+
+# Advanced help topics
+chrome-cdp-cli help topic configuration
+chrome-cdp-cli help topic selectors
+chrome-cdp-cli help topic automation
+chrome-cdp-cli help topic debugging
+
+# Contextual help (shown automatically on errors)
+chrome-cdp-cli click "#nonexistent"  # Shows selector help
+```
+
+## Plugin System
+
+Extend the CLI with custom commands and functionality:
+
+```bash
+# Install plugins
+npm install -g chrome-cdp-cli-plugin-form-automation
+
+# Load plugins from directory
+chrome-cdp-cli --plugin-dir ./plugins custom-command
+
+# List available plugins
+chrome-cdp-cli --show-plugins
+```
+
+For plugin development, see the [Plugin Development Guide](docs/PLUGIN_DEVELOPMENT.md).
 
 ## Development
 
