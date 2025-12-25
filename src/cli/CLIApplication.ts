@@ -17,7 +17,8 @@ import {
   PressKeyHandler,
   UploadFileHandler,
   WaitForHandler,
-  HandleDialogHandler
+  HandleDialogHandler,
+  RestartProxyHandler
 } from '../handlers';
 import { Logger } from '../utils/logger';
 import { CLICommand, CommandResult, CDPClient } from '../types';
@@ -68,6 +69,7 @@ export class CLIApplication {
     this.cli.registerHandler(new UploadFileHandler());
     this.cli.registerHandler(new WaitForHandler());
     this.cli.registerHandler(new HandleDialogHandler());
+    this.cli.registerHandler(new RestartProxyHandler());
     
     // TODO: Register other handlers as they are implemented
     // this.cli.registerHandler(new NavigatePageHandler());

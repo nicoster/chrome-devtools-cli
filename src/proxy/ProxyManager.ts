@@ -103,6 +103,14 @@ export class ProxyManager {
   }
 
   /**
+   * Restart the proxy server
+   * Public method for restarting the proxy server
+   */
+  async restart(): Promise<boolean> {
+    return await this.startOrRestartProxy();
+  }
+
+  /**
    * Start or restart the proxy server
    */
   private async startOrRestartProxy(): Promise<boolean> {

@@ -15,3 +15,4 @@ export * from './PressKeyHandler';
 export * from './UploadFileHandler';
 export * from './WaitForHandler';
 export * from './HandleDialogHandler';
+export * from './RestartProxyHandler';

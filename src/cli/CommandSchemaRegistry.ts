@@ -666,5 +666,27 @@ export class CommandSchemaRegistry {
       ],
       arguments: []
     });
+
+    // Restart command
+    this.registerCommand({
+      name: 'restart',
+      aliases: [],
+      description: 'Restart the proxy server process. Use this command when console or network command output becomes stale (not refreshing or showing old data). Restarting will clear the message store and start fresh monitoring.',
+      usage: 'chrome-cdp-cli restart [options]',
+      examples: [
+        { command: 'chrome-cdp-cli restart', description: 'Restart the proxy server when logs are stale' },
+        { command: 'chrome-cdp-cli restart --force', description: 'Force restart even if proxy is healthy' }
+      ],
+      options: [
+        {
+          name: 'force',
+          short: 'f',
+          type: 'boolean',
+          description: 'Force restart even if proxy is healthy',
+          default: false
+        }
+      ],
+      arguments: []
+    });
   }
 }
