@@ -35,6 +35,7 @@ A command-line tool for browser automation via Chrome DevTools Protocol (CDP). D
 - 📊 **Console Monitoring**: Real-time console message capture with filtering and storage
 - 🌐 **Network Monitoring**: Real-time network request/response monitoring with comprehensive filtering
 - 🖱️ **Element Interaction**: Complete native interaction commands (click, hover, fill, drag, press_key, upload_file, wait_for, handle_dialog)
+- 🔄 **Proxy Management**: Restart proxy server to refresh stale console and network logs
 - 🔧 **CLI Interface**: Full command-line interface with argument parsing and routing
 - 🛠️ **IDE Integration**: Install Cursor commands and Claude skills with directory validation and --force option
 - 📦 **Build System**: Complete TypeScript build pipeline with testing framework
@@ -88,6 +89,7 @@ This tool integrates seamlessly with modern AI-powered development environments.
 - 📊 **Monitoring**: Monitor console messages and network requests in real-time
 - 🖱️ **Element Interaction**: Complete native interaction commands (click, hover, fill, drag, press_key, upload_file, wait_for, handle_dialog)
 - 📝 **Form Automation**: Single field and batch form filling with comprehensive options
+- 🔄 **Proxy Management**: Restart proxy server to refresh stale logs
 - 🔧 **Flexible Output**: Support for JSON and human-readable text output formats
 - 🚧 **Eval Workarounds**: Many advanced features available through JavaScript execution
 
@@ -170,8 +172,8 @@ chrome-cdp-cli eval "window.location.href = 'https://example.com'"
 # Take a screenshot
 chrome-cdp-cli screenshot --filename screenshot.png
 
-# Capture DOM snapshot
-chrome-cdp-cli snapshot --filename dom-snapshot.json
+# Capture DOM snapshot (default: text format)
+chrome-cdp-cli snapshot --filename dom-snapshot.txt
 
 # Element interactions
 chrome-cdp-cli click "#submit-button"
@@ -190,8 +192,11 @@ chrome-cdp-cli handle_dialog accept
 chrome-cdp-cli fill_form --fields '[{"selector":"#username","value":"john"},{"selector":"#password","value":"secret"}]'
 
 # Monitor console and network
-chrome-cdp-cli get_console_message
-chrome-cdp-cli get_network_request
+chrome-cdp-cli console --latest
+chrome-cdp-cli network --latest
+
+# Restart proxy server when logs are stale
+chrome-cdp-cli restart
 
 # Install IDE integrations
 chrome-cdp-cli install_cursor_command
@@ -262,8 +267,8 @@ chrome-cdp-cli screenshot --filename screenshot.png
 # Full page screenshot  
 chrome-cdp-cli screenshot --full-page --filename fullpage.png
 
-# DOM snapshot with complete layout information
-chrome-cdp-cli snapshot --filename dom-snapshot.json
+# DOM snapshot with complete layout information (default: text format)
+chrome-cdp-cli snapshot --filename dom-snapshot.txt
 
 # Custom dimensions
 chrome-cdp-cli screenshot --width 1920 --height 1080 --filename custom.png
@@ -376,13 +381,19 @@ chrome-cdp-cli handle_dialog accept --timeout 10000  # Wait for dialog to appear
 #### Console Monitoring
 ```bash
 # Get latest console message
-chrome-cdp-cli get_console_message
+chrome-cdp-cli console --latest
 
 # List all console messages
-chrome-cdp-cli list_console_messages
+chrome-cdp-cli console
 
 # Filter console messages by type
-chrome-cdp-cli list_console_messages --filter '{"types":["error","warn"]}'
+chrome-cdp-cli console --types error,warn
+
+# Filter by text pattern
+chrome-cdp-cli console --textPattern "error|warning"
+
+# Limit number of messages
+chrome-cdp-cli console --maxMessages 10
 ```
 
 **Note**: Console monitoring only captures messages generated *after* monitoring starts. For historical messages or immediate console operations, use the eval-first approach:
@@ -400,13 +411,22 @@ See [Console Monitoring Documentation](docs/CONSOLE_MONITORING.md) for detailed 
 #### Network Monitoring
 ```bash
 # Get latest network request
-chrome-cdp-cli get_network_request
+chrome-cdp-cli network --latest
 
 # List all network requests
-chrome-cdp-cli list_network_requests
+chrome-cdp-cli network
 
 # Filter network requests by method
-chrome-cdp-cli list_network_requests --filter '{"methods":["POST"],"statusCodes":[200,201]}'
+chrome-cdp-cli network --filter '{"methods":["POST"],"statusCodes":[200,201]}'
+```
+
+#### Proxy Management
+```bash
+# Restart proxy server when console or network logs become stale
+chrome-cdp-cli restart
+
+# Force restart even if proxy is healthy
+chrome-cdp-cli restart --force
 ```
 
 #### IDE Integration
@@ -884,11 +904,14 @@ chrome-cdp-cli eval --file script.js
 
 # Visual capture
 chrome-cdp-cli screenshot --filename page.png
-chrome-cdp-cli snapshot --filename dom.json
+chrome-cdp-cli snapshot --filename dom.txt
 
 # Monitoring
-chrome-cdp-cli get_console_message
-chrome-cdp-cli list_network_requests
+chrome-cdp-cli console --latest
+chrome-cdp-cli network
+
+# Proxy management
+chrome-cdp-cli restart
 ```
 
 For detailed documentation, see the [Form Filling Guide](docs/FORM_FILLING.md).
