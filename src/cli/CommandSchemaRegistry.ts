@@ -509,6 +509,17 @@ export class CommandSchemaRegistry {
           description: 'Include text index information',
           type: 'boolean',
           default: false
+        },
+        {
+          name: 'color',
+          description: 'Enable color output (default: auto-detect)',
+          type: 'boolean'
+        },
+        {
+          name: 'no-color',
+          description: 'Disable color output',
+          type: 'boolean',
+          default: false
         }
       ],
       arguments: []

@@ -13,6 +13,7 @@ export interface TakeSnapshotArgs {
   includeAttributes?: boolean; // Include DOM attributes (default: true)
   includePaintOrder?: boolean; // Include paint order (default: false)
   includeTextIndex?: boolean;  // Include text node indices (default: false)
+  color?: boolean;             // Enable color output (default: auto-detect)
 }
 
 /**
@@ -165,10 +166,131 @@ export class TakeSnapshotHandler implements ICommandHandler {
   readonly name = 'snapshot';
 
   /**
+   * ANSI color codes for terminal output
+   */
+  private readonly colors = {
+    reset: '\x1b[0m',
+    bright: '\x1b[1m',
+    dim: '\x1b[2m',
+    red: '\x1b[31m',
+    green: '\x1b[32m',
+    yellow: '\x1b[33m',
+    blue: '\x1b[34m',
+    magenta: '\x1b[35m',
+    cyan: '\x1b[36m',
+    white: '\x1b[37m',
+    gray: '\x1b[90m',
+  };
+
+  /**
+   * Check if color output should be enabled
+   */
+  private shouldUseColors(args: TakeSnapshotArgs): boolean {
+    // Explicit disable
+    if (args.color === false) {
+      return false;
+    }
+    
+    // Explicit enable
+    if (args.color === true) {
+      return true;
+    }
+    
+    // Check NO_COLOR environment variable (standard)
+    if (process.env.NO_COLOR) {
+      return false;
+    }
+    
+    // Check FORCE_COLOR environment variable (common convention)
+    if (process.env.FORCE_COLOR === '0') {
+      return false;
+    }
+    if (process.env.FORCE_COLOR === '1' || process.env.FORCE_COLOR === 'true') {
+      return true;
+    }
+    
+    // Check if outputting to file (disable colors for files)
+    if (args.filename) {
+      return false;
+    }
+    
+    // Check if stdout is a TTY
+    return process.stdout.isTTY === true;
+  }
+
+  /**
+   * Color helper methods
+   */
+  private colorize(text: string, color: string, useColors: boolean): string {
+    if (!useColors) return text;
+    return `${color}${text}${this.colors.reset}`;
+  }
+
+  private colorTag(tagName: string, useColors: boolean): string {
+    // Special colors for interactive elements
+    if (['button', 'a', 'input', 'textarea', 'select'].includes(tagName.toLowerCase())) {
+      return this.colorize(tagName.toUpperCase(), this.colors.green + this.colors.bright, useColors);
+    }
+    // Headings
+    if (['h1', 'h2', 'h3', 'h4', 'h5', 'h6'].includes(tagName.toLowerCase())) {
+      return this.colorize(tagName.toUpperCase(), this.colors.cyan + this.colors.bright, useColors);
+    }
+    // Images
+    if (tagName.toLowerCase() === 'img') {
+      return this.colorize(tagName.toUpperCase(), this.colors.magenta, useColors);
+    }
+    // Default: cyan for all tags
+    return this.colorize(tagName.toUpperCase(), this.colors.cyan, useColors);
+  }
+
+  private colorId(id: string, useColors: boolean): string {
+    return this.colorize(`#${id}`, this.colors.green, useColors);
+  }
+
+  private colorClass(className: string, useColors: boolean): string {
+    return this.colorize(`.${className}`, this.colors.yellow, useColors);
+  }
+
+  private colorAttribute(name: string, value: string, useColors: boolean): string {
+    if (name === 'type') {
+      return this.colorize(`[${value}]`, this.colors.magenta, useColors);
+    }
+    if (name === 'name') {
+      return this.colorize(`name="${value}"`, this.colors.magenta, useColors);
+    }
+    return `[${name}="${value}"]`;
+  }
+
+  private colorText(text: string, useColors: boolean): string {
+    return this.colorize(`"${text}"`, this.colors.white, useColors);
+  }
+
+  private colorUrl(url: string, useColors: boolean): string {
+    return this.colorize(`"${url}"`, this.colors.blue, useColors);
+  }
+
+  private colorSpecial(text: string, useColors: boolean): string {
+    return this.colorize(text, this.colors.yellow, useColors);
+  }
+
+  private colorTreeSymbol(symbol: string, useColors: boolean): string {
+    return this.colorize(symbol, this.colors.gray, useColors);
+  }
+
+  private colorPageTitle(title: string, useColors: boolean): string {
+    return this.colorize(`PAGE: ${title}`, this.colors.cyan + this.colors.bright, useColors);
+  }
+
+  /**
    * Execute DOM snapshot capture
    */
   async execute(client: CDPClient, args: unknown): Promise<CommandResult> {
-    const snapshotArgs = args as TakeSnapshotArgs;
+    const snapshotArgs = args as TakeSnapshotArgs & { 'no-color'?: boolean };
+    
+    // Handle --no-color option
+    if (snapshotArgs['no-color']) {
+      snapshotArgs.color = false;
+    }
 
     try {
       // Enable required domains
@@ -282,7 +404,8 @@ export class TakeSnapshotHandler implements ICommandHandler {
       processedSnapshot = htmlResponse.outerHTML;
     } else {
       // Build text tree representation from DOM tree
-      const textSnapshot = this.buildTextFromDOMNode(docResponse.root, url, title);
+      const useColors = this.shouldUseColors(snapshotArgs);
+      const textSnapshot = this.buildTextFromDOMNode(docResponse.root, url, title, useColors);
       processedSnapshot = {
         url,
         title,
@@ -390,7 +513,8 @@ export class TakeSnapshotHandler implements ICommandHandler {
     }
 
     // Create LLM-friendly text representation
-    const textSnapshot = this.createTextSnapshot(doc, response.strings);
+    const useColors = this.shouldUseColors(args);
+    const textSnapshot = this.createTextSnapshot(doc, response.strings, useColors);
     
     const result = {
       url: doc.documentURL,
@@ -404,7 +528,7 @@ export class TakeSnapshotHandler implements ICommandHandler {
   /**
    * Create a text-based snapshot that LLMs can easily understand
    */
-  private createTextSnapshot(doc: DOMSnapshotResponse['documents'][0], strings: string[]): string {
+  private createTextSnapshot(doc: DOMSnapshotResponse['documents'][0], strings: string[], useColors: boolean = true): string {
     const nodes = doc.nodes;
     if (!nodes.nodeName || !nodes.nodeType) {
       return 'Empty document';
@@ -414,17 +538,17 @@ export class TakeSnapshotHandler implements ICommandHandler {
     const nodeTree = this.buildNodeTree(doc, strings);
     
     // Convert to text representation
-    let output = `PAGE: ${doc.title || 'Untitled'}\n`;
+    let output = this.colorPageTitle(doc.title || 'Untitled', useColors) + '\n';
     
     // Find body or root content
     const bodyNode = this.findBodyNode(nodeTree);
     if (bodyNode) {
-      output += this.renderNodeAsText(bodyNode, 0);
+      output += this.renderNodeAsText(bodyNode, 0, false, [], useColors);
     } else {
       // Fallback: render all root nodes
       for (const node of nodeTree) {
         if (this.shouldIncludeNode(node)) {
-          output += this.renderNodeAsText(node, 0);
+          output += this.renderNodeAsText(node, 0, false, [], useColors);
         }
       }
     }
@@ -564,7 +688,7 @@ export class TakeSnapshotHandler implements ICommandHandler {
   /**
    * Render a node as text with proper indentation and formatting
    */
-  private renderNodeAsText(node: any, depth: number, isLast: boolean = false, parentIsLast: boolean[] = []): string {
+  private renderNodeAsText(node: any, depth: number, isLast: boolean = false, parentIsLast: boolean[] = [], useColors: boolean = true): string {
     if (!this.shouldIncludeNode(node)) {
       return '';
     }
@@ -572,34 +696,42 @@ export class TakeSnapshotHandler implements ICommandHandler {
     // Build indent based on parent chain
     let indent = '';
     for (let i = 0; i < parentIsLast.length; i++) {
-      indent += parentIsLast[i] ? '    ' : '│   ';
+      const symbol = parentIsLast[i] ? '    ' : '│   ';
+      indent += this.colorTreeSymbol(symbol, useColors);
     }
-    const prefix = depth > 0 ? (isLast ? '└── ' : '├── ') : '';
+    const prefixSymbol = depth > 0 ? (isLast ? '└── ' : '├── ') : '';
+    const prefix = this.colorTreeSymbol(prefixSymbol, useColors);
     let output = '';
 
     if (node.nodeType === 3) {
       // Text node
       if (node.textContent) {
         const truncatedText = this.truncateText(node.textContent.trim(), 40);
-        output += `${indent}${prefix}"${truncatedText}"\n`;
+        output += `${indent}${prefix}${this.colorText(truncatedText, useColors)}\n`;
       }
     } else if (node.nodeType === 1) {
       // Element node
-      const tag = node.nodeName.toUpperCase();
+      const tag = this.colorTag(node.nodeName, useColors);
       let description = tag;
 
       // Add meaningful attributes (excluding style, but including class)
       const attrs = [];
-      if (node.attributes.id) attrs.push(`#${node.attributes.id}`);
+      if (node.attributes.id) {
+        attrs.push(this.colorId(node.attributes.id, useColors));
+      }
       if (node.attributes.class) {
         // Display all classes as .class1 .class2 .class3
         const classes = node.attributes.class.split(/\s+/).filter((c: string) => c.trim().length > 0);
         classes.forEach((cls: string) => {
-          attrs.push(`.${cls.trim()}`);
+          attrs.push(this.colorClass(cls.trim(), useColors));
         });
       }
-      if (node.attributes.type) attrs.push(`[${node.attributes.type}]`);
-      if (node.attributes.name) attrs.push(`name="${node.attributes.name}"`);
+      if (node.attributes.type) {
+        attrs.push(this.colorAttribute('type', node.attributes.type, useColors));
+      }
+      if (node.attributes.name) {
+        attrs.push(this.colorAttribute('name', node.attributes.name, useColors));
+      }
       
       if (attrs.length > 0) {
         description += `(${attrs.join(' ')})`;
@@ -608,31 +740,33 @@ export class TakeSnapshotHandler implements ICommandHandler {
       // Add special content for specific elements
       if (node.nodeName === 'img' && node.attributes.alt) {
         const altText = this.truncateText(node.attributes.alt, 40);
-        description += `: "${altText}"`;
+        description += `: ${this.colorText(altText, useColors)}`;
       } else if (node.nodeName === 'a' && node.attributes.href) {
-        description += `: "${node.attributes.href}"`;
+        description += `: ${this.colorUrl(node.attributes.href, useColors)}`;
       } else if (['input', 'textarea'].includes(node.nodeName)) {
         if (node.attributes.placeholder) {
           const placeholderText = this.truncateText(node.attributes.placeholder, 40);
-          description += `: "${placeholderText}"`;
+          description += `: ${this.colorText(placeholderText, useColors)}`;
         } else if (node.inputValue) {
           const inputText = this.truncateText(node.inputValue, 40);
-          description += `: "${inputText}"`;
+          description += `: ${this.colorText(inputText, useColors)}`;
         } else if (node.nodeName === 'textarea') {
           // For textarea, also check text content from children
           const textContent = this.extractTextContent(node);
           if (textContent) {
             const truncatedText = this.truncateText(textContent, 40);
-            description += `: "${truncatedText}"`;
+            description += `: ${this.colorText(truncatedText, useColors)}`;
           }
         }
-        if (node.checked) description += ' [checked]';
+        if (node.checked) {
+          description += ` ${this.colorSpecial('[checked]', useColors)}`;
+        }
       } else if (node.nodeName === 'button' || ['h1', 'h2', 'h3', 'h4', 'h5', 'h6'].includes(node.nodeName)) {
         // For buttons and headings, show text content inline
         const textContent = this.extractTextContent(node);
         if (textContent) {
           const truncatedText = this.truncateText(textContent, 40);
-          description += `: "${truncatedText}"`;
+          description += `: ${this.colorText(truncatedText, useColors)}`;
         }
       }
 
@@ -651,7 +785,8 @@ export class TakeSnapshotHandler implements ICommandHandler {
         const textContent = this.extractTextContent(node);
         if (textContent && textContent.trim().length > 0) {
           const truncatedText = this.truncateText(textContent.trim(), 40);
-          output += `${indent}│   └── "${truncatedText}"\n`;
+          const treeSymbol = this.colorTreeSymbol('│   └── ', useColors);
+          output += `${indent}${treeSymbol}${this.colorText(truncatedText, useColors)}\n`;
           return output;
         }
         // If no text content, still show the element (it might have structure or attributes)
@@ -663,7 +798,7 @@ export class TakeSnapshotHandler implements ICommandHandler {
         for (let i = 0; i < meaningfulChildren.length; i++) {
           const child = meaningfulChildren[i];
           const childIsLast = i === meaningfulChildren.length - 1;
-          output += this.renderNodeAsText(child, depth + 1, childIsLast, newParentIsLast);
+          output += this.renderNodeAsText(child, depth + 1, childIsLast, newParentIsLast, useColors);
         }
       }
     }
@@ -704,19 +839,19 @@ export class TakeSnapshotHandler implements ICommandHandler {
   /**
    * Build text tree representation from DOM.getDocument node structure
    */
-  private buildTextFromDOMNode(root: any, _url: string, title: string): string {
-    let output = `PAGE: ${title || 'Untitled'}\n`;
+  private buildTextFromDOMNode(root: any, _url: string, title: string, useColors: boolean = true): string {
+    let output = this.colorPageTitle(title || 'Untitled', useColors) + '\n';
     
     // Find body or main content
     const bodyNode = this.findBodyInDOMTree(root);
     if (bodyNode) {
-      output += this.renderDOMNodeAsText(bodyNode, 0);
+      output += this.renderDOMNodeAsText(bodyNode, 0, false, [], useColors);
     } else {
       // Fallback: render root children
       if (root.children) {
         for (const child of root.children) {
           if (this.shouldIncludeDOMNode(child)) {
-            output += this.renderDOMNodeAsText(child, 0);
+            output += this.renderDOMNodeAsText(child, 0, false, [], useColors);
           }
         }
       }
@@ -772,7 +907,7 @@ export class TakeSnapshotHandler implements ICommandHandler {
   /**
    * Render a DOM node as text with proper indentation
    */
-  private renderDOMNodeAsText(node: any, depth: number, isLast: boolean = false, parentIsLast: boolean[] = []): string {
+  private renderDOMNodeAsText(node: any, depth: number, isLast: boolean = false, parentIsLast: boolean[] = [], useColors: boolean = true): string {
     if (!this.shouldIncludeDOMNode(node)) {
       return '';
     }
@@ -780,9 +915,11 @@ export class TakeSnapshotHandler implements ICommandHandler {
     // Build indent based on parent chain
     let indent = '';
     for (let i = 0; i < parentIsLast.length; i++) {
-      indent += parentIsLast[i] ? '    ' : '│   ';
+      const symbol = parentIsLast[i] ? '    ' : '│   ';
+      indent += this.colorTreeSymbol(symbol, useColors);
     }
-    const prefix = depth > 0 ? (isLast ? '└── ' : '├── ') : '';
+    const prefixSymbol = depth > 0 ? (isLast ? '└── ' : '├── ') : '';
+    const prefix = this.colorTreeSymbol(prefixSymbol, useColors);
     let output = '';
 
     if (node.nodeType === 3) {
@@ -790,11 +927,12 @@ export class TakeSnapshotHandler implements ICommandHandler {
       const text = (node.nodeValue || '').trim();
       if (text) {
         const truncatedText = this.truncateText(text, 40);
-        output += `${indent}${prefix}"${truncatedText}"\n`;
+        output += `${indent}${prefix}${this.colorText(truncatedText, useColors)}\n`;
       }
     } else if (node.nodeType === 1) {
       // Element node
-      const tag = (node.nodeName || '').toUpperCase();
+      const nodeName = (node.nodeName || '').toLowerCase();
+      const tag = this.colorTag(nodeName, useColors);
       let description = tag;
 
       // Add attributes (excluding style, but including class)
@@ -804,15 +942,19 @@ export class TakeSnapshotHandler implements ICommandHandler {
           const name = node.attributes[i];
           const value = node.attributes[i + 1];
           if (['id', 'class', 'type', 'name', 'href', 'src', 'alt', 'placeholder', 'value', 'title'].includes(name)) {
-            if (name === 'id') attrs.push(`#${value}`);
-            else if (name === 'class') {
+            if (name === 'id') {
+              attrs.push(this.colorId(value, useColors));
+            } else if (name === 'class') {
               // Display all classes as .class1 .class2 .class3
               const classes = value.split(/\s+/).filter((c: string) => c.trim().length > 0);
               classes.forEach((cls: string) => {
-                attrs.push(`.${cls.trim()}`);
+                attrs.push(this.colorClass(cls.trim(), useColors));
               });
-            } else if (name === 'type') attrs.push(`[${value}]`);
-            else attrs.push(`${name}="${value}"`);
+            } else if (name === 'type') {
+              attrs.push(this.colorAttribute('type', value, useColors));
+            } else {
+              attrs.push(this.colorAttribute(name, value, useColors));
+            }
           }
         }
       }
@@ -822,24 +964,23 @@ export class TakeSnapshotHandler implements ICommandHandler {
       }
 
       // Add special content for specific elements
-      const nodeName = (node.nodeName || '').toLowerCase();
       if (nodeName === 'img' && node.attributes) {
         const altIndex = node.attributes.indexOf('alt');
         if (altIndex >= 0 && altIndex + 1 < node.attributes.length) {
           const altText = this.truncateText(node.attributes[altIndex + 1], 40);
-          description += `: "${altText}"`;
+          description += `: ${this.colorText(altText, useColors)}`;
         }
       } else if (nodeName === 'a' && node.attributes) {
         const hrefIndex = node.attributes.indexOf('href');
         if (hrefIndex >= 0 && hrefIndex + 1 < node.attributes.length) {
-          description += `: "${node.attributes[hrefIndex + 1]}"`;
+          description += `: ${this.colorUrl(node.attributes[hrefIndex + 1], useColors)}`;
         }
       } else if (['input', 'textarea'].includes(nodeName)) {
         if (node.attributes) {
           const placeholderIndex = node.attributes.indexOf('placeholder');
           if (placeholderIndex >= 0 && placeholderIndex + 1 < node.attributes.length) {
             const placeholderText = this.truncateText(node.attributes[placeholderIndex + 1], 40);
-            description += `: "${placeholderText}"`;
+            description += `: ${this.colorText(placeholderText, useColors)}`;
           }
         }
         // Also check for textarea content
@@ -847,14 +988,14 @@ export class TakeSnapshotHandler implements ICommandHandler {
           const textContent = this.extractTextFromDOMNode(node);
           if (textContent) {
             const truncatedText = this.truncateText(textContent, 40);
-            description += `: "${truncatedText}"`;
+            description += `: ${this.colorText(truncatedText, useColors)}`;
           }
         }
       } else if (nodeName === 'button' || ['h1', 'h2', 'h3', 'h4', 'h5', 'h6'].includes(nodeName)) {
         const textContent = this.extractTextFromDOMNode(node);
         if (textContent) {
           const truncatedText = this.truncateText(textContent, 40);
-          description += `: "${truncatedText}"`;
+          description += `: ${this.colorText(truncatedText, useColors)}`;
         }
       }
 
@@ -874,7 +1015,8 @@ export class TakeSnapshotHandler implements ICommandHandler {
           const textContent = this.extractTextFromDOMNode(node);
           if (textContent && textContent.trim().length > 0) {
             const truncatedText = this.truncateText(textContent.trim(), 40);
-            output += `${indent}│   └── "${truncatedText}"\n`;
+            const treeSymbol = this.colorTreeSymbol('│   └── ', useColors);
+            output += `${indent}${treeSymbol}${this.colorText(truncatedText, useColors)}\n`;
             return output;
           }
           // If no text content, still show the element (it might have structure or attributes)
@@ -886,7 +1028,7 @@ export class TakeSnapshotHandler implements ICommandHandler {
           for (let i = 0; i < meaningfulChildren.length; i++) {
             const child = meaningfulChildren[i];
             const childIsLast = i === meaningfulChildren.length - 1;
-            output += this.renderDOMNodeAsText(child, depth + 1, childIsLast, newParentIsLast);
+            output += this.renderDOMNodeAsText(child, depth + 1, childIsLast, newParentIsLast, useColors);
           }
         }
       }
