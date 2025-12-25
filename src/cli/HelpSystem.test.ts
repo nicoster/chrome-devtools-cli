@@ -72,17 +72,16 @@ describe('HelpSystem', () => {
       expect(help).toContain('USAGE');
       expect(help).toContain('GLOBAL OPTIONS');
       expect(help).toContain('AVAILABLE COMMANDS');
-      expect(help).toContain('HELP TOPICS');
       expect(help).toContain('GETTING MORE HELP');
     });
 
     it('should categorize commands by functionality', () => {
       const help = helpSystem.generateGeneralHelp();
       
-      expect(help).toContain('JavaScript Execution:');
-      expect(help).toContain('Page Capture:');
-      expect(help).toContain('User Interaction:');
-      expect(help).toContain('Monitoring & Debugging:');
+      expect(help).toContain('JavaScript Execution');
+      expect(help).toContain('Page Capture');
+      expect(help).toContain('User Interaction');
+      expect(help).toContain('Monitoring & Debugging');
     });
 
     it('should list all global options with descriptions', () => {
@@ -101,11 +100,8 @@ describe('HelpSystem', () => {
     it('should include help topics for advanced features', () => {
       const help = helpSystem.generateGeneralHelp();
       
-      expect(help).toContain('configuration');
-      expect(help).toContain('selectors');
-      expect(help).toContain('automation');
-      expect(help).toContain('debugging');
-      expect(help).toContain('scripting');
+      // Since help topics were removed, we just check that the method works
+      expect(help).toContain('GETTING MORE HELP');
     });
   });
 

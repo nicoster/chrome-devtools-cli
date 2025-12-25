@@ -477,67 +477,6 @@ export class OutputFormatter {
     });
   }
 
-  /**
-   * Check if console message args provide additional information beyond the formatted text
-   */
-  private argsProvideAdditionalInfo(text: string, args: any[]): boolean {
-    // If there are no args, they don't provide additional info
-    if (!args || args.length === 0) {
-      return false;
-    }
-
-    // If the text is empty but there are args, show them
-    if (!text || text.trim() === '') {
-      return true;
-    }
-
-    // Check if args contain only formatting information (CSS styles, etc.)
-    // Common patterns where args are redundant:
-    // 1. First arg is the same as the text (console.log formatting)
-    // 2. Args contain only CSS styling information
-    // 3. Args are just the message split into parts
-    
-    try {
-      // If first arg matches the text exactly, it's likely redundant
-      if (args.length >= 1 && String(args[0]) === text) {
-        // Check if remaining args are just CSS styles
-        const remainingArgs = args.slice(1);
-        const allAreCSSStyles = remainingArgs.every(arg => 
-          typeof arg === 'string' && (
-            arg.includes('font-weight') ||
-            arg.includes('color:') ||
-            arg.includes('background:') ||
-            arg.includes('font-size') ||
-            arg.startsWith('font-') ||
-            arg.startsWith('text-') ||
-            arg.startsWith('border') ||
-            arg === '' ||
-            arg.trim() === ''
-          )
-        );
-        
-        if (allAreCSSStyles) {
-          return false; // Args are just CSS styling, don't show them
-        }
-      }
-
-      // If the text contains placeholders (%s, %d, %o, etc.) and args fill them,
-      // the args might be redundant if the text is already formatted
-      const placeholderCount = (text.match(/%[sdioO%]/g) || []).length;
-      if (placeholderCount > 0 && args.length >= placeholderCount) {
-        // The text is likely already formatted, args might be redundant
-        // But show them in debug mode for troubleshooting
-        return false;
-      }
-
-      // If we get here, args might provide additional context
-      return true;
-      
-    } catch (error) {
-      // If there's any error in analysis, err on the side of showing args
-      return true;
-    }
-  }
 
   /**
    * Get console message type icon

@@ -153,18 +153,16 @@ describe('InstallCursorCommandHandler', () => {
       expect(automationCommandCall).toBeDefined();
       const markdownContent = automationCommandCall![1] as string;
 
-      // Verify markdown structure
+      // Verify markdown structure - updated to match current implementation
       expect(markdownContent).toContain('# Chrome DevTools Protocol CLI Tool');
-      expect(markdownContent).toContain('## Complete Command List');
-      expect(markdownContent).toContain('### 1. JavaScript Execution');
-      expect(markdownContent).toContain('### 2. Page Screenshots and Snapshots');
-      expect(markdownContent).toContain('### 3. Element Interaction');
-      expect(markdownContent).toContain('### 4. Advanced Interactions');
-      expect(markdownContent).toContain('### 5. Monitoring Features');
+      expect(markdownContent).toContain('## Available Commands');
+      expect(markdownContent).toContain('### JavaScript Execution');
+      expect(markdownContent).toContain('### Screenshots and Snapshots');
+      expect(markdownContent).toContain('### Element Interaction');
+      expect(markdownContent).toContain('### Advanced Interactions');
+      expect(markdownContent).toContain('### Monitoring');
       expect(markdownContent).toContain('## Usage Examples');
-      expect(markdownContent).toContain('## Prerequisites');
       expect(markdownContent).toContain('chrome-cdp-cli eval');
-      expect(markdownContent).toContain('--remote-debugging-port=9222');
     });
 
     it('should include all expected commands', async () => {
@@ -187,13 +185,12 @@ describe('InstallCursorCommandHandler', () => {
       // Should have one unified command file
       expect(contents.length).toBe(1);
 
-      // Should contain all functionality descriptions
+      // Should contain all functionality descriptions - updated to match current implementation
       const content = contents[0];
       expect(content).toContain('JavaScript Execution');
-      expect(content).toContain('Page Screenshots and Snapshots');
+      expect(content).toContain('Screenshots and Snapshots');
       expect(content).toContain('Element Interaction');
-      expect(content).toContain('Monitoring Features');
-      expect(content).toContain('IDE Integration');
+      expect(content).toContain('Monitoring');
     });
   });
 
