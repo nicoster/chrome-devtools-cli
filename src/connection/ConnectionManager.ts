@@ -25,7 +25,10 @@ export class ConnectionManager implements IConnectionManager {
    * @returns Promise resolving to array of browser targets
    */
   async discoverTargets(host: string, port: number): Promise<BrowserTarget[]> {
-    const url = `http://${host}:${port}/json/list`;
+    // Normalize localhost to 127.0.0.1 to avoid IPv6 connection issues
+    // Chrome DevTools typically only listens on IPv4
+    const normalizedHost = host === 'localhost' ? '127.0.0.1' : host;
+    const url = `http://${normalizedHost}:${port}/json/list`;
     
     try {
       this.logger.debug(`Discovering targets at ${url}`);

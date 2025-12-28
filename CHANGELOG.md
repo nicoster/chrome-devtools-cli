@@ -5,6 +5,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.0.3] - 2025-12-28
+
+### Fixed
+- Fix IPv6 connection issue when connecting to localhost Chrome DevTools
+  - Normalize `localhost` to `127.0.0.1` in ConnectionManager and CDPClient
+  - Prevents ECONNREFUSED errors when Node.js tries to use IPv6 (::1) but Chrome only listens on IPv4
+  - Updated tests to reflect localhost normalization behavior
+
 ## [2.0.0] - 2024-12-24
 
 ### Added - Enhanced CLI Parameter System

@@ -203,7 +203,10 @@ export class CDPClient implements ICDPClient {
     url: string;
     webSocketDebuggerUrl: string;
   }>> {
-    const response = await fetch(`http://${host}:${port}/json/list`);
+    // Normalize localhost to 127.0.0.1 to avoid IPv6 connection issues
+    // Chrome DevTools typically only listens on IPv4
+    const normalizedHost = host === 'localhost' ? '127.0.0.1' : host;
+    const response = await fetch(`http://${normalizedHost}:${port}/json/list`);
     if (!response.ok) {
       throw new Error(`Failed to discover targets: ${response.statusText}`);
     }

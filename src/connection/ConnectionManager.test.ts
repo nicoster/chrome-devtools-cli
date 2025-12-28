@@ -70,7 +70,8 @@ describe('ConnectionManager', () => {
       const targets = await connectionManager.discoverTargets('localhost', 9222);
 
       expect(targets).toEqual(mockTargets);
-      expect(http.get).toHaveBeenCalledWith('http://localhost:9222/json/list', expect.any(Function));
+      // localhost is normalized to 127.0.0.1 to avoid IPv6 connection issues
+      expect(http.get).toHaveBeenCalledWith('http://127.0.0.1:9222/json/list', expect.any(Function));
     });
 
     it('should filter out invalid targets', async () => {
@@ -167,7 +168,7 @@ describe('ConnectionManager', () => {
       });
 
       await expect(connectionManager.discoverTargets('localhost', 9222))
-        .rejects.toThrow('Failed to connect to Chrome DevTools at http://localhost:9222/json/list: Connection refused');
+        .rejects.toThrow('Failed to connect to Chrome DevTools at http://127.0.0.1:9222/json/list: Connection refused');
     });
   });
 
