@@ -71,6 +71,7 @@ export class ClickHandler implements ICommandHandler {
       // Enable DOM domain first
       await client.send('DOM.enable');
       await client.send('Runtime.enable');
+      // Note: Input domain doesn't require explicit enabling
 
       const timeout = clickArgs.timeout || 5000;
       const waitForElement = clickArgs.waitForElement !== false;
@@ -86,7 +87,13 @@ export class ClickHandler implements ICommandHandler {
         }
       }
 
-      // Try CDP approach first
+      // Try Input.dispatchMouseEvent approach first (most reliable)
+      const inputResult = await this.clickViaInput(client, clickArgs.selector);
+      if (inputResult.success) {
+        return inputResult;
+      }
+
+      // Fallback to CDP approach
       const cdpResult = await this.clickViaCDP(client, clickArgs.selector);
       if (cdpResult.success) {
         return cdpResult;
@@ -135,6 +142,109 @@ export class ClickHandler implements ICommandHandler {
     }
 
     return false;
+  }
+
+  /**
+   * Click element using CDP Input.dispatchMouseEvent (most reliable method)
+   */
+  private async clickViaInput(client: CDPClient, selector: string): Promise<CommandResult> {
+    try {
+      // Get element coordinates using JavaScript
+      const escapedSelector = selector.replace(/'/g, "\\'").replace(/"/g, '\\"');
+      const getCoordsExpression = `
+        (function() {
+          const element = document.querySelector('${escapedSelector}');
+          if (!element) {
+            return null;
+          }
+          
+          // Scroll element into view if needed
+          element.scrollIntoView({ behavior: 'instant', block: 'center' });
+          
+          // Get bounding box
+          const rect = element.getBoundingClientRect();
+          const x = rect.left + rect.width / 2;
+          const y = rect.top + rect.height / 2;
+          
+          return {
+            x: Math.round(x),
+            y: Math.round(y),
+            tagName: element.tagName,
+            id: element.id,
+            className: element.className
+          };
+        })()
+      `;
+
+      const coordsResponse = await client.send('Runtime.evaluate', {
+        expression: getCoordsExpression,
+        returnByValue: true
+      }) as { 
+        result: { value: { x: number; y: number; tagName: string; id: string; className: string } | null }, 
+        exceptionDetails?: { 
+          exception?: { description?: string }, 
+          text: string 
+        } 
+      };
+
+      if (coordsResponse.exceptionDetails) {
+        return {
+          success: false,
+          error: `Failed to get element coordinates: ${coordsResponse.exceptionDetails.exception?.description || coordsResponse.exceptionDetails.text}`
+        };
+      }
+
+      const coords = coordsResponse.result.value;
+      if (!coords) {
+        return {
+          success: false,
+          error: `Element with selector "${selector}" not found`
+        };
+      }
+
+      // Dispatch mouse events using Input.dispatchMouseEvent
+      // First, send mousePressed event
+      await client.send('Input.dispatchMouseEvent', {
+        type: 'mousePressed',
+        x: coords.x,
+        y: coords.y,
+        button: 'left',
+        clickCount: 1
+      });
+
+      // Small delay between press and release
+      await new Promise(resolve => setTimeout(resolve, 10));
+
+      // Then, send mouseReleased event
+      await client.send('Input.dispatchMouseEvent', {
+        type: 'mouseReleased',
+        x: coords.x,
+        y: coords.y,
+        button: 'left',
+        clickCount: 1
+      });
+
+      return {
+        success: true,
+        data: {
+          selector: selector,
+          element: {
+            success: true,
+            tagName: coords.tagName,
+            id: coords.id,
+            className: coords.className
+          },
+          method: 'Input.dispatchMouseEvent',
+          coordinates: { x: coords.x, y: coords.y }
+        }
+      };
+
+    } catch (error) {
+      return {
+        success: false,
+        error: `Input click failed: ${error instanceof Error ? error.message : String(error)}`
+      };
+    }
   }
 
   /**
@@ -348,10 +458,11 @@ Examples:
   click "#optional-element" --no-wait
 
 Note:
-  - Uses CDP DOM.querySelector and Runtime.callFunctionOn for precise control
-  - Falls back to JavaScript eval if CDP approach fails
+  - Uses CDP Input.dispatchMouseEvent for most reliable click simulation
+  - Falls back to Runtime.callFunctionOn and JavaScript eval if Input fails
   - Automatically scrolls element into view before clicking
-  - Triggers actual click events that work with event listeners
+  - Triggers complete mouse event sequence (mousePressed, mouseReleased)
+  - Works with all event listeners including React/Vue handlers
 `;
   }
 }

@@ -55,6 +55,8 @@ export class DragHandler implements ICommandHandler {
 
     try {
       await client.send('Runtime.enable');
+      await client.send('DOM.enable');
+      // Note: Input domain doesn't require explicit enabling
 
       const timeout = dragArgs.timeout || 5000;
       const waitForElement = dragArgs.waitForElement !== false;
@@ -78,7 +80,13 @@ export class DragHandler implements ICommandHandler {
         }
       }
 
-      // Perform drag and drop using JavaScript event simulation
+      // Try Input.dispatchMouseEvent approach first (most reliable)
+      const inputResult = await this.dragViaInput(client, dragArgs.sourceSelector, dragArgs.targetSelector);
+      if (inputResult.success) {
+        return inputResult;
+      }
+
+      // Fallback to JavaScript event simulation
       const result = await this.dragViaEval(client, dragArgs.sourceSelector, dragArgs.targetSelector);
       return result;
 
@@ -118,6 +126,167 @@ export class DragHandler implements ICommandHandler {
     }
 
     return false;
+  }
+
+  /**
+   * Perform drag and drop using CDP Input.dispatchMouseEvent (most reliable method)
+   */
+  private async dragViaInput(client: CDPClient, sourceSelector: string, targetSelector: string): Promise<CommandResult> {
+    try {
+      // Get element coordinates using JavaScript
+      const escapedSource = sourceSelector.replace(/'/g, "\\'").replace(/"/g, '\\"');
+      const escapedTarget = targetSelector.replace(/'/g, "\\'").replace(/"/g, '\\"');
+      
+      const getCoordsExpression = `
+        (function() {
+          const sourceElement = document.querySelector('${escapedSource}');
+          if (!sourceElement) {
+            return null;
+          }
+          
+          const targetElement = document.querySelector('${escapedTarget}');
+          if (!targetElement) {
+            return null;
+          }
+          
+          // Scroll elements into view if needed
+          sourceElement.scrollIntoView({ behavior: 'instant', block: 'center' });
+          targetElement.scrollIntoView({ behavior: 'instant', block: 'center' });
+          
+          // Get bounding boxes
+          const sourceRect = sourceElement.getBoundingClientRect();
+          const targetRect = targetElement.getBoundingClientRect();
+          
+          // Calculate center positions
+          const sourceX = Math.round(sourceRect.left + sourceRect.width / 2);
+          const sourceY = Math.round(sourceRect.top + sourceRect.height / 2);
+          const targetX = Math.round(targetRect.left + targetRect.width / 2);
+          const targetY = Math.round(targetRect.top + targetRect.height / 2);
+          
+          return {
+            source: {
+              x: sourceX,
+              y: sourceY,
+              tagName: sourceElement.tagName,
+              id: sourceElement.id,
+              className: sourceElement.className
+            },
+            target: {
+              x: targetX,
+              y: targetY,
+              tagName: targetElement.tagName,
+              id: targetElement.id,
+              className: targetElement.className
+            }
+          };
+        })()
+      `;
+
+      const coordsResponse = await client.send('Runtime.evaluate', {
+        expression: getCoordsExpression,
+        returnByValue: true
+      }) as { 
+        result: { value: { 
+          source: { x: number; y: number; tagName: string; id: string; className: string };
+          target: { x: number; y: number; tagName: string; id: string; className: string };
+        } | null }, 
+        exceptionDetails?: { 
+          exception?: { description?: string }, 
+          text: string 
+        } 
+      };
+
+      if (coordsResponse.exceptionDetails) {
+        return {
+          success: false,
+          error: `Failed to get element coordinates: ${coordsResponse.exceptionDetails.exception?.description || coordsResponse.exceptionDetails.text}`
+        };
+      }
+
+      const coords = coordsResponse.result.value;
+      if (!coords) {
+        return {
+          success: false,
+          error: `Source or target element not found`
+        };
+      }
+
+      // Calculate intermediate steps for smooth dragging
+      const steps = 10; // Number of intermediate mouse move steps
+      const dx = (coords.target.x - coords.source.x) / steps;
+      const dy = (coords.target.y - coords.source.y) / steps;
+
+      // Step 1: Press mouse at source position
+      await client.send('Input.dispatchMouseEvent', {
+        type: 'mousePressed',
+        x: coords.source.x,
+        y: coords.source.y,
+        button: 'left',
+        clickCount: 1
+      });
+
+      // Small delay after press
+      await new Promise(resolve => setTimeout(resolve, 50));
+
+      // Step 2: Move mouse from source to target in steps
+      for (let i = 1; i <= steps; i++) {
+        const currentX = Math.round(coords.source.x + dx * i);
+        const currentY = Math.round(coords.source.y + dy * i);
+        
+        await client.send('Input.dispatchMouseEvent', {
+          type: 'mouseMoved',
+          x: currentX,
+          y: currentY,
+          button: 'left',
+          buttons: 1 // Left button is pressed
+        });
+        
+        // Small delay between moves for smooth animation
+        await new Promise(resolve => setTimeout(resolve, 10));
+      }
+
+      // Small delay before release
+      await new Promise(resolve => setTimeout(resolve, 50));
+
+      // Step 3: Release mouse at target position
+      await client.send('Input.dispatchMouseEvent', {
+        type: 'mouseReleased',
+        x: coords.target.x,
+        y: coords.target.y,
+        button: 'left',
+        clickCount: 1
+      });
+
+      return {
+        success: true,
+        data: {
+          sourceSelector: sourceSelector,
+          targetSelector: targetSelector,
+          result: {
+            success: true,
+            source: {
+              tagName: coords.source.tagName,
+              id: coords.source.id,
+              className: coords.source.className,
+              position: { x: coords.source.x, y: coords.source.y }
+            },
+            target: {
+              tagName: coords.target.tagName,
+              id: coords.target.id,
+              className: coords.target.className,
+              position: { x: coords.target.x, y: coords.target.y }
+            }
+          },
+          method: 'Input.dispatchMouseEvent'
+        }
+      };
+
+    } catch (error) {
+      return {
+        success: false,
+        error: `Input drag failed: ${error instanceof Error ? error.message : String(error)}`
+      };
+    }
   }
 
   /**
@@ -324,10 +493,11 @@ Examples:
   drag "#source" "#target" --no-wait
 
 Note:
-  - Uses JavaScript DragEvent simulation for drag and drop
-  - Dispatches all standard drag events: dragstart, dragenter, dragover, drop, dragend
-  - Automatically calculates element center positions for drag coordinates
-  - Works with HTML5 drag and drop API event listeners
+  - Uses CDP Input.dispatchMouseEvent for most reliable drag simulation
+  - Falls back to JavaScript DragEvent simulation if Input fails
+  - Simulates complete mouse sequence: mousePressed → mouseMoved → mouseReleased
+  - Automatically calculates element center positions and smooth movement path
+  - Works with all drag and drop implementations including React/Vue libraries
 `;
   }
 }

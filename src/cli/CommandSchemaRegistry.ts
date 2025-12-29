@@ -323,13 +323,13 @@ export class CommandSchemaRegistry {
       options: [],
       arguments: [
         {
-          name: 'fromSelector',
+          name: 'sourceSelector',
           description: 'CSS selector for element to drag from',
           type: 'string',
           required: true
         },
         {
-          name: 'toSelector',
+          name: 'targetSelector',
           description: 'CSS selector for element to drag to',
           type: 'string',
           required: true
