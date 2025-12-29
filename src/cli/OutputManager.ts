@@ -225,7 +225,7 @@ export class OutputManager {
 export class ProgressIndicator {
   private message: string;
   private startTime: number;
-  private interval?: NodeJS.Timeout;
+  private interval?: ReturnType<typeof setInterval>;
 
   constructor(message: string) {
     this.message = message;

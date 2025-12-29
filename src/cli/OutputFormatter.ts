@@ -90,7 +90,7 @@ export class OutputFormatter {
 
     // Apply custom template if specified
     if (options.template) {
-      return this.applyTemplate(result, options.template, options);
+      return this.applyTemplate(result, options.template);
     }
 
     // Format according to specified format
@@ -295,7 +295,7 @@ export class OutputFormatter {
       if (obj.type && obj.text !== undefined && obj.timestamp) {
         const timestamp = new Date(obj.timestamp).toISOString();
         const typeIcon = this.getConsoleTypeIcon(obj.type);
-        let output = `${timestamp} ${typeIcon} ${obj.text}`;
+        const output = `${timestamp} ${typeIcon} ${obj.text}`;
         return output;
       }
 
@@ -396,7 +396,7 @@ export class OutputFormatter {
   /**
    * Apply custom template to format output
    */
-  private applyTemplate(result: EnhancedCommandResult, templateName: string, _options: OutputOptions): string {
+  private applyTemplate(result: EnhancedCommandResult, templateName: string): string {
     const template = this.templates.get(templateName);
     if (!template) {
       throw new Error(`Unknown template: ${templateName}`);

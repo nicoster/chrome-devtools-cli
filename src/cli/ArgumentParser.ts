@@ -499,14 +499,15 @@ export class ArgumentParser implements IArgumentParser {
     const stringValue = String(value);
 
     switch (optionDef.type) {
-      case 'number':
+      case 'number': {
         const numValue = Number(stringValue);
         if (isNaN(numValue)) {
           throw new Error(`Option --${optionDef.name} must be a number, got: ${stringValue}`);
         }
         return numValue;
+      }
 
-      case 'boolean':
+      case 'boolean': {
         if (typeof value === 'boolean') {
           return value;
         }
@@ -518,6 +519,7 @@ export class ArgumentParser implements IArgumentParser {
           return false;
         }
         throw new Error(`Option --${optionDef.name} must be a boolean, got: ${stringValue}`);
+      }
 
       case 'array':
         if (Array.isArray(value)) {

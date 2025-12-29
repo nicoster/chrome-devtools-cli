@@ -20,25 +20,25 @@ describe('ClickHandler', () => {
   });
 
   describe('execute', () => {
-    it('should click element successfully using CDP', async () => {
-      // Mock CDP responses
+    it('should click element successfully using Input.dispatchMouseEvent', async () => {
+      // Mock CDP responses - Input approach (preferred)
       mockCDPClient.send
         .mockResolvedValueOnce(undefined) // DOM.enable
         .mockResolvedValueOnce(undefined) // Runtime.enable
         .mockResolvedValueOnce({ result: { value: true } }) // Element exists check
-        .mockResolvedValueOnce({ root: { nodeId: 1 } }) // DOM.getDocument
-        .mockResolvedValueOnce({ nodeId: 123 }) // DOM.querySelector
-        .mockResolvedValueOnce({ object: { objectId: 'obj-123' } }) // DOM.resolveNode
-        .mockResolvedValueOnce({ // Runtime.callFunctionOn
+        .mockResolvedValueOnce({ // Runtime.evaluate - get coordinates
           result: {
             value: {
-              success: true,
+              x: 100,
+              y: 200,
               tagName: 'BUTTON',
               id: 'submit',
               className: 'btn'
             }
           }
-        });
+        })
+        .mockResolvedValueOnce(undefined) // Input.dispatchMouseEvent - mousePressed
+        .mockResolvedValueOnce(undefined); // Input.dispatchMouseEvent - mouseReleased
 
       const result = await handler.execute(mockCDPClient, {
         selector: '#submit'
@@ -47,7 +47,7 @@ describe('ClickHandler', () => {
       expect(result.success).toBe(true);
       expect(result.data).toMatchObject({
         selector: '#submit',
-        method: 'CDP'
+        method: 'Input.dispatchMouseEvent'
       });
       expect(mockCDPClient.send).toHaveBeenCalledWith('DOM.enable');
       expect(mockCDPClient.send).toHaveBeenCalledWith('Runtime.enable');
@@ -100,23 +100,23 @@ describe('ClickHandler', () => {
     });
 
     it('should click without waiting when waitForElement is false', async () => {
-      // Mock CDP responses
+      // Mock CDP responses - Input approach
       mockCDPClient.send
         .mockResolvedValueOnce(undefined) // DOM.enable
         .mockResolvedValueOnce(undefined) // Runtime.enable
-        .mockResolvedValueOnce({ root: { nodeId: 1 } }) // DOM.getDocument
-        .mockResolvedValueOnce({ nodeId: 123 }) // DOM.querySelector
-        .mockResolvedValueOnce({ object: { objectId: 'obj-123' } }) // DOM.resolveNode
-        .mockResolvedValueOnce({ // Runtime.callFunctionOn
+        .mockResolvedValueOnce({ // Runtime.evaluate - get coordinates
           result: {
             value: {
-              success: true,
+              x: 100,
+              y: 200,
               tagName: 'BUTTON',
               id: 'submit',
               className: 'btn'
             }
           }
-        });
+        })
+        .mockResolvedValueOnce(undefined) // Input.dispatchMouseEvent - mousePressed
+        .mockResolvedValueOnce(undefined); // Input.dispatchMouseEvent - mouseReleased
 
       const result = await handler.execute(mockCDPClient, {
         selector: '#submit',
@@ -127,7 +127,7 @@ describe('ClickHandler', () => {
       // Should not call element exists check
       expect(mockCDPClient.send).not.toHaveBeenCalledWith('Runtime.evaluate', 
         expect.objectContaining({
-          expression: expect.stringContaining('querySelector')
+          expression: expect.stringContaining('querySelector') && expect.not.stringContaining('getBoundingClientRect')
         })
       );
     });
@@ -148,13 +148,14 @@ describe('ClickHandler', () => {
       expect(result.error).toContain('CSS selector must be a string');
     });
 
-    it('should handle CDP execution errors', async () => {
-      // Mock CDP responses with exception
+    it('should handle Input execution errors and fallback to CDP then eval', async () => {
+      // Mock CDP responses - Input fails, CDP fails, eval succeeds
       mockCDPClient.send
         .mockResolvedValueOnce(undefined) // DOM.enable
         .mockResolvedValueOnce(undefined) // Runtime.enable
         .mockResolvedValueOnce({ result: { value: true } }) // Element exists check
-        .mockResolvedValueOnce({ root: { nodeId: 1 } }) // DOM.getDocument
+        .mockRejectedValueOnce(new Error('Input error')) // Runtime.evaluate for coordinates fails (Input approach)
+        .mockResolvedValueOnce({ root: { nodeId: 1 } }) // DOM.getDocument (CDP fallback)
         .mockResolvedValueOnce({ nodeId: 123 }) // DOM.querySelector
         .mockResolvedValueOnce({ object: { objectId: 'obj-123' } }) // DOM.resolveNode
         .mockResolvedValueOnce({ // Runtime.callFunctionOn with exception
