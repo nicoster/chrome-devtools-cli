@@ -21,7 +21,7 @@ import {
   RestartProxyHandler
 } from '../handlers';
 import { Logger } from '../utils/logger';
-import { CLICommand, CommandResult, CDPClient } from '../types';
+import { CLICommand, CommandResult, CDPClient, BrowserTarget } from '../types';
 import { ExitCode } from './CommandRouter';
 import { ProxyManager } from '../proxy/ProxyManager';
 import { OutputManager } from './OutputManager';
@@ -214,6 +214,35 @@ export class CLIApplication {
   }
 
   /**
+   * Check if a target is a DevTools window
+   */
+  private isDevToolsWindow(target: BrowserTarget): boolean {
+    const url = target.url.toLowerCase();
+    const title = target.title.toLowerCase();
+    
+    return url.startsWith('chrome-devtools://') || 
+           url.startsWith('devtools://') ||
+           title.includes('devtools') ||
+           title.includes('chrome devtools');
+  }
+
+  /**
+   * Display available page targets and prompt user to select
+   */
+  private displayAvailableTargets(targets: BrowserTarget[]): void {
+    console.log('\nAvailable Chrome pages (excluding DevTools windows):');
+    targets.forEach((target, index) => {
+      const displayUrl = target.url.length > 60 ? target.url.substring(0, 57) + '...' : target.url;
+      console.log(`  [${index + 1}] ${target.title || '(Untitled)'}`);
+      console.log(`      ${displayUrl}`);
+    });
+    console.log('\nOptions:');
+    console.log('  1. Use --target-index <number> to select a specific page');
+    console.log('     Example: chrome-cdp-cli --target-index 1 eval "document.title"');
+    console.log('  2. Close other pages until only one page remains\n');
+  }
+
+  /**
    * Ensure CDP connection is established
    */
   private async ensureConnection(command: CLICommand): Promise<void> {
@@ -235,20 +264,52 @@ export class CLIApplication {
         );
       }
 
-      // Connect to the first available page target
-      const pageTarget = targets.find(target => target.type === 'page');
-      if (!pageTarget) {
-        throw new Error('No page targets available. Open a tab in Chrome.');
+      // Filter page targets and exclude DevTools windows
+      const pageTargets = targets.filter(target => target.type === 'page');
+      const nonDevToolsTargets = pageTargets.filter(target => !this.isDevToolsWindow(target));
+
+      if (nonDevToolsTargets.length === 0) {
+        throw new Error('No page targets available (excluding DevTools windows). Open a tab in Chrome.');
+      }
+
+      // Select target based on user's choice
+      let selectedTarget: BrowserTarget;
+      
+      if (command.config.targetIndex !== undefined) {
+        // User specified an index
+        const index = command.config.targetIndex - 1; // Convert to 0-based
+        if (index < 0 || index >= nonDevToolsTargets.length) {
+          // Display available targets before error
+          this.displayAvailableTargets(nonDevToolsTargets);
+          throw new Error(
+            `Invalid target index: ${command.config.targetIndex}. ` +
+            `Please choose a number between 1 and ${nonDevToolsTargets.length}.`
+          );
+        }
+        selectedTarget = nonDevToolsTargets[index];
+      } else {
+        // No index specified
+        if (nonDevToolsTargets.length === 1) {
+          // Only one target, use it automatically
+          selectedTarget = nonDevToolsTargets[0];
+        } else {
+          // Multiple targets, display list and require user to specify
+          this.displayAvailableTargets(nonDevToolsTargets);
+          throw new Error(
+            `Multiple Chrome pages found (${nonDevToolsTargets.length}). ` +
+            'Please specify --target-index <number> to select a page, or close other pages until only one remains.'
+          );
+        }
       }
 
       // Create and connect CDP client
-      this.client = await this.connectionManager.connectToTarget(pageTarget) as CDPClient;
+      this.client = await this.connectionManager.connectToTarget(selectedTarget) as CDPClient;
 
       // Set client in CLI interface
       this.cli.setClient(this.client);
 
       if (command.config.verbose) {
-        this.logger.info(`Connected to Chrome target: ${pageTarget.title} (${pageTarget.url})`);
+        this.logger.info(`Connected to Chrome target: ${selectedTarget.title} (${selectedTarget.url})`);
       }
 
     } catch (error) {
@@ -315,6 +376,10 @@ export class CLIApplication {
         options.quiet = true;
       } else if (arg === '--debug' || arg === '-d') {
         options.debug = true;
+      } else if (arg === '--target-index') {
+        if (i + 1 < args.length) {
+          options.targetIndex = parseInt(args[i + 1], 10);
+        }
       }
     }
     

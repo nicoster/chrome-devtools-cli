@@ -265,7 +265,8 @@ export class ArgumentParser implements IArgumentParser {
       { name: 'quiet', short: 'q', type: 'boolean', description: 'Enable quiet mode', default: false },
       { name: 'timeout', short: 't', type: 'number', description: 'Command timeout in milliseconds', default: 30000 },
       { name: 'debug', short: 'd', type: 'boolean', description: 'Enable debug logging', default: false },
-      { name: 'config', short: 'c', type: 'string', description: 'Configuration file path' }
+      { name: 'config', short: 'c', type: 'string', description: 'Configuration file path' },
+      { name: 'target-index', type: 'number', description: 'Target page index (1-based, excludes DevTools windows)' }
     ];
 
     while (i < args.length) {

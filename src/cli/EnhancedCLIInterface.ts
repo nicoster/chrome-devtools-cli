@@ -115,7 +115,8 @@ export class EnhancedCLIInterface implements ICLIInterface {
       verbose: (globalOptions.verbose as boolean) || DEFAULT_CLI_CONFIG.verbose,
       quiet: (globalOptions.quiet as boolean) || DEFAULT_CLI_CONFIG.quiet,
       timeout: (globalOptions.timeout as number) || DEFAULT_CLI_CONFIG.timeout,
-      debug: (globalOptions.debug as boolean) || DEFAULT_CLI_CONFIG.debug
+      debug: (globalOptions.debug as boolean) || DEFAULT_CLI_CONFIG.debug,
+      targetIndex: globalOptions['target-index'] !== undefined ? (globalOptions['target-index'] as number) : undefined
     };
   }
 

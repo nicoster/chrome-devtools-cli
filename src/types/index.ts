@@ -7,6 +7,7 @@ export interface CLIConfig {
   quiet: boolean;         // 静默模式
   timeout: number;        // 命令超时（毫秒）
   debug: boolean;         // 调试模式
+  targetIndex?: number;   // 目标页面索引（从 1 开始）
 }
 
 export interface CLICommand {
