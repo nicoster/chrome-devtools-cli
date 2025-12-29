@@ -155,9 +155,18 @@ export class CLIApplication {
       await this.ensureProxyReady();
 
       // Handle connection for commands that need it
+      // Note: Connection errors are handled by CommandRouter, not here
+      // This allows commands to handle connection errors gracefully
       if (this.needsConnection(command.name)) {
         this.logger.debug('Command needs connection, ensuring connection...');
-        await this.ensureConnection(command);
+        try {
+          await this.ensureConnection(command);
+        } catch (connectionError) {
+          // Connection failed, but let CommandRouter handle it
+          // This allows commands to return proper exit codes
+          this.logger.debug('Connection failed, will be handled by command router:', connectionError);
+          // Don't set client, CommandRouter will detect missing client and return CONNECTION_ERROR
+        }
       }
 
       // Execute the command

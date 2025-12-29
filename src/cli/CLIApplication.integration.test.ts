@@ -68,8 +68,9 @@ describe('CLIApplication Integration', () => {
       // Test that the application can handle commands without crashing
       // The eval command should succeed in parsing but fail in execution due to no Chrome connection
       const exitCode = await app.run(['node', 'script', 'eval', '"test"']);
-      // Should succeed because eval command is valid, but execution will fail
-      expect(exitCode).toBe(0); // Success in parsing, execution handled by router
+      // Command parsing succeeds, but execution fails due to no Chrome connection
+      // This should return CONNECTION_ERROR (3) as the command requires a connection
+      expect(exitCode).toBe(3); // ExitCode.CONNECTION_ERROR
     });
 
     it('should handle parse errors gracefully', async () => {
