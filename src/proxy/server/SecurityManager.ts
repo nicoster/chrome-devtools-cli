@@ -5,7 +5,7 @@
  * rate limiting, and access control.
  */
 
-import express from 'express';
+import express, { ParsedQs, ParamsDictionary } from 'express';
 import rateLimit from 'express-rate-limit';
 import { createLogger, Logger } from '../../utils/logger';
 
@@ -251,12 +251,12 @@ export class SecurityManager {
 
         // Sanitize query parameters
         if (req.query && typeof req.query === 'object') {
-          req.query = this.sanitizeObject(req.query);
+          req.query = this.sanitizeObject(req.query) as ParsedQs;
         }
 
         // Sanitize URL parameters
         if (req.params && typeof req.params === 'object') {
-          req.params = this.sanitizeObject(req.params);
+          req.params = this.sanitizeObject(req.params) as ParamsDictionary;
         }
 
         next();
