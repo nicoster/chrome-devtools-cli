@@ -383,7 +383,7 @@ export class SecurityManager {
   /**
    * Sanitize an object recursively
    */
-  private sanitizeObject(obj: any): any {
+  private sanitizeObject(obj: unknown): unknown {
     if (obj === null || obj === undefined) {
       return obj;
     }
@@ -401,7 +401,7 @@ export class SecurityManager {
     }
 
     if (typeof obj === 'object') {
-      const sanitized: any = {};
+      const sanitized: Record<string, unknown> = {};
       for (const [key, value] of Object.entries(obj)) {
         const sanitizedKey = this.sanitizeString(key);
         sanitized[sanitizedKey] = this.sanitizeObject(value);
@@ -421,6 +421,7 @@ export class SecurityManager {
     }
 
     // Remove null bytes and control characters (except newlines and tabs)
+    // eslint-disable-next-line no-control-regex
     let sanitized = str.replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g, '');
     
     // Limit string length to prevent DoS

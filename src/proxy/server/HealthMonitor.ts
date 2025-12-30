@@ -332,7 +332,7 @@ export class HealthMonitor {
   /**
    * Update connection metrics
    */
-  private updateConnectionMetrics(connectionId: string, connectionInfo: any, _responseTime: number): void {
+  private updateConnectionMetrics(connectionId: string, connectionInfo: { createdAt: number; clientCount: number }, _responseTime: number): void {
     const existing = this.connectionMetrics.get(connectionId);
     const now = Date.now();
     

@@ -110,7 +110,7 @@ export class CommandExecutionService {
 
       // Determine error type and code
       let errorCode = 500;
-      let errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
 
       if (errorMessage.includes('Another CLI client')) {
         errorCode = 409; // Conflict

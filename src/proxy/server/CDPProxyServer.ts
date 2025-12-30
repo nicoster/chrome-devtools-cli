@@ -431,7 +431,7 @@ export class CDPProxyServer {
     });
 
     // Error handling middleware
-    this.app.use((error: Error, req: express.Request, res: express.Response, _next: express.NextFunction) => {
+    this.app.use((error: Error, req: express.Request, res: express.Response) => {
       this.logger.logAPIEvent(
         req.method,
         req.path,
@@ -467,7 +467,7 @@ export class CDPProxyServer {
         resolve();
       });
 
-      this.httpServer.on('error', (error: any) => {
+      this.httpServer.on('error', (error: NodeJS.ErrnoException) => {
         if (error.code === 'EADDRINUSE') {
           reject(new Error(`Port ${this.config.port} is already in use`));
         } else {
@@ -596,7 +596,8 @@ export class CDPProxyServer {
       return config;
       
     } catch (error) {
-      if ((error as any).code === 'ENOENT') {
+      const err = error as NodeJS.ErrnoException;
+      if (err.code === 'ENOENT') {
         this.logger.info('No configuration file found, using defaults', {
           configPath: configPath.replace(os.homedir(), '~')
         });
