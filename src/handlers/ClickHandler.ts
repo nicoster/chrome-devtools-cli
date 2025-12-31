@@ -146,6 +146,7 @@ export class ClickHandler implements ICommandHandler {
 
   /**
    * Click element using CDP Input.dispatchMouseEvent (most reliable method)
+   * Falls back to dispatchEvent if Input.dispatchMouseEvent fails
    */
   private async clickViaInput(client: CDPClient, selector: string): Promise<CommandResult> {
     try {
@@ -202,42 +203,127 @@ export class ClickHandler implements ICommandHandler {
         };
       }
 
-      // Dispatch mouse events using Input.dispatchMouseEvent
-      // First, send mousePressed event
-      await client.send('Input.dispatchMouseEvent', {
-        type: 'mousePressed',
-        x: coords.x,
-        y: coords.y,
-        button: 'left',
-        clickCount: 1
-      });
+      // Try Input.dispatchMouseEvent first (creates isTrusted: true events)
+      try {
+        // Dispatch mouse events using Input.dispatchMouseEvent
+        // First, send mousePressed event
+        await client.send('Input.dispatchMouseEvent', {
+          type: 'mousePressed',
+          x: coords.x,
+          y: coords.y,
+          button: 'left',
+          clickCount: 1
+        });
 
-      // Small delay between press and release
-      await new Promise(resolve => setTimeout(resolve, 10));
+        // Small delay between press and release
+        await new Promise(resolve => setTimeout(resolve, 10));
 
-      // Then, send mouseReleased event
-      await client.send('Input.dispatchMouseEvent', {
-        type: 'mouseReleased',
-        x: coords.x,
-        y: coords.y,
-        button: 'left',
-        clickCount: 1
-      });
+        // Then, send mouseReleased event
+        await client.send('Input.dispatchMouseEvent', {
+          type: 'mouseReleased',
+          x: coords.x,
+          y: coords.y,
+          button: 'left',
+          clickCount: 1
+        });
 
-      return {
-        success: true,
-        data: {
-          selector: selector,
-          element: {
-            success: true,
-            tagName: coords.tagName,
-            id: coords.id,
-            className: coords.className
-          },
-          method: 'Input.dispatchMouseEvent',
-          coordinates: { x: coords.x, y: coords.y }
+        return {
+          success: true,
+          data: {
+            selector: selector,
+            element: {
+              success: true,
+              tagName: coords.tagName,
+              id: coords.id,
+              className: coords.className
+            },
+            method: 'Input.dispatchMouseEvent',
+            coordinates: { x: coords.x, y: coords.y }
+          }
+        };
+      } catch (inputError) {
+        // Fallback to dispatchEvent approach if Input.dispatchMouseEvent fails
+        // This handles cases where center point is covered by child elements
+        const fallbackExpression = `
+          (function() {
+            const e = document.querySelector('${escapedSelector}');
+            if (!e) return { success: false, error: 'Element not found' };
+            const r = e.getBoundingClientRect();
+            const p = { x: r.left + r.width / 2, y: r.top + r.height / 2 };
+            const topEl = document.elementFromPoint(p.x, p.y);
+            if (topEl) {
+              topEl.dispatchEvent(new MouseEvent('click', {
+                bubbles: true,
+                cancelable: true,
+                view: window,
+                clientX: p.x,
+                clientY: p.y,
+                button: 0
+              }));
+              return {
+                success: true,
+                tagName: e.tagName,
+                id: e.id,
+                className: e.className,
+                topElementTag: topEl.tagName
+              };
+            }
+            return { success: false, error: 'No element at point' };
+          })()
+        `;
+
+        const fallbackResponse = await client.send('Runtime.evaluate', {
+          expression: fallbackExpression,
+          returnByValue: true,
+          userGesture: true
+        }) as {
+          result: {
+            value: {
+              success: boolean;
+              tagName?: string;
+              id?: string;
+              className?: string;
+              topElementTag?: string;
+              error?: string;
+            };
+          };
+          exceptionDetails?: {
+            exception?: { description?: string };
+            text: string;
+          };
+        };
+
+        if (fallbackResponse.exceptionDetails) {
+          return {
+            success: false,
+            error: `Input click failed and fallback also failed: ${fallbackResponse.exceptionDetails.exception?.description || fallbackResponse.exceptionDetails.text}`
+          };
         }
-      };
+
+        const fallbackResult = fallbackResponse.result.value;
+        if (!fallbackResult.success) {
+          return {
+            success: false,
+            error: `Input click failed and fallback failed: ${fallbackResult.error || 'Unknown error'}`
+          };
+        }
+
+        return {
+          success: true,
+          data: {
+            selector: selector,
+            element: {
+              success: true,
+              tagName: fallbackResult.tagName || coords.tagName,
+              id: fallbackResult.id || coords.id,
+              className: fallbackResult.className || coords.className
+            },
+            method: 'dispatchEvent (fallback)',
+            coordinates: { x: coords.x, y: coords.y },
+            topElementTag: fallbackResult.topElementTag
+          }
+        };
+      }
 
     } catch (error) {
       return {
