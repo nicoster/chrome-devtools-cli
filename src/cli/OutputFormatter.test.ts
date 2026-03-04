@@ -153,14 +153,14 @@ describe('OutputFormatter', () => {
       const result: CommandResult = {
         success: true,
         data: { messages: [] },
-        dataSource: 'proxy',
+        dataSource: 'direct',
         hasHistoricalData: true
       };
 
       const options = createOutputOptions({ ...mockConfig, verbose: true });
       const output = formatter.formatOutput(result, options);
       
-      expect(output).toContain('📊 Data from proxy server (includes historical data)');
+      expect(output).toContain('⚠️ Data from direct connection (includes historical data)');
     });
   });
 

@@ -134,8 +134,8 @@ describe('OutputManager', () => {
     });
 
     it('should format data source information', () => {
-      const proxyInfo = outputManager.formatDataSourceInfo('proxy', true);
-      expect(proxyInfo).toContain('📊 Data from proxy server (includes historical data)');
+      const proxyInfo = outputManager.formatDataSourceInfo('direct', true);
+      expect(proxyInfo).toContain('⚠️ Data from direct connection (includes historical data)');
       
       const directInfo = outputManager.formatDataSourceInfo('direct', false);
       expect(directInfo).toContain('⚠️ Data from direct connection (new data only)');

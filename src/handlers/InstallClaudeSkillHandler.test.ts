@@ -242,7 +242,7 @@ describe('InstallClaudeSkillHandler', () => {
       expect(markdownContent).toContain('## Enhanced CLI Features (v2.0)');
       expect(markdownContent).toContain('## Enhanced Automation Workflows');
       expect(markdownContent).toContain('## Enhanced Prerequisites');
-      expect(markdownContent).toContain('chrome-cdp-cli eval');
+      expect(markdownContent).toContain('cdp eval');
       expect(markdownContent).toContain('--remote-debugging-port=9222');
     });
 

@@ -1,2 +1,1 @@
-export * from './CDPClient';
-export * from './ProxyClient';
+export * from "./CDPClient";

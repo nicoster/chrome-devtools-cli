@@ -1,19 +1,17 @@
-import { ICommandHandler } from '../interfaces/CommandHandler';
-import { CDPClient, CommandResult } from '../types';
-import { ProxyClient } from '../client/ProxyClient';
-import { Logger } from '../utils/logger';
-import { promises as fs } from 'fs';
-import fetch from 'node-fetch';
+import { ICommandHandler } from "../interfaces/CommandHandler";
+import { CDPClient, CommandResult } from "../types";
+import { Logger } from "../utils/logger";
+import { promises as fs } from "fs";
 
 /**
  * Arguments for eval command
  */
 export interface EvaluateScriptArgs {
-  expression?: string;      // JavaScript expression to evaluate
-  file?: string;            // Path to JavaScript file
-  awaitPromise?: boolean;   // Wait for Promise resolution
-  timeout?: number;         // Execution timeout in milliseconds
-  returnByValue?: boolean;  // Return result by value instead of object reference
+  expression?: string; // JavaScript expression to evaluate
+  file?: string; // Path to JavaScript file
+  awaitPromise?: boolean; // Wait for Promise resolution
+  timeout?: number; // Execution timeout in milliseconds
+  returnByValue?: boolean; // Return result by value instead of object reference
 }
 
 /**
@@ -53,94 +51,42 @@ interface RuntimeEvaluateResponse {
  * Executes JavaScript code in the browser context via CDP Runtime.evaluate
  */
 export class EvaluateScriptHandler implements ICommandHandler {
-  readonly name = 'eval';
-  private proxyClient: ProxyClient;
-  private useProxy: boolean;
+  readonly name = "eval";
   private logger: Logger;
 
-  constructor(useProxy: boolean = false, debug: boolean = false) {
-    this.proxyClient = new ProxyClient();
-    this.useProxy = useProxy;
+  constructor(debug: boolean = false) {
     this.logger = new Logger();
-    
-    // Configure logger based on debug flag
     if (debug) {
-      this.logger.setLevel(3); // DEBUG level
+      this.logger.setLevel(3);
     } else {
-      this.logger.setLevel(2); // INFO level
+      this.logger.setLevel(2);
     }
   }
 
-  /**
-   * Set debug mode
-   */
   setDebug(debug: boolean): void {
-    if (debug) {
-      this.logger.setLevel(3); // DEBUG level
-    } else {
-      this.logger.setLevel(2); // INFO level
-    }
+    this.logger.setLevel(debug ? 3 : 2);
   }
 
-  /**
-   * Execute JavaScript code in the browser
-   */
   async execute(client: CDPClient, args: unknown): Promise<CommandResult> {
-    this.logger.debug('EvaluateScriptHandler.execute called with args:', args);
-    
+    this.logger.debug("EvaluateScriptHandler.execute called with args:", args);
+
     const scriptArgs = args as EvaluateScriptArgs;
 
-    // Validate arguments
     if (!scriptArgs.expression && !scriptArgs.file) {
       return {
         success: false,
-        error: 'Either "expression" or "file" argument is required'
+        error: 'Either "expression" or "file" argument is required',
       };
     }
 
     if (scriptArgs.expression && scriptArgs.file) {
       return {
         success: false,
-        error: 'Cannot specify both "expression" and "file" arguments'
+        error: 'Cannot specify both "expression" and "file" arguments',
       };
     }
 
-    this.logger.debug('Arguments validated, useProxy:', this.useProxy);
-
     try {
-      // Try proxy first if enabled
-      if (this.useProxy) {
-        this.logger.debug('Checking proxy availability...');
-        const proxyAvailable = await this.proxyClient.isProxyAvailable();
-        this.logger.debug('Proxy available:', proxyAvailable);
-        
-        if (proxyAvailable) {
-          console.log('[INFO] Using proxy connection for script evaluation');
-          this.logger.debug('About to call executeWithProxy...');
-          const result = await this.executeWithProxy(scriptArgs);
-          this.logger.debug('executeWithProxy returned:', result);
-          return result;
-        } else {
-          console.warn('[WARN] Proxy not available, falling back to direct CDP connection');
-        }
-      }
-    } catch (error) {
-      console.warn('[WARN] Proxy execution failed, falling back to direct CDP:', error instanceof Error ? error.message : error);
-    }
-
-    // Fallback to direct CDP
-    this.logger.debug('Falling back to direct CDP');
-    return await this.executeWithDirectCDP(client, scriptArgs);
-  }
-
-  /**
-   * Execute script through proxy using HTTP API
-   */
-  private async executeWithProxy(scriptArgs: EvaluateScriptArgs): Promise<CommandResult> {
-    try {
-      this.logger.debug('Starting executeWithProxy');
-      
-      // Get the JavaScript code to execute
       let expression: string;
       if (scriptArgs.file) {
         expression = await this.readScriptFile(scriptArgs.file);
@@ -148,468 +94,206 @@ export class EvaluateScriptHandler implements ICommandHandler {
         expression = scriptArgs.expression!;
       }
 
-      this.logger.debug('Expression to execute:', expression.substring(0, 100));
-
-      // Connect to Chrome through the proxy
-      this.logger.debug('Creating new proxy connection...');
-      const connectionId = await this.proxyClient.connect('localhost', 9222);
-      this.logger.debug(`Created new proxy connection: ${connectionId}`);
-
-      try {
-        // Execute script through HTTP API instead of WebSocket
-        const result = await this.executeScriptThroughHTTP(connectionId, expression, scriptArgs);
-        
-        return {
-          success: true,
-          data: result
-        };
-      } finally {
-        // Disconnect from proxy (this will also release the CLI client)
-        await this.proxyClient.disconnect();
-      }
+      return await this.executeWithTimeout(client, expression, scriptArgs);
     } catch (error) {
-      this.logger.debug('Error in executeWithProxy:', error);
       return {
         success: false,
-        error: error instanceof Error ? error.message : String(error)
+        error: error instanceof Error ? error.message : String(error),
       };
     }
   }
 
-  /**
-   * Execute script through proxy HTTP API
-   */
-  private async executeScriptThroughHTTP(connectionId: string, expression: string, args: EvaluateScriptArgs): Promise<any> {
+  private async readScriptFile(filePath: string): Promise<string> {
+    try {
+      return await fs.readFile(filePath, "utf-8");
+    } catch (error) {
+      throw new Error(
+        `Failed to read script file "${filePath}": ${error instanceof Error ? error.message : String(error)}`,
+      );
+    }
+  }
+
+  private async executeWithTimeout(
+    client: CDPClient,
+    expression: string,
+    args: EvaluateScriptArgs,
+  ): Promise<CommandResult> {
     const timeout = args.timeout || 30000;
     const awaitPromise = args.awaitPromise ?? true;
     const returnByValue = args.returnByValue ?? true;
 
-    console.log(`[DEBUG] Starting HTTP script execution, timeout: ${timeout}ms`);
-    console.log(`[DEBUG] Expression: ${expression.substring(0, 100)}${expression.length > 100 ? '...' : ''}`);
-
-    try {
-      // Use the proxy client's HTTP API to execute the command
-      const proxyUrl = this.proxyClient.getConfig().proxyUrl;
-      const commandId = Date.now() + Math.floor(Math.random() * 10000);
-
-      const command = {
-        id: commandId,
-        method: 'Runtime.evaluate',
-        params: {
-          expression: expression,
-          awaitPromise: awaitPromise,
-          returnByValue: returnByValue,
-          userGesture: true,
-          generatePreview: false
-        }
-      };
-
-      console.log(`[DEBUG] Sending HTTP command to ${proxyUrl}/api/execute/${connectionId}`);
-
-      const controller = new AbortController();
-      const timeoutHandle = setTimeout(() => controller.abort(), timeout);
-
-      try {
-        const response = await fetch(`${proxyUrl}/api/execute/${connectionId}`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'x-client-id': `eval_handler_${Date.now()}`
-          },
-          body: JSON.stringify({
-            command,
-            timeout
-          }),
-          signal: controller.signal
-        });
-
-        clearTimeout(timeoutHandle);
-
-        if (!response.ok) {
-          const errorData = await response.json().catch(() => ({}));
-          throw new Error(`HTTP ${response.status}: ${errorData.error || response.statusText}`);
-        }
-
-        const result = await response.json();
-        console.log(`[DEBUG] HTTP command response:`, result);
-
-        if (!result.success) {
-          throw new Error(`Command execution failed: ${result.error || 'Unknown error'}`);
-        }
-
-        const commandResult = result.data.result;
-        if (result.data.error) {
-          throw new Error(`CDP Error: ${result.data.error.message}`);
-        }
-
-        // Handle the result similar to WebSocket approach
-        if (commandResult.exceptionDetails) {
-          console.log(`[DEBUG] Exception details:`, commandResult.exceptionDetails);
-          const error = new Error(commandResult.result?.description || 'Script execution failed');
-          (error as any).exceptionDetails = commandResult.exceptionDetails;
-          throw error;
-        }
-
-        // Handle the result
-        let value = commandResult.result?.value;
-        if (commandResult.result?.type === 'undefined') {
-          value = '';
-        } else if (commandResult.result?.unserializableValue) {
-          value = commandResult.result.unserializableValue;
-        }
-
-        console.log(`[DEBUG] Successful HTTP result:`, value);
-        return value;
-
-      } catch (error) {
-        clearTimeout(timeoutHandle);
-        throw error;
-      }
-
-    } catch (error) {
-      console.log(`[DEBUG] Error in HTTP script execution:`, error);
-      throw error;
-    }
-  }
-
-  /**
-   * Execute script with direct CDP (fallback)
-   */
-  private async executeWithDirectCDP(client: CDPClient, scriptArgs: EvaluateScriptArgs): Promise<CommandResult> {
-    try {
-      // Get the JavaScript code to execute
-      let expression: string;
-      if (scriptArgs.file) {
-        expression = await this.readScriptFile(scriptArgs.file);
-      } else {
-        expression = scriptArgs.expression!;
-      }
-
-      // Execute the JavaScript with timeout handling
-      const result = await this.executeWithTimeout(
-        client,
-        expression,
-        scriptArgs
-      );
-
-      return result;
-    } catch (error) {
-      return {
-        success: false,
-        error: error instanceof Error ? error.message : String(error)
-      };
-    }
-  }
-
-  /**
-   * Read JavaScript code from file
-   */
-  private async readScriptFile(filePath: string): Promise<string> {
-    try {
-      const content = await fs.readFile(filePath, 'utf-8');
-      return content;
-    } catch (error) {
-      throw new Error(
-        `Failed to read script file "${filePath}": ${
-          error instanceof Error ? error.message : String(error)
-        }`
-      );
-    }
-  }
-
-  /**
-   * Execute JavaScript with timeout handling
-   */
-  private async executeWithTimeout(
-    client: CDPClient,
-    expression: string,
-    args: EvaluateScriptArgs
-  ): Promise<CommandResult> {
-    const timeout = args.timeout || 30000; // Default 30 seconds
-    const awaitPromise = args.awaitPromise ?? true;
-    const returnByValue = args.returnByValue ?? true;
-
-    // Create timeout promise
     const timeoutPromise = new Promise<never>((_, reject) => {
-      setTimeout(() => {
-        reject(new Error(`Script execution timeout after ${timeout}ms`));
-      }, timeout);
+      setTimeout(
+        () => reject(new Error(`Script execution timeout after ${timeout}ms`)),
+        timeout,
+      );
     });
 
-    // Create execution promise
     const executionPromise = this.executeScript(
       client,
       expression,
       awaitPromise,
-      returnByValue
+      returnByValue,
     );
 
-    // Race between execution and timeout
     try {
-      const result = await Promise.race([executionPromise, timeoutPromise]);
-      return result;
+      return await Promise.race([executionPromise, timeoutPromise]);
     } catch (error) {
       return {
         success: false,
-        error: error instanceof Error ? error.message : String(error)
+        error: error instanceof Error ? error.message : String(error),
       };
     }
   }
 
-  /**
-   * Execute JavaScript via CDP Runtime.evaluate
-   */
   private async executeScript(
     client: CDPClient,
     expression: string,
     awaitPromise: boolean,
-    returnByValue: boolean
+    returnByValue: boolean,
   ): Promise<CommandResult> {
-    // Set up console output redirection
-    const consoleHandler = (params: unknown) => {
+    const consoleHandler = (params: unknown) =>
       this.handleConsoleOutput(params);
-    };
-
-    // Register console event listener
-    client.on('Runtime.consoleAPICalled', consoleHandler);
+    client.on("Runtime.consoleAPICalled", consoleHandler);
 
     try {
-      const response = (await client.send('Runtime.evaluate', {
+      const response = (await client.send("Runtime.evaluate", {
         expression,
         awaitPromise,
         returnByValue,
         userGesture: true,
-        generatePreview: false
+        generatePreview: false,
       })) as RuntimeEvaluateResponse;
 
-      // Check if response is valid
       if (!response) {
-        return {
-          success: false,
-          error: 'CDP returned empty response'
-        };
+        return { success: false, error: "CDP returned empty response" };
       }
 
-      // Check for JavaScript execution errors
       if (response.exceptionDetails) {
         return this.formatException(response.exceptionDetails);
       }
 
-      // Check if result exists
       if (!response.result) {
-        return {
-          success: false,
-          error: 'CDP response missing result field'
-        };
+        return { success: false, error: "CDP response missing result field" };
       }
 
-      // Return successful result
-      return {
-        success: true,
-        data: this.formatResult(response.result)
-      };
+      return { success: true, data: this.formatResult(response.result) };
     } catch (error) {
       return {
         success: false,
-        error: `CDP command failed: ${
-          error instanceof Error ? error.message : String(error)
-        }`
+        error: `CDP command failed: ${error instanceof Error ? error.message : String(error)}`,
       };
     } finally {
-      // Clean up console event listener
-      client.off('Runtime.consoleAPICalled', consoleHandler);
+      client.off("Runtime.consoleAPICalled", consoleHandler);
     }
   }
 
-  /**
-   * Handle console output from Runtime.consoleAPICalled events
-   */
   private handleConsoleOutput(params: unknown): void {
     try {
-      const consoleParams = params as {
+      const p = params as {
         type: string;
-        args: Array<{
-          type: string;
-          value?: unknown;
-          description?: string;
-        }>;
-        timestamp?: number;
+        args: Array<{ type: string; value?: unknown; description?: string }>;
       };
+      const text = (p.args || [])
+        .map((a) =>
+          a.value !== undefined
+            ? typeof a.value === "string"
+              ? a.value
+              : JSON.stringify(a.value)
+            : a.description || "",
+        )
+        .join(" ");
 
-      // Format console message
-      const messageText = this.formatConsoleArgs(consoleParams.args || []);
-      const messageType = this.mapConsoleType(consoleParams.type);
-
-      // Output to stdout or stderr based on message type
-      if (messageType === 'log' || messageType === 'info' || messageType === 'debug') {
-        process.stdout.write(messageText + '\n');
+      const type = this.mapConsoleType(p.type);
+      if (type === "warn" || type === "error") {
+        process.stderr.write(text + "\n");
       } else {
-        // warn and error go to stderr
-        process.stderr.write(messageText + '\n');
+        process.stdout.write(text + "\n");
       }
-    } catch (error) {
-      // Silently ignore formatting errors to avoid breaking script execution
-      this.logger.debug('Error handling console output:', error);
+    } catch {
+      // silently ignore formatting errors
     }
   }
 
-  /**
-   * Format console arguments into a readable string
-   */
-  private formatConsoleArgs(args: Array<{
-    type: string;
-    value?: unknown;
-    description?: string;
-  }>): string {
-    return args.map(arg => {
-      if (arg.value !== undefined) {
-        if (typeof arg.value === 'string') {
-          return arg.value;
-        }
-        return JSON.stringify(arg.value);
-      }
-      return arg.description || '';
-    }).join(' ');
-  }
-
-  /**
-   * Map CDP console type to our console message type
-   */
-  private mapConsoleType(cdpType: string): 'log' | 'info' | 'warn' | 'error' | 'debug' {
+  private mapConsoleType(
+    cdpType: string,
+  ): "log" | "info" | "warn" | "error" | "debug" {
     switch (cdpType) {
-      case 'log':
-        return 'log';
-      case 'info':
-        return 'info';
-      case 'warning':
-        return 'warn';
-      case 'error':
-        return 'error';
-      case 'debug':
-        return 'debug';
+      case "warning":
+        return "warn";
+      case "error":
+        return "error";
+      case "info":
+        return "info";
+      case "debug":
+        return "debug";
       default:
-        return 'log';
+        return "log";
     }
   }
 
-  /**
-   * Format exception details into error message
-   */
-  private formatException(exceptionDetails: RuntimeEvaluateResponse['exceptionDetails']): CommandResult {
+  private formatException(
+    exceptionDetails: RuntimeEvaluateResponse["exceptionDetails"],
+  ): CommandResult {
     if (!exceptionDetails) {
-      return {
-        success: false,
-        error: 'Unknown JavaScript error'
-      };
+      return { success: false, error: "Unknown JavaScript error" };
     }
-
-    const exception = exceptionDetails.exception;
-    const errorMessage = exception?.description || exceptionDetails.text;
-    
-    // Build stack trace if available
-    let stackTrace = '';
+    const errorMessage =
+      exceptionDetails.exception?.description || exceptionDetails.text;
+    let stackTrace = "";
     if (exceptionDetails.stackTrace?.callFrames) {
-      stackTrace = '\nStack trace:\n' + 
+      stackTrace =
+        "\nStack trace:\n" +
         exceptionDetails.stackTrace.callFrames
-          .map(frame => 
-            `  at ${frame.functionName || '<anonymous>'} (${frame.url}:${frame.lineNumber}:${frame.columnNumber})`
+          .map(
+            (f) =>
+              `  at ${f.functionName || "<anonymous>"} (${f.url}:${f.lineNumber}:${f.columnNumber})`,
           )
-          .join('\n');
+          .join("\n");
     }
-
     return {
       success: false,
-      error: `JavaScript error at line ${exceptionDetails.lineNumber}, column ${exceptionDetails.columnNumber}: ${errorMessage}${stackTrace}`
+      error: `JavaScript error at line ${exceptionDetails.lineNumber}, column ${exceptionDetails.columnNumber}: ${errorMessage}${stackTrace}`,
     };
   }
 
-  /**
-   * Format result value for output
-   */
-  private formatResult(result: RuntimeEvaluateResponse['result']): unknown {
-    // Check if result exists
-    if (!result) {
-      return '';
-    }
-
-    // Check if result is undefined
-    if (result.type === 'undefined') {
-      return '';
-    }
-
-    // If returnByValue is true, the value is already serialized
-    if (result.value !== undefined) {
-      return result.value;
-    }
-
-    // For object references, return description
-    if (result.objectId) {
+  private formatResult(result: RuntimeEvaluateResponse["result"]): unknown {
+    if (!result || result.type === "undefined") return "";
+    if (result.value !== undefined) return result.value;
+    if (result.objectId)
       return {
         type: result.type,
         description: result.description,
-        objectId: result.objectId
+        objectId: result.objectId,
       };
-    }
-
-    // For null, etc.
     return result.description || result.type;
   }
 
-  /**
-   * Validate command arguments
-   */
   validateArgs(args: unknown): boolean {
-    if (typeof args !== 'object' || args === null) {
+    if (typeof args !== "object" || args === null) return false;
+    const a = args as EvaluateScriptArgs;
+    if (!a.expression && !a.file) return false;
+    if (a.expression && a.file) return false;
+    if (a.expression && typeof a.expression !== "string") return false;
+    if (a.file && typeof a.file !== "string") return false;
+    if (a.awaitPromise !== undefined && typeof a.awaitPromise !== "boolean")
       return false;
-    }
-
-    const scriptArgs = args as EvaluateScriptArgs;
-
-    // Must have either expression or file
-    if (!scriptArgs.expression && !scriptArgs.file) {
-      return false;
-    }
-
-    // Cannot have both
-    if (scriptArgs.expression && scriptArgs.file) {
-      return false;
-    }
-
-    // Validate types
-    if (scriptArgs.expression && typeof scriptArgs.expression !== 'string') {
-      return false;
-    }
-
-    if (scriptArgs.file && typeof scriptArgs.file !== 'string') {
-      return false;
-    }
-
-    if (scriptArgs.awaitPromise !== undefined && typeof scriptArgs.awaitPromise !== 'boolean') {
-      return false;
-    }
-
-    if (scriptArgs.timeout !== undefined && typeof scriptArgs.timeout !== 'number') {
-      return false;
-    }
-
+    if (a.timeout !== undefined && typeof a.timeout !== "number") return false;
     return true;
   }
 
-  /**
-   * Get command help text
-   */
   getHelp(): string {
     return `
 eval - Execute JavaScript code in the browser context
 
 Usage:
-  eval "console.log('Hello')"
-  eval --file script.js
-  eval "fetch('/api')" --await-promise
-  eval "longRunning()" --timeout 60000
+  cdp eval "document.title"
+  cdp eval --file script.js
+  cdp eval "await fetch('/api').then(r => r.json())"
+  cdp eval "heavyComputation()" --timeout 60000
 
 Arguments:
-  <expression>            JavaScript code to execute (direct argument)
+  <expression>            JavaScript code to execute
   --expression <code>     JavaScript code to execute (explicit flag)
   --file <path>           Path to JavaScript file to execute
   --await-promise         Wait for Promise resolution (default: true)
@@ -617,20 +301,10 @@ Arguments:
   --return-by-value       Return result by value (default: true)
 
 Examples:
-  # Execute simple expression (recommended)
-  eval "2 + 2"
-
-  # Execute with explicit flag
-  eval --expression "2 + 2"
-
-  # Execute async code
-  eval "await fetch('/api').then(r => r.json())"
-
-  # Execute from file
-  eval --file ./scripts/init.js
-
-  # Set custom timeout
-  eval "heavyComputation()" --timeout 120000
+  cdp eval "2 + 2"
+  cdp eval "Array.from(document.links).map(l => l.href)"
+  cdp eval --file ./scripts/init.js
+  cdp eval "await new Promise(r => setTimeout(r, 5000))" --timeout 10000
 `;
   }
 }

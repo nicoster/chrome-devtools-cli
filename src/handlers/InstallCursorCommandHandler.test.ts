@@ -162,7 +162,7 @@ describe('InstallCursorCommandHandler', () => {
       expect(markdownContent).toContain('### Advanced Interactions');
       expect(markdownContent).toContain('### Monitoring');
       expect(markdownContent).toContain('## Usage Examples');
-      expect(markdownContent).toContain('chrome-cdp-cli eval');
+      expect(markdownContent).toContain('cdp eval');
     });
 
     it('should include all expected commands', async () => {

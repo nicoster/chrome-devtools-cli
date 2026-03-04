@@ -1,13 +1,13 @@
-import { ArgumentParser } from './ArgumentParser';
-import { CommandSchemaRegistry } from './CommandSchemaRegistry';
-import { ICLIInterface, DEFAULT_CLI_CONFIG } from '../interfaces/CLIInterface';
-import { CLICommand, CLIConfig, CommandResult, CDPClient } from '../types';
-import { CommandRegistry } from './CommandRegistry';
-import { CommandRouter } from './CommandRouter';
-import { ParseResult } from './interfaces/ArgumentParser';
+import { ArgumentParser } from "./ArgumentParser";
+import { CommandSchemaRegistry } from "./CommandSchemaRegistry";
+import { ICLIInterface, DEFAULT_CLI_CONFIG } from "../interfaces/CLIInterface";
+import { CLICommand, CLIConfig, CommandResult, CDPClient } from "../types";
+import { CommandRegistry } from "./CommandRegistry";
+import { CommandRouter } from "./CommandRouter";
+import { ParseResult } from "./interfaces/ArgumentParser";
 
 // Import package.json to get version dynamically
-const packageJson = require('../../package.json');
+const packageJson = require("../../package.json");
 
 /**
  * Enhanced CLI Interface implementation using the new argument parser
@@ -45,59 +45,62 @@ export class EnhancedCLIInterface implements ICLIInterface {
     try {
       // Use enhanced argument parser
       const parseResult: ParseResult = this.argumentParser.parseArguments(argv);
-      
+
       if (!parseResult.success) {
         // Handle parse errors by showing help with error information
-        const errorMessage = parseResult.errors.join('\n');
-        
+        const errorMessage = parseResult.errors.join("\n");
+
         // Generate contextual help for the error
-        const contextualHelp = this.argumentParser.generateContextualHelp(errorMessage, parseResult.command);
-        
+        const contextualHelp = this.argumentParser.generateContextualHelp(
+          errorMessage,
+          parseResult.command,
+        );
+
         throw new Error(`Parse error: ${errorMessage}\n\n${contextualHelp}`);
       }
 
       // Handle special commands
-      if (parseResult.command === 'version') {
+      if (parseResult.command === "version") {
         console.log(packageJson.version);
-        if (process.env.NODE_ENV !== 'test') {
+        if (process.env.NODE_ENV !== "test") {
           process.exit(0);
         }
         // Return a special command result for tests
-        throw new Error('VERSION_COMMAND_EXECUTED');
+        throw new Error("VERSION_COMMAND_EXECUTED");
       }
 
       // Handle help command with topic support
-      if (parseResult.command === 'help') {
+      if (parseResult.command === "help") {
         const helpArg = parseResult.arguments[0] as string;
         const helpText = this.argumentParser.generateHelp(helpArg);
         console.log(helpText);
-        if (process.env.NODE_ENV !== 'test') {
+        if (process.env.NODE_ENV !== "test") {
           process.exit(0);
         }
         // Return a special command result for tests
-        throw new Error('HELP_COMMAND_EXECUTED');
+        throw new Error("HELP_COMMAND_EXECUTED");
       }
 
       // Build CLI configuration from parsed global options
       const config = this.buildConfiguration(parseResult.options);
-      
+
       // Build command arguments from parsed command-specific options and arguments
       const args = this.buildCommandArguments(parseResult);
 
       return {
         name: parseResult.command,
         args,
-        config
+        config,
       };
-
     } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : String(error);
+      const errorMessage =
+        error instanceof Error ? error.message : String(error);
       // If it's "Invalid count value", try to provide more context
-      if (errorMessage.includes('Invalid count value')) {
+      if (errorMessage.includes("Invalid count value")) {
         // This might be from array.slice() with invalid parameters
-        console.error('Error details:', error);
+        console.error("Error details:", error);
         if (error instanceof Error && error.stack) {
-          console.error('Stack trace:', error.stack);
+          console.error("Stack trace:", error.stack);
         }
       }
       throw new Error(`Failed to parse arguments: ${errorMessage}`);
@@ -107,29 +110,47 @@ export class EnhancedCLIInterface implements ICLIInterface {
   /**
    * Build CLI configuration from parsed global options
    */
-  private buildConfiguration(globalOptions: Record<string, unknown>): CLIConfig {
+  private buildConfiguration(
+    globalOptions: Record<string, unknown>,
+  ): CLIConfig {
     return {
       host: (globalOptions.host as string) || DEFAULT_CLI_CONFIG.host,
       port: (globalOptions.port as number) || DEFAULT_CLI_CONFIG.port,
-      outputFormat: (globalOptions.format as 'json' | 'text') || DEFAULT_CLI_CONFIG.outputFormat,
+      outputFormat:
+        (globalOptions.format as "json" | "text") ||
+        DEFAULT_CLI_CONFIG.outputFormat,
       verbose: (globalOptions.verbose as boolean) || DEFAULT_CLI_CONFIG.verbose,
       quiet: (globalOptions.quiet as boolean) || DEFAULT_CLI_CONFIG.quiet,
       timeout: (globalOptions.timeout as number) || DEFAULT_CLI_CONFIG.timeout,
       debug: (globalOptions.debug as boolean) || DEFAULT_CLI_CONFIG.debug,
-      targetIndex: globalOptions['target-index'] !== undefined ? (globalOptions['target-index'] as number) : undefined
+      targetIndex:
+        globalOptions["target-index"] !== undefined
+          ? (globalOptions["target-index"] as number)
+          : undefined,
     };
   }
 
   /**
    * Build command arguments from parse result
    */
-  private buildCommandArguments(parseResult: ParseResult): Record<string, unknown> {
+  private buildCommandArguments(
+    parseResult: ParseResult,
+  ): Record<string, unknown> {
     const args: Record<string, unknown> = {};
-    
+
     // Add command-specific options
     for (const [key, value] of Object.entries(parseResult.options)) {
       // Skip global options that are handled in configuration
-      const globalOptions = ['host', 'port', 'format', 'verbose', 'quiet', 'timeout', 'debug', 'config'];
+      const globalOptions = [
+        "host",
+        "port",
+        "format",
+        "verbose",
+        "quiet",
+        "timeout",
+        "debug",
+        "config",
+      ];
       if (!globalOptions.includes(key)) {
         args[key] = value;
       }
@@ -138,7 +159,11 @@ export class EnhancedCLIInterface implements ICLIInterface {
     // Add positional arguments based on command definition
     const commandDef = this.schemaRegistry.getCommand(parseResult.command);
     if (commandDef) {
-      for (let i = 0; i < parseResult.arguments.length && i < commandDef.arguments.length; i++) {
+      for (
+        let i = 0;
+        i < parseResult.arguments.length && i < commandDef.arguments.length;
+        i++
+      ) {
         const argDef = commandDef.arguments[i];
         args[argDef.name] = parseResult.arguments[i];
       }
@@ -157,39 +182,45 @@ export class EnhancedCLIInterface implements ICLIInterface {
       if (commandDef) {
         const validation = this.argumentParser.validateArguments(command.name, {
           options: command.args,
-          arguments: Object.values(command.args)
+          arguments: Object.values(command.args),
         });
-        
+
         if (!validation.valid) {
-          const errorMessage = `Validation failed: ${validation.errors.join(', ')}`;
-          
+          const errorMessage = `Validation failed: ${validation.errors.join(", ")}`;
+
           // Generate contextual help for validation errors
-          const contextualHelp = this.argumentParser.generateContextualHelp(errorMessage, command.name);
-          
+          const contextualHelp = this.argumentParser.generateContextualHelp(
+            errorMessage,
+            command.name,
+          );
+
           return {
             success: false,
             error: `${errorMessage}\n\n${contextualHelp}`,
-            exitCode: 5 // VALIDATION_ERROR
+            exitCode: 5, // VALIDATION_ERROR
           };
         }
 
         // Show warnings if any
         if (validation.warnings.length > 0 && command.config.verbose) {
-          console.warn('Warnings:', validation.warnings.join(', '));
+          console.warn("Warnings:", validation.warnings.join(", "));
         }
       }
 
       return await this.router.execute(command);
     } catch (error) {
       const errorMessage = `Command execution failed: ${error instanceof Error ? error.message : String(error)}`;
-      
+
       // Generate contextual help for execution errors
-      const contextualHelp = this.argumentParser.generateContextualHelp(errorMessage, command.name);
-      
+      const contextualHelp = this.argumentParser.generateContextualHelp(
+        errorMessage,
+        command.name,
+      );
+
       return {
         success: false,
         error: `${errorMessage}\n\n${contextualHelp}`,
-        exitCode: 1
+        exitCode: 1,
       };
     }
   }
@@ -198,7 +229,7 @@ export class EnhancedCLIInterface implements ICLIInterface {
    * Format command output according to specified format
    */
   formatOutput(result: CommandResult, format: string): string {
-    if (format === 'json') {
+    if (format === "json") {
       return JSON.stringify(result, null, 2);
     }
 
@@ -208,33 +239,32 @@ export class EnhancedCLIInterface implements ICLIInterface {
     }
 
     if (result.data === undefined || result.data === null) {
-      return 'Success';
+      return "Success";
     }
 
     // Handle data source and historical data indicators
-    let output = '';
-    let dataSourceInfo = '';
-    
+    let output = "";
+    let dataSourceInfo = "";
+
     // Add data source information
-    if (result.dataSource === 'proxy' && result.hasHistoricalData) {
-      dataSourceInfo = '📊 Data from proxy server (includes historical data)\n';
-    } else if (result.dataSource === 'direct' && result.hasHistoricalData === false) {
-      dataSourceInfo = '⚠️  Data from direct connection (new messages only, no historical data)\n';
+    if (result.dataSource === "direct" && result.hasHistoricalData === false) {
+      dataSourceInfo =
+        "⚠️  Data from direct connection (new messages only, no historical data)\n";
     }
-    
-    if (result.data && typeof result.data === 'object') {
+
+    if (result.data && typeof result.data === "object") {
       const data = result.data as any;
-      
+
       // Handle snapshot output - show the text representation directly
-      if (data.snapshot && typeof data.snapshot === 'string') {
+      if (data.snapshot && typeof data.snapshot === "string") {
         return data.snapshot;
       }
-      
+
       // Handle console messages output
       if (data.messages && Array.isArray(data.messages)) {
         output += dataSourceInfo;
         if (data.messages.length === 0) {
-          output += 'No console messages found.';
+          output += "No console messages found.";
         } else {
           output += `Found ${data.messages.length} console message(s):\n\n`;
           data.messages.forEach((msg: any, index: number) => {
@@ -244,23 +274,23 @@ export class EnhancedCLIInterface implements ICLIInterface {
         }
         return output.trim();
       }
-      
+
       // Handle network requests output
       if (data.requests && Array.isArray(data.requests)) {
         output += dataSourceInfo;
         if (data.requests.length === 0) {
-          output += 'No network requests found.';
+          output += "No network requests found.";
         } else {
           output += `Found ${data.requests.length} network request(s):\n\n`;
           data.requests.forEach((req: any, index: number) => {
             const timestamp = new Date(req.timestamp).toISOString();
-            const status = req.status ? ` [${req.status}]` : ' [pending]';
+            const status = req.status ? ` [${req.status}]` : " [pending]";
             output += `[${index + 1}] ${timestamp} ${req.method} ${req.url}${status}\n`;
           });
         }
         return output.trim();
       }
-      
+
       // Handle single console message
       if (data.type && data.text !== undefined && data.timestamp) {
         output += dataSourceInfo;
@@ -268,22 +298,22 @@ export class EnhancedCLIInterface implements ICLIInterface {
         output += `${timestamp} [${data.type.toUpperCase()}] ${data.text}`;
         return output;
       }
-      
+
       // Handle single network request
       if (data.requestId && data.url && data.method) {
         output += dataSourceInfo;
         const timestamp = new Date(data.timestamp).toISOString();
-        const status = data.status ? ` [${data.status}]` : ' [pending]';
+        const status = data.status ? ` [${data.status}]` : " [pending]";
         output += `${timestamp} ${data.method} ${data.url}${status}`;
         return output;
       }
     }
 
-    if (typeof result.data === 'string') {
+    if (typeof result.data === "string") {
       return result.data;
     }
 
-    if (typeof result.data === 'object') {
+    if (typeof result.data === "object") {
       return JSON.stringify(result.data, null, 2);
     }
 
@@ -301,7 +331,7 @@ export class EnhancedCLIInterface implements ICLIInterface {
    * Get available commands list
    */
   getAvailableCommands(): string[] {
-    return this.argumentParser.getCommands().map(cmd => cmd.name);
+    return this.argumentParser.getCommands().map((cmd) => cmd.name);
   }
 
   /**

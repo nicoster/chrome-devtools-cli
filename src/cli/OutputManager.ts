@@ -1,18 +1,18 @@
 /**
  * Output Manager
- * 
+ *
  * This module provides a high-level interface for managing output formatting
  * across the CLI application with integrated timing and metadata collection.
  */
 
-import { CommandResult, CLIConfig, CLICommand } from '../types';
-import { 
-  OutputFormatter, 
-  TimingInfo, 
+import { CommandResult, CLIConfig, CLICommand } from "../types";
+import {
+  OutputFormatter,
+  TimingInfo,
   createOutputOptions,
   createTimingInfo,
-  enhanceCommandResult
-} from './OutputFormatter';
+  enhanceCommandResult,
+} from "./OutputFormatter";
 
 /**
  * Output manager for coordinating formatting across the CLI
@@ -36,7 +36,7 @@ export class OutputManager {
     this.currentOperation = {
       name: operationName,
       startTime: Date.now(),
-      command
+      command,
     };
   }
 
@@ -53,13 +53,13 @@ export class OutputManager {
       timing = createTimingInfo(
         this.currentOperation.name,
         this.currentOperation.startTime,
-        endTime
+        endTime,
       );
 
       metadata = {
         command: this.currentOperation.command.name,
         args: this.currentOperation.command.args,
-        config: this.currentOperation.command.config
+        config: this.currentOperation.command.config,
       };
 
       operationConfig = this.currentOperation.command.config;
@@ -68,10 +68,10 @@ export class OutputManager {
       this.currentOperation = undefined;
     } else {
       operationConfig = {
-        outputFormat: 'text',
+        outputFormat: "text",
         quiet: false,
         verbose: false,
-        debug: false
+        debug: false,
       } as CLIConfig;
     }
 
@@ -82,7 +82,7 @@ export class OutputManager {
     const options = createOutputOptions(
       operationConfig,
       true, // include metadata
-      true  // include timing
+      true, // include timing
     );
 
     return this.formatter.formatOutput(enhancedResult, options);
@@ -91,7 +91,11 @@ export class OutputManager {
   /**
    * Format output without timing (for immediate results)
    */
-  formatOutput(result: CommandResult, config: CLIConfig, template?: string): string {
+  formatOutput(
+    result: CommandResult,
+    config: CLIConfig,
+    template?: string,
+  ): string {
     const options = createOutputOptions(config, false, false);
     if (template) {
       options.template = template;
@@ -107,7 +111,7 @@ export class OutputManager {
     const result: CommandResult = {
       success: false,
       error,
-      exitCode
+      exitCode,
     };
 
     const options = createOutputOptions(config, false, false);
@@ -120,7 +124,7 @@ export class OutputManager {
   formatSuccess(config: CLIConfig, data?: unknown): string {
     const result: CommandResult = {
       success: true,
-      data
+      data,
     };
 
     const options = createOutputOptions(config, false, false);
@@ -130,12 +134,17 @@ export class OutputManager {
   /**
    * Register a custom template
    */
-  registerTemplate(name: string, description: string, template: string, variables: string[]): void {
+  registerTemplate(
+    name: string,
+    description: string,
+    template: string,
+    variables: string[],
+  ): void {
     this.formatter.registerTemplate({
       name,
       description,
       template,
-      variables
+      variables,
     });
   }
 
@@ -150,13 +159,21 @@ export class OutputManager {
    * Check if quiet mode should suppress output
    */
   shouldSuppressOutput(config: CLIConfig, result: CommandResult): boolean {
-    return config.quiet && result.success && (result.data === undefined || result.data === null);
+    return (
+      config.quiet &&
+      result.success &&
+      (result.data === undefined || result.data === null)
+    );
   }
 
   /**
    * Get verbose timing information as string
    */
-  getTimingInfo(startTime: number, endTime: number, operationName: string): string {
+  getTimingInfo(
+    startTime: number,
+    endTime: number,
+    operationName: string,
+  ): string {
     const duration = endTime - startTime;
     return `⏱️  ${operationName}: ${duration}ms`;
   }
@@ -164,17 +181,18 @@ export class OutputManager {
   /**
    * Format data source information
    */
-  formatDataSourceInfo(dataSource?: string, hasHistoricalData?: boolean): string {
-    if (!dataSource) return '';
+  formatDataSourceInfo(
+    dataSource?: string,
+    hasHistoricalData?: boolean,
+  ): string {
+    if (!dataSource) return "";
 
-    const sourceIcon = dataSource === 'proxy' ? '📊' : '⚠️';
-    const sourceText = dataSource === 'proxy' 
-      ? 'Data from proxy server' 
-      : 'Data from direct connection';
-    const historyText = hasHistoricalData 
-      ? '(includes historical data)' 
-      : '(new data only)';
-    
+    const sourceIcon = "⚠️";
+    const sourceText = "Data from direct connection";
+    const historyText = hasHistoricalData
+      ? "(includes historical data)"
+      : "(new data only)";
+
     return `${sourceIcon} ${sourceText} ${historyText}`;
   }
 
@@ -188,10 +206,12 @@ export class OutputManager {
   /**
    * Format validation errors consistently
    */
-  formatValidationErrors(errors: Array<{ field: string; message: string; suggestion?: string }>): string {
-    if (errors.length === 0) return '';
+  formatValidationErrors(
+    errors: Array<{ field: string; message: string; suggestion?: string }>,
+  ): string {
+    if (errors.length === 0) return "";
 
-    let output = '❌ Validation Errors:\n\n';
+    let output = "❌ Validation Errors:\n\n";
     errors.forEach((error, index) => {
       output += `${index + 1}. ${error.field}: ${error.message}\n`;
       if (error.suggestion) {
@@ -209,7 +229,7 @@ export class OutputManager {
     let output = `📖 ${title}\n\n${content}\n`;
 
     if (examples && examples.length > 0) {
-      output += '\n💡 Examples:\n';
+      output += "\n💡 Examples:\n";
       examples.forEach((example, index) => {
         output += `${index + 1}. ${example}\n`;
       });
@@ -236,13 +256,15 @@ export class ProgressIndicator {
    * Start showing progress
    */
   start(): void {
-    const frames = ['⠋', '⠙', '⠹', '⠸', '⠼', '⠴', '⠦', '⠧', '⠇', '⠏'];
+    const frames = ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"];
     let frameIndex = 0;
 
     this.interval = setInterval(() => {
       const elapsed = Date.now() - this.startTime;
       const elapsedSeconds = Math.floor(elapsed / 1000);
-      process.stdout.write(`\r${frames[frameIndex]} ${this.message} (${elapsedSeconds}s)`);
+      process.stdout.write(
+        `\r${frames[frameIndex]} ${this.message} (${elapsedSeconds}s)`,
+      );
       frameIndex = (frameIndex + 1) % frames.length;
     }, 100);
   }
@@ -255,7 +277,7 @@ export class ProgressIndicator {
       clearInterval(this.interval);
       this.interval = undefined;
     }
-    process.stdout.write('\r\x1b[K'); // Clear line
+    process.stdout.write("\r\x1b[K"); // Clear line
   }
 
   /**

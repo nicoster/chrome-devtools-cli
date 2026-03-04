@@ -40,8 +40,8 @@ To install Cursor commands:
 4. Use --force to install anyway
 
 Examples:
-  chrome-cdp-cli install-cursor-command --target-directory /path/to/.cursor/commands
-  chrome-cdp-cli install-cursor-command --force`
+  cdp install-cursor-command --target-directory /path/to/.cursor/commands
+  cdp install-cursor-command --force`
           };
         }
       }
@@ -128,60 +128,60 @@ Examples:
 
 ### JavaScript Execution
 - **eval** - Execute JavaScript code and return results
-  \`chrome-cdp-cli eval "document.title"\`
-  \`chrome-cdp-cli eval "fetch('/api/data').then(r => r.json())"\`
+  \`cdp eval "document.title"\`
+  \`cdp eval "fetch('/api/data').then(r => r.json())"\`
 
 ### Screenshots and Snapshots
 - **screenshot** - Capture page screenshot
-  \`chrome-cdp-cli screenshot --filename page.png\`
-  \`chrome-cdp-cli screenshot --filename fullpage.png --full-page\`
+  \`cdp screenshot --filename page.png\`
+  \`cdp screenshot --filename fullpage.png --full-page\`
 
 - **snapshot** - Capture complete DOM snapshot
-  \`chrome-cdp-cli snapshot\`
-  \`chrome-cdp-cli snapshot --filename dom-snapshot.txt\`
+  \`cdp snapshot\`
+  \`cdp snapshot --filename dom-snapshot.txt\`
 
 ### Element Interaction
 - **click** - Click page elements
-  \`chrome-cdp-cli click "#submit-button"\`
-  \`chrome-cdp-cli click ".menu-item" --timeout 10000\`
+  \`cdp click "#submit-button"\`
+  \`cdp click ".menu-item" --timeout 10000\`
 
 - **hover** - Mouse hover over elements
-  \`chrome-cdp-cli hover "#dropdown-trigger"\`
+  \`cdp hover "#dropdown-trigger"\`
 
 - **fill** - Fill form fields
-  \`chrome-cdp-cli fill "#username" "john@example.com"\`
-  \`chrome-cdp-cli fill "input[name='password']" "secret123"\`
+  \`cdp fill "#username" "john@example.com"\`
+  \`cdp fill "input[name='password']" "secret123"\`
 
 - **fill_form** - Batch fill forms
-  \`chrome-cdp-cli fill_form '{"#username": "john", "#password": "secret"}'\`
+  \`cdp fill_form '{"#username": "john", "#password": "secret"}'\`
 
 ### Advanced Interactions
 - **drag** - Drag and drop operations
-  \`chrome-cdp-cli drag "#draggable" "#dropzone"\`
+  \`cdp drag "#draggable" "#dropzone"\`
 
 - **press_key** - Simulate keyboard input
-  \`chrome-cdp-cli press_key "Enter"\`
-  \`chrome-cdp-cli press_key "a" --modifiers Ctrl --selector "#input"\`
+  \`cdp press_key "Enter"\`
+  \`cdp press_key "a" --modifiers Ctrl --selector "#input"\`
 
 - **upload_file** - File upload
-  \`chrome-cdp-cli upload_file "input[type='file']" "./document.pdf"\`
+  \`cdp upload_file "input[type='file']" "./document.pdf"\`
 
 - **wait_for** - Wait for elements to appear or meet conditions
-  \`chrome-cdp-cli wait_for "#loading" --condition hidden\`
-  \`chrome-cdp-cli wait_for "#submit-btn" --condition enabled\`
+  \`cdp wait_for "#loading" --condition hidden\`
+  \`cdp wait_for "#submit-btn" --condition enabled\`
 
 - **handle_dialog** - Handle browser dialogs
-  \`chrome-cdp-cli handle_dialog accept\`
-  \`chrome-cdp-cli handle_dialog accept --text "user input"\`
+  \`cdp handle_dialog accept\`
+  \`cdp handle_dialog accept --text "user input"\`
 
 ### Monitoring
 - **console** - List console messages or get latest
-  \`chrome-cdp-cli console --latest\`
-  \`chrome-cdp-cli console --types error\`
+  \`cdp console --latest\`
+  \`cdp console --types error\`
 
 - **network** - List network requests or get latest
-  \`chrome-cdp-cli network --latest\`
-  \`chrome-cdp-cli network --filter '{"methods":["POST"]}'\`
+  \`cdp network --latest\`
+  \`cdp network --filter '{"methods":["POST"]}'\`
 
 ## Common Options
 
@@ -193,54 +193,54 @@ Examples:
 
 ### Form Testing
 \`\`\`bash
-chrome-cdp-cli wait_for "#login-form" --condition visible
-chrome-cdp-cli fill "#email" "test@example.com"
-chrome-cdp-cli fill "#password" "password123"
-chrome-cdp-cli click "#submit-button"
-chrome-cdp-cli wait_for "#success-message" --condition visible
-chrome-cdp-cli screenshot --filename login-success.png
-chrome-cdp-cli console --types error
+cdp wait_for "#login-form" --condition visible
+cdp fill "#email" "test@example.com"
+cdp fill "#password" "password123"
+cdp click "#submit-button"
+cdp wait_for "#success-message" --condition visible
+cdp screenshot --filename login-success.png
+cdp console --types error
 \`\`\`
 
 ### File Upload
 \`\`\`bash
-chrome-cdp-cli click "#upload-trigger"
-chrome-cdp-cli upload_file "input[type='file']" "./test-document.pdf"
-chrome-cdp-cli wait_for ".upload-success" --condition visible
-chrome-cdp-cli eval "document.querySelector('.file-name').textContent"
+cdp click "#upload-trigger"
+cdp upload_file "input[type='file']" "./test-document.pdf"
+cdp wait_for ".upload-success" --condition visible
+cdp eval "document.querySelector('.file-name').textContent"
 \`\`\`
 
 ### Drag and Drop
 \`\`\`bash
-chrome-cdp-cli wait_for "#draggable-item" --condition visible
-chrome-cdp-cli wait_for "#drop-zone" --condition visible
-chrome-cdp-cli drag "#draggable-item" "#drop-zone"
-chrome-cdp-cli eval "document.querySelector('#drop-zone').children.length"
+cdp wait_for "#draggable-item" --condition visible
+cdp wait_for "#drop-zone" --condition visible
+cdp drag "#draggable-item" "#drop-zone"
+cdp eval "document.querySelector('#drop-zone').children.length"
 \`\`\`
 
 ### Keyboard Input
 \`\`\`bash
-chrome-cdp-cli click "#search-input"
-chrome-cdp-cli press_key "t"
-chrome-cdp-cli press_key "e"
-chrome-cdp-cli press_key "s"
-chrome-cdp-cli press_key "t"
-chrome-cdp-cli press_key "a" --modifiers Ctrl
-chrome-cdp-cli press_key "Enter"
-chrome-cdp-cli handle_dialog accept
+cdp click "#search-input"
+cdp press_key "t"
+cdp press_key "e"
+cdp press_key "s"
+cdp press_key "t"
+cdp press_key "a" --modifiers Ctrl
+cdp press_key "Enter"
+cdp handle_dialog accept
 \`\`\``,
         examples: [
-          'chrome-cdp-cli eval "document.title"',
-          'chrome-cdp-cli screenshot --filename page.png',
-          'chrome-cdp-cli click "#submit-button"',
-          'chrome-cdp-cli fill "#username" "test@example.com"',
-          'chrome-cdp-cli drag "#item" "#target"',
-          'chrome-cdp-cli press_key "Enter"',
-          'chrome-cdp-cli upload_file "input[type=file]" "./doc.pdf"',
-          'chrome-cdp-cli wait_for "#loading" --condition hidden',
-          'chrome-cdp-cli handle_dialog accept',
-          'chrome-cdp-cli console --latest',
-          'chrome-cdp-cli network'
+          'cdp eval "document.title"',
+          'cdp screenshot --filename page.png',
+          'cdp click "#submit-button"',
+          'cdp fill "#username" "test@example.com"',
+          'cdp drag "#item" "#target"',
+          'cdp press_key "Enter"',
+          'cdp upload_file "input[type=file]" "./doc.pdf"',
+          'cdp wait_for "#loading" --condition hidden',
+          'cdp handle_dialog accept',
+          'cdp console --latest',
+          'cdp network'
         ]
       }
     ];

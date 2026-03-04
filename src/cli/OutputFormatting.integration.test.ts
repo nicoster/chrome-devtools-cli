@@ -159,8 +159,8 @@ describe('Output Formatting Integration', () => {
     it('should format data source information', () => {
       const outputManager = cli.getOutputManager();
       
-      const proxyInfo = outputManager.formatDataSourceInfo('proxy', true);
-      expect(proxyInfo).toContain('📊 Data from proxy server (includes historical data)');
+      const proxyInfo = outputManager.formatDataSourceInfo('direct', true);
+      expect(proxyInfo).toContain('⚠️ Data from direct connection (includes historical data)');
       
       const directInfo = outputManager.formatDataSourceInfo('direct', false);
       expect(directInfo).toContain('⚠️ Data from direct connection (new data only)');
@@ -220,7 +220,7 @@ describe('Output Formatting Integration', () => {
             }
           ]
         },
-        dataSource: 'proxy',
+        dataSource: 'direct',
         hasHistoricalData: true
       };
 
@@ -237,7 +237,7 @@ describe('Output Formatting Integration', () => {
       const outputManager = cli.getOutputManager();
       const output = outputManager.formatOutput(result, config);
       
-      expect(output).toContain('📊 Data from proxy server (includes historical data)');
+      expect(output).toContain('⚠️ Data from direct connection (includes historical data)');
       expect(output).toContain('Found 1 console message(s)');
       expect(output).toContain('Test message');
       expect(output).toContain('📝'); // log icon
