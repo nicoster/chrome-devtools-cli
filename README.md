@@ -1,938 +1,408 @@
-# Chrome DevTools CLI
+# CDP — Chrome DevTools Protocol CLI
 
-A command-line tool for browser automation via Chrome DevTools Protocol (CDP). Designed for developers who need reliable, scriptable browser control with both dedicated commands and flexible JavaScript execution.
-
-## 🚀 Enhanced CLI Features
-
-**New in v2.0:** The CLI now includes a comprehensive refactored parameter system with:
-
-- 🔧 **Advanced Configuration Management**: YAML/JSON config files with profiles and precedence handling
-- ⚙️ **Enhanced Argument Parser**: Consistent option handling with validation and schema support  
-- 📚 **Comprehensive Help System**: Contextual help, advanced topics, and detailed examples
-- 🎯 **Standardized Output**: JSON/text formats with quiet/verbose modes and custom templates
-- 🔗 **Command Aliasing**: Built-in and custom aliases for efficient workflows
-- 🧩 **Plugin Architecture**: Extensible system for custom commands and functionality
-- 🖥️ **Interactive Mode**: Command prompt with tab completion and session management
-- ⚡ **Performance Optimizations**: Configuration caching and connection reuse
-
-## 🤔 Why This Tool Exists
-
-**The honest story:** I started using `chrome-devtools-mcp` like everyone else. It worked great... until it didn't. One day it just stopped working - Cursor showed 26 tools available, everything looked normal, but every single tool call threw errors. Classic black box problem: you can't debug what you can't see inside.
-
-**The MCP reality check:** Model Context Protocol sounded promising, but let's be real - it's not exactly taking the world by storm. Meanwhile, Anthropic introduced the SKILL concept, which actually makes sense for how LLMs work. And what pairs perfectly with Skills? Good old-fashioned command-line tools. They're debuggable, efficient, and you can actually see what's happening when things go wrong.
-
-**The pragmatic solution:** Instead of wrestling with mysterious MCP failures, why not build a CLI that just works? One that you can debug, extend, and actually understand. Plus, when your AI assistant needs to automate a browser, it can just write the command and execute it - no black boxes, no mysterious failures, just straightforward automation.
-
-**The result:** A tool that's both powerful enough for complex automation and simple enough that you (and your AI assistant) can actually use it without pulling your hair out.
-
-## Implementation Status
-
-### ✅ Fully Implemented Features
-
-- 🔗 **Connection Management**: Connect to local or remote Chrome instances with auto-discovery
-- ⚡ **JavaScript Execution**: Execute JavaScript code in browser context with full async support and file execution
-- 📸 **Visual Capture**: Take screenshots and capture complete DOM snapshots with layout information
-- 📊 **Console Monitoring**: Real-time console message capture with filtering and storage
-- 🌐 **Network Monitoring**: Real-time network request/response monitoring with comprehensive filtering
-- 🖱️ **Element Interaction**: Complete native interaction commands (click, hover, fill, drag, press_key, upload_file, wait_for, handle_dialog)
-- 🔄 **Proxy Management**: Restart proxy server to refresh stale console and network logs
-- 🔧 **CLI Interface**: Full command-line interface with argument parsing and routing
-- 🛠️ **IDE Integration**: Install Cursor commands and Claude skills with directory validation and --force option
-- 📦 **Build System**: Complete TypeScript build pipeline with testing framework
-
-### 🚧 Available via JavaScript Execution
-
-For maximum flexibility, many advanced features are available through the `eval` command. This approach is particularly powerful for AI assistants and complex automation scenarios:
-
-- 📄 **Page Navigation**: `eval "window.location.href = 'https://example.com'"`
-- 🚀 **Performance Data**: `eval "performance.now()"` or `eval "performance.getEntriesByType('navigation')"`
-- 📱 **User Agent**: `eval "navigator.userAgent"`
-- 🌐 **Network Requests**: `eval "fetch('/api').then(r => r.json())"`
-
-**Why JavaScript execution is powerful:**
-
-1. **Universal capability**: Any browser API, any complexity level, any scenario
-2. **Rapid prototyping**: Write → Execute → See Results → Refine
-3. **AI-friendly**: Perfect for AI assistants that excel at JavaScript
-4. **No waiting**: Accomplish tasks immediately without waiting for feature implementations
-5. **Maximum flexibility**: Handle edge cases and custom scenarios easily
-
-**This provides both dedicated commands for common tasks and unlimited flexibility through JavaScript execution.**
-
-### 🎯 IDE Integration - Built for Modern Development
-
-**Why we support Cursor Commands & Claude Skills:**
-
-This tool integrates seamlessly with modern AI-powered development environments. The IDE integrations (`install-cursor-command` and `install-claude-skill`) bring browser automation directly into your workflow:
-
-- **🔄 Seamless Workflow**: AI assistants can write and execute browser automation scripts directly in your IDE
-- **🧠 Natural Integration**: JavaScript execution means AI can accomplish any browser task
-- **⚡ Instant Execution**: Write scripts → execute via commands → see results → refine in real-time
-- **📚 Context-Aware**: AI understands your project context and generates relevant automation
-- **🎯 Natural Language → Automation**: Ask "click the submit button" → AI generates and executes the solution
-- **🤖 Perfect for AI Assistants**: Claude and Cursor can use browser automation as part of their toolset
-
-**The integration exists because modern development is AI-assisted - these tools work together to enable efficient browser automation.**
-
-### ⏳ Not Yet Implemented
-
-- 📄 **Direct Page Management**: Native commands for creating, closing, listing, and selecting tabs
-- 🚀 **Performance Analysis**: Native performance profiling and metrics collection
-- 📱 **Device Emulation**: Native device and network condition simulation
-- 📊 **Output Formatting**: Advanced JSON/text formatting with quiet/verbose modes
-
-## Features
-
-- 🔗 **Connection Management**: Connect to local or remote Chrome instances
-- ⚡ **JavaScript Execution**: Execute JavaScript code in browser context with full async support
-- 📸 **Visual Capture**: Take screenshots and capture HTML content
-- 📊 **Monitoring**: Monitor console messages and network requests in real-time
-- 🖱️ **Element Interaction**: Complete native interaction commands (click, hover, fill, drag, press_key, upload_file, wait_for, handle_dialog)
-- 📝 **Form Automation**: Single field and batch form filling with comprehensive options
-- 🔄 **Proxy Management**: Restart proxy server to refresh stale logs
-- 🔧 **Flexible Output**: Support for JSON and human-readable text output formats
-- 🚧 **Eval Workarounds**: Many advanced features available through JavaScript execution
-
-## Installation
-
-### From npm (Recommended)
+A command-line tool for browser automation via Chrome DevTools Protocol. Designed for developers and AI assistants who need reliable, scriptable browser control with dedicated commands for common tasks and unlimited flexibility through JavaScript execution.
 
 ```bash
 npm install -g chrome-cdp-cli
+cdp eval "document.title"
 ```
 
-### Using npx (No Installation Required)
+## Why This Tool Exists
+
+**The honest story:** I started using `chrome-devtools-mcp` like everyone else. It worked great… until it didn't. One day it just stopped working — Cursor showed 26 tools available, everything looked normal, but every tool call threw errors. Classic black box problem: you can't debug what you can't see inside.
+
+Meanwhile, Anthropic introduced the SKILL concept, which makes much more sense for how LLMs work. And what pairs perfectly with Skills? Good old-fashioned command-line tools. They're debuggable, composable, and you can actually see what's happening when things go wrong.
+
+**The result:** A tool that's both powerful enough for complex automation and simple enough that you (and your AI assistant) can use it without pulling your hair out.
+
+---
+
+## Installation
 
 ```bash
-# Run directly with npx
+# Install globally
+npm install -g chrome-cdp-cli
+
+# Use without installing
 npx chrome-cdp-cli eval "document.title"
-
-# All commands work with npx
-npx chrome-cdp-cli eval "Math.PI * 2"
-npx chrome-cdp-cli eval --file script.js
-npx chrome-cdp-cli --help
 ```
 
-### From Source
+After installation, both `cdp` and `chrome-cdp-cli` are available as entry points:
 
 ```bash
-git clone https://github.com/nickxiao42/chrome-devtools-cli.git
-cd chrome-devtools-cli
-npm install
-npm run build
-npm link
+cdp eval "document.title"
+chrome-cdp-cli eval "document.title"   # backward-compatible alias
 ```
+
+---
 
 ## Prerequisites
 
-- **Node.js**: Version 18.0.0 or higher
-- **Chrome Browser**: Any recent version with DevTools support
-- **Chrome DevTools**: Must be enabled with remote debugging
+- **Node.js** 18.0.0 or higher
+- **Chrome** with remote debugging enabled
 
-### Starting Chrome with DevTools
+### Starting Chrome with Remote Debugging
 
-Before using the CLI, start Chrome with remote debugging enabled:
+**From Chrome 136, `--user-data-dir` is required** alongside `--remote-debugging-port`. See [Chrome's announcement](https://developer.chrome.com/blog/remote-debugging-port).
 
 ```bash
-# Default port (9222) - IMPORTANT: --user-data-dir is required for security
-chrome --remote-debugging-port=9222 --user-data-dir=/tmp/chrome-debug-profile
+# Standard launch (use a dedicated profile directory)
+chrome --remote-debugging-port=9222 --user-data-dir=/tmp/chrome-debug
 
-# Custom port
-chrome --remote-debugging-port=9223 --user-data-dir=/tmp/chrome-debug-profile
+# Headless
+chrome --headless --remote-debugging-port=9222 --user-data-dir=/tmp/chrome-debug
 
-# Headless mode
-chrome --headless --remote-debugging-port=9222 --user-data-dir=/tmp/chrome-debug-profile
-
-# With additional flags for automation
-chrome --remote-debugging-port=9222 --user-data-dir=/tmp/chrome-debug-profile --no-first-run --no-default-browser-check
-
-# macOS example with full path and logging
-/Applications/Google\ Chrome.app/Contents/MacOS/Google\ Chrome --remote-debugging-port=9222 --user-data-dir=/Users/$USER/chrome-profile-debug > /tmp/chrome.log 2>&1 &
+# macOS full path
+/Applications/Google\ Chrome.app/Contents/MacOS/Google\ Chrome \
+  --remote-debugging-port=9222 --user-data-dir=/tmp/chrome-debug &
 ```
 
-**Important Notes:**
-- **Always use `--user-data-dir`**: This is **required for security**. Chrome will not enable the debugging port without a specified user data directory to prevent unauthorized access to your default profile
-- **Choose a dedicated directory**: Use a path like `/tmp/chrome-debug-profile` or `/Users/$USER/chrome-profile-debug`
-- **Security requirement**: Without `--user-data-dir`, Chrome will refuse to enable remote debugging to protect your default browser profile
-
-For more details, see the [Chrome Remote Debugging documentation](https://developer.chrome.com/blog/remote-debugging-port).
+---
 
 ## Quick Start
 
 ```bash
-# Connect and execute JavaScript
-chrome-cdp-cli eval "document.title"
+# Execute JavaScript in the browser
+cdp eval "document.title"
+cdp eval "window.location.href = 'https://example.com'"
 
-# Or use with npx (no installation needed)
-npx chrome-cdp-cli eval "document.title"
+# Take a screenshot (saves to file)
+cdp screenshot --filename page.png
 
-# Navigate to a website (via eval)
-chrome-cdp-cli eval "window.location.href = 'https://example.com'"
+# Screenshot to stdout (pipe to another tool)
+cdp screenshot | feh -
 
-# Take a screenshot
-chrome-cdp-cli screenshot --filename screenshot.png
+# Capture DOM snapshot
+cdp dom --filename dom.txt
 
-# Capture DOM snapshot (default: text format)
-chrome-cdp-cli snapshot --filename dom-snapshot.txt
+# Follow console logs in real time (like tail -f)
+cdp log -f
+
+# Follow network requests in real time
+cdp network -f
 
 # Element interactions
-chrome-cdp-cli click "#submit-button"
-chrome-cdp-cli hover ".menu-item"
-chrome-cdp-cli fill "#email" "user@example.com"
-
-# Advanced interactions
-chrome-cdp-cli drag "#draggable" "#dropzone"
-chrome-cdp-cli press_key "Enter"
-chrome-cdp-cli press_key "a" --modifiers Ctrl
-chrome-cdp-cli upload_file "input[type='file']" "./document.pdf"
-chrome-cdp-cli wait_for "#loading" --condition hidden
-chrome-cdp-cli handle_dialog accept
-
-# Batch form filling
-chrome-cdp-cli fill_form --fields '[{"selector":"#username","value":"john"},{"selector":"#password","value":"secret"}]'
-
-# Monitor console and network
-chrome-cdp-cli console --latest
-chrome-cdp-cli network --latest
-
-# Restart proxy server when logs are stale
-chrome-cdp-cli restart
-
-# Install IDE integrations
-chrome-cdp-cli install_cursor_command
-chrome-cdp-cli install_claude_skill --skill-type personal
-
-# Get help for all commands
-chrome-cdp-cli --help
-
-# Get help for a specific command
-chrome-cdp-cli eval --help
+cdp click "#submit-button"
+cdp fill "#email" "user@example.com"
+cdp hover ".menu-item"
 ```
+
+---
+
+## Global Options
+
+All commands accept these options, which can appear **before or after** the command name:
+
+| Option | Short | Default | Description |
+|--------|-------|---------|-------------|
+| `--host` | `-h` | `localhost` | Chrome host |
+| `--port` | `-p` | `9222` | DevTools port |
+| `--format` | `-f` | `text` | Output format: `json` or `text` |
+| `--timeout` | `-t` | `30000` | Command timeout (ms) |
+| `--target-index` | `-i` | — | Select Chrome page by index (1-based) |
+| `--verbose` | `-v` | `false` | Enable verbose logging |
+| `--quiet` | `-q` | `false` | Suppress non-essential output |
+| `--debug` | `-d` | `false` | Enable debug logging |
+| `--config` | `-c` | — | Configuration file path |
+
+### Selecting a Chrome Page
+
+When multiple Chrome pages are open, CDP shows an interactive selector:
+
+```
+Select a Chrome page  (↑↓ navigate, Enter select, q quit)
+──────────────────────────────────────────────────────
+ ❯ [1] My App
+       http://localhost:3000/
+   [2] GitHub
+       https://github.com/
+──────────────────────────────────────────────────────
+Tip: skip this prompt with  cdp -i <number> <command>
+     or close other tabs until only one remains.
+```
+
+Use arrow keys to navigate, Enter to select, `q`/ESC/Ctrl+C to cancel (exits cleanly with code 0).
+
+To skip the prompt, pass `-i` before or after the command:
+
+```bash
+cdp -i 1 eval "document.title"
+cdp eval "document.title" -i 1    # also works
+```
+
+---
 
 ## Command Reference
 
-### Connection Options
+### `eval` — JavaScript Execution
 
-All commands support these connection options:
+Execute any JavaScript in the browser context.
 
-- `--host <host>`: Chrome host (default: localhost)
-- `--port <port>`: DevTools port (default: 9222)
-- `--timeout <ms>`: Command timeout in milliseconds (default: 30000)
-
-### Output Options
-
-- `--format <format>`: Output format - 'json' or 'text' (default: text)
-- `--quiet`: Suppress non-essential output
-- `--verbose`: Enable detailed logging
-
-## Command Reference
-
-### Connection Options
-
-All commands support these connection options:
-
-- `--host <host>`: Chrome host (default: localhost)
-- `--port <port>`: DevTools port (default: 9222)
-- `--timeout <ms>`: Command timeout in milliseconds (default: 30000)
-
-### Output Options
-
-- `--format <format>`: Output format - 'json' or 'text' (default: text)
-- `--quiet`: Suppress non-essential output
-- `--verbose`: Enable detailed logging
-
-### ✅ Implemented Commands
-
-#### JavaScript Execution
 ```bash
-# Execute JavaScript expression
-chrome-cdp-cli eval "console.log('Hello World')"
-
-# Execute from file
-chrome-cdp-cli eval --file script.js
-
-# Execute with timeout
-chrome-cdp-cli eval "await new Promise(r => setTimeout(r, 5000))" --timeout 10000
-
-# Using npx (no installation required)
-npx chrome-cdp-cli eval "document.title"
-npx chrome-cdp-cli eval --file script.js
+cdp eval "document.title"
+cdp eval "window.location.href"
+cdp eval --file script.js
+cdp eval "await fetch('/api').then(r => r.json())"
+cdp eval "await new Promise(r => setTimeout(r, 5000))" --timeout 10000
 ```
 
-#### Visual Capture
+### `screenshot` — Take Screenshots
+
 ```bash
-# Take screenshot
-chrome-cdp-cli screenshot --filename screenshot.png
+# Save to file
+cdp screenshot --filename page.png
+cdp screenshot --filename page.jpg --image-format jpeg --quality 85
+cdp screenshot --full-page --filename fullpage.png
+cdp screenshot --width 1920 --height 1080 --filename custom.png
 
-# Full page screenshot  
-chrome-cdp-cli screenshot --full-page --filename fullpage.png
-
-# DOM snapshot with complete layout information (default: text format)
-chrome-cdp-cli snapshot --filename dom-snapshot.txt
-
-# Custom dimensions
-chrome-cdp-cli screenshot --width 1920 --height 1080 --filename custom.png
+# Output raw binary to stdout (pipe to another tool)
+cdp screenshot > page.png
+cdp screenshot | open -f -a Preview        # macOS
+cdp screenshot | display                   # Linux (ImageMagick)
+cdp -i 2 screenshot | feh -               # second tab, pipe to feh
 ```
 
-#### Element Interaction
+> **Note:** `--image-format` controls the image encoding (`png`/`jpeg`). The global `--format` flag (`json`/`text`) does not apply to screenshot output.
+
+> **Warning:** Running `cdp screenshot` without `--filename` in a terminal will print binary data to your terminal. The CLI detects this and shows an error instead.
+
+### `dom` — DOM Snapshot (alias: `snapshot`)
+
+Capture a full DOM snapshot with layout information.
+
 ```bash
-# Click on an element using CSS selector
-chrome-cdp-cli click "#submit-button"
+cdp dom --filename dom.txt
+cdp dom --filename dom.json --format json
+cdp snapshot --filename dom.txt    # alias
+```
 
-# Click with custom timeout
-chrome-cdp-cli click ".slow-loading-button" --timeout 10000
+### `log` — Follow Console Messages (alias: `console`)
 
-# Click without waiting for element (fail immediately if not found)
-chrome-cdp-cli click "#optional-element" --no-wait
+Stream console messages in real time directly from the browser. This command runs until you press Ctrl+C.
 
-# Hover over an element
-chrome-cdp-cli hover "#menu-item"
+```bash
+# Follow all console messages
+cdp log -f
 
-# Hover over a dropdown trigger
-chrome-cdp-cli hover ".dropdown-trigger"
+# Filter by message type
+cdp log -f --types error,warn
 
-# Fill a single form field
-chrome-cdp-cli fill "#username" "john@example.com"
+# Filter by text pattern (regex)
+cdp log -f --text-pattern "api|fetch"
 
-# Fill a password field
-chrome-cdp-cli fill "input[type='password']" "secret123"
+# Output as JSON
+cdp log -f --format json
+```
 
-# Fill a textarea
-chrome-cdp-cli fill "#message" "Hello, this is a test message"
+> **Note:** `log` streams events directly via CDP — no background process required. Since it follows live events, historical messages (before the command started) are not shown.
 
-# Select an option in a dropdown (by value or text)
-chrome-cdp-cli fill "#country" "US"
-chrome-cdp-cli fill "#country" "United States"
+**Filter options:**
 
-# Fill without clearing existing content
-chrome-cdp-cli fill "#notes" " - Additional note" --no-clear
+| Option | Description |
+|--------|-------------|
+| `--types <list>` | Comma-separated types: `log,info,warn,error,debug` |
+| `--text-pattern <regex>` | Filter messages matching this pattern |
 
-# Fill multiple form fields in batch
-chrome-cdp-cli fill_form --fields '[
-  {"selector":"#username","value":"john@example.com"},
-  {"selector":"#password","value":"secret123"},
-  {"selector":"#country","value":"United States"}
-]'
+### `network` — Follow Network Requests (alias: `net`)
 
-# Fill form from JSON file
-echo '[
+Stream network requests in real time directly from the browser. Runs until Ctrl+C.
+
+```bash
+# Follow all requests
+cdp network -f
+
+# Filter by HTTP method
+cdp network -f --methods POST,PUT
+
+# Filter by URL pattern (regex)
+cdp network -f --url-pattern "api|graphql"
+
+# Filter by status code
+cdp network -f --status-codes 200,201,404
+
+# Combine filters
+cdp network -f --methods POST --url-pattern "/api" --status-codes 200,201
+
+# JSON output
+cdp network -f --format json
+```
+
+**Filter options:**
+
+| Option | Description |
+|--------|-------------|
+| `--methods <list>` | Comma-separated HTTP methods: `GET,POST,PUT,DELETE,…` |
+| `--url-pattern <regex>` | Filter URLs matching this pattern |
+| `--status-codes <list>` | Comma-separated status codes: `200,404,500` |
+
+### `click` — Click an Element
+
+```bash
+cdp click "#submit-button"
+cdp click ".slow-button" --timeout 10000
+cdp click "#optional" --no-wait
+```
+
+### `hover` — Hover over an Element
+
+```bash
+cdp hover "#menu-item"
+cdp hover ".dropdown-trigger"
+```
+
+### `fill` — Fill a Form Field
+
+Works with text inputs, email inputs, password inputs, textareas, and `<select>` dropdowns (matches by value or visible text).
+
+```bash
+cdp fill "#username" "john@example.com"
+cdp fill "input[type='password']" "secret123"
+cdp fill "#country" "United States"      # select dropdown by text
+cdp fill "#country" "US"                 # select dropdown by value
+cdp fill "#notes" " - extra" --no-clear  # append, don't clear first
+```
+
+### `fill_form` — Batch Form Fill
+
+```bash
+# Inline JSON
+cdp fill_form --fields '[
   {"selector":"#firstName","value":"John"},
   {"selector":"#lastName","value":"Doe"},
-  {"selector":"#email","value":"john.doe@example.com"}
-]' > form-data.json
-chrome-cdp-cli fill_form --fields-file form-data.json
-
-# Fill form with custom options
-chrome-cdp-cli fill_form --fields '[
-  {"selector":"#notes","value":"Additional information"}
-]' --no-clear --timeout 10000 --stop-on-error
-
-# Fill form and continue on errors (default behavior)
-chrome-cdp-cli fill_form --fields '[
-  {"selector":"#field1","value":"value1"},
-  {"selector":"#nonexistent","value":"value2"},
-  {"selector":"#field3","value":"value3"}
-]' --continue-on-error
-```
-
-#### Advanced Interactions
-```bash
-# Drag and drop operations
-chrome-cdp-cli drag "#draggable-item" "#drop-zone"
-
-# Drag with custom timeout
-chrome-cdp-cli drag ".file-item" ".upload-area" --timeout 10000
-
-# Keyboard input simulation
-chrome-cdp-cli press_key "Enter"
-chrome-cdp-cli press_key "Escape"
-chrome-cdp-cli press_key "Tab"
-
-# Keyboard input with modifiers
-chrome-cdp-cli press_key "a" --modifiers Ctrl  # Ctrl+A (Select All)
-chrome-cdp-cli press_key "s" --modifiers Ctrl  # Ctrl+S (Save)
-chrome-cdp-cli press_key "c" --modifiers Ctrl,Shift  # Ctrl+Shift+C
-
-# Target specific elements for keyboard input
-chrome-cdp-cli press_key "Enter" --selector "#search-input"
-chrome-cdp-cli press_key "ArrowDown" --selector "#dropdown"
-
-# File upload to file input elements
-chrome-cdp-cli upload_file "input[type='file']" "./document.pdf"
-chrome-cdp-cli upload_file "#file-input" "/path/to/image.jpg"
-chrome-cdp-cli upload_file ".upload-field" "./test-data.csv"
-
-# Wait for elements to appear or meet conditions
-chrome-cdp-cli wait_for "#loading-spinner"  # Wait for element to exist
-chrome-cdp-cli wait_for "#modal" --condition visible  # Wait for element to be visible
-chrome-cdp-cli wait_for "#loading" --condition hidden  # Wait for element to be hidden
-chrome-cdp-cli wait_for "#submit-btn" --condition enabled  # Wait for element to be enabled
-chrome-cdp-cli wait_for "#processing-btn" --condition disabled  # Wait for element to be disabled
-chrome-cdp-cli wait_for "#slow-element" --timeout 30000  # Custom timeout
-
-# Handle browser dialogs (alert, confirm, prompt)
-chrome-cdp-cli handle_dialog accept  # Accept dialog
-chrome-cdp-cli handle_dialog dismiss  # Dismiss dialog
-chrome-cdp-cli handle_dialog accept --text "John Doe"  # Handle prompt with text input
-chrome-cdp-cli handle_dialog accept --text ""  # Handle prompt with empty input
-chrome-cdp-cli handle_dialog accept --timeout 10000  # Wait for dialog to appear
-```
-
-#### Console Monitoring
-```bash
-# Get latest console message
-chrome-cdp-cli console --latest
-
-# List all console messages
-chrome-cdp-cli console
-
-# Filter console messages by type
-chrome-cdp-cli console --types error,warn
-
-# Filter by text pattern
-chrome-cdp-cli console --textPattern "error|warning"
-
-# Limit number of messages
-chrome-cdp-cli console --maxMessages 10
-```
-
-**Note**: Console monitoring only captures messages generated *after* monitoring starts. For historical messages or immediate console operations, use the eval-first approach:
-
-```bash
-# Generate and capture console messages in one command
-chrome-cdp-cli eval "console.log('Test message'); console.warn('Warning'); 'Messages logged'"
-
-# Check for existing console history (if page maintains it)
-chrome-cdp-cli eval "window.consoleHistory || window._console_logs || 'No custom console history'"
-```
-
-See [Console Monitoring Documentation](docs/CONSOLE_MONITORING.md) for detailed solutions and workarounds.
-
-#### Network Monitoring
-```bash
-# Get latest network request
-chrome-cdp-cli network --latest
-
-# List all network requests
-chrome-cdp-cli network
-
-# Filter network requests by method
-chrome-cdp-cli network --filter '{"methods":["POST"],"statusCodes":[200,201]}'
-```
-
-#### Proxy Management
-```bash
-# Restart proxy server when console or network logs become stale
-chrome-cdp-cli restart
-
-# Force restart even if proxy is healthy
-chrome-cdp-cli restart --force
-```
-
-#### IDE Integration
-```bash
-# Install Cursor command (creates .cursor/commands/cdp-cli.md)
-chrome-cdp-cli install_cursor_command
-
-# Install Cursor command with --force (bypasses directory validation)
-chrome-cdp-cli install_cursor_command --force
-
-# Install Claude skill for project (creates .claude/skills/cdp-cli/SKILL.md)
-chrome-cdp-cli install_claude_skill
-
-# Install Claude skill for personal use (creates ~/.claude/skills/cdp-cli/SKILL.md)
-chrome-cdp-cli install_claude_skill --skill-type personal
-
-# Install Claude skill with examples and references
-chrome-cdp-cli install_claude_skill --include-examples --include-references
-
-# Install with custom directory
-chrome-cdp-cli install_cursor_command --target-directory /custom/path/.cursor/commands
-chrome-cdp-cli install_claude_skill --target-directory /custom/path/.claude/skills
-
-# Force install (bypasses directory validation)
-chrome-cdp-cli install_cursor_command --force
-chrome-cdp-cli install_claude_skill --force
-```
-
-### 🚧 Available via JavaScript Execution
-
-#### Page Management
-```bash
-# Navigate to URL
-chrome-cdp-cli eval "window.location.href = 'https://example.com'"
-
-# Get current URL
-chrome-cdp-cli eval "window.location.href"
-
-# Reload page
-chrome-cdp-cli eval "window.location.reload()"
-
-# Go back
-chrome-cdp-cli eval "window.history.back()"
-
-# Go forward
-chrome-cdp-cli eval "window.history.forward()"
-```
-
-#### Element Interaction
-```bash
-# Native commands (recommended)
-chrome-cdp-cli click "#button"
-chrome-cdp-cli hover ".menu-item"
-chrome-cdp-cli fill "#email" "user@example.com"
-
-# Via JavaScript execution (flexible for complex scenarios)
-chrome-cdp-cli eval "document.querySelector('#button').click()"
-chrome-cdp-cli eval "document.querySelector('.menu-item').dispatchEvent(new MouseEvent('mouseover'))"
-chrome-cdp-cli eval "document.querySelector('#email').value = 'user@example.com'"
-
-# Check if element exists
-chrome-cdp-cli eval "!!document.querySelector('#element')"
-
-# Get element text
-chrome-cdp-cli eval "document.querySelector('#element').textContent"
-
-# Get element attributes
-chrome-cdp-cli eval "document.querySelector('#element').getAttribute('class')"
-```
-
-#### Form Handling
-```bash
-# Native batch form filling (recommended)
-chrome-cdp-cli fill_form --fields '[
-  {"selector":"#name","value":"John Doe"},
-  {"selector":"#email","value":"john@example.com"},
-  {"selector":"#phone","value":"123-456-7890"}
-]'
-
-# Native single field filling
-chrome-cdp-cli fill "#name" "John Doe"
-chrome-cdp-cli fill "#email" "john@example.com"
-
-# Via JavaScript execution (for complex form operations)
-chrome-cdp-cli eval "
-document.querySelector('#name').value = 'John Doe';
-document.querySelector('#email').value = 'john@example.com';
-document.querySelector('#phone').value = '123-456-7890';
-"
-
-# Submit form
-chrome-cdp-cli eval "document.querySelector('#myform').submit()"
-
-# Select dropdown option (native)
-chrome-cdp-cli fill "#dropdown" "option1"
-
-# Select dropdown option (via JavaScript execution)
-chrome-cdp-cli eval "document.querySelector('#dropdown').value = 'option1'"
-
-# Check checkbox
-chrome-cdp-cli eval "document.querySelector('#checkbox').checked = true"
-```
-
-#### Content Extraction
-```bash
-# Get page HTML
-chrome-cdp-cli eval "document.documentElement.outerHTML"
-
-# Get page title
-chrome-cdp-cli eval "document.title"
-
-# Get all links
-chrome-cdp-cli eval "Array.from(document.querySelectorAll('a')).map(a => a.href)"
-
-# Get all images
-chrome-cdp-cli eval "Array.from(document.querySelectorAll('img')).map(img => img.src)"
-
-# Extract table data
-chrome-cdp-cli eval "Array.from(document.querySelectorAll('table tr')).map(row => Array.from(row.cells).map(cell => cell.textContent))"
-```
-
-#### Performance Monitoring
-```bash
-# Get performance timing
-chrome-cdp-cli eval "performance.timing"
-
-# Get navigation entries
-chrome-cdp-cli eval "performance.getEntriesByType('navigation')"
-
-# Get resource entries
-chrome-cdp-cli eval "performance.getEntriesByType('resource')"
-
-# Get current timestamp
-chrome-cdp-cli eval "performance.now()"
-
-# Measure performance
-chrome-cdp-cli eval "
-performance.mark('start');
-// ... some operation ...
-performance.mark('end');
-performance.measure('operation', 'start', 'end');
-performance.getEntriesByName('operation')[0].duration;
-"
-```
-
-#### Network Operations
-```bash
-# Make HTTP request
-chrome-cdp-cli eval "fetch('/api/data').then(r => r.json())"
-
-# POST data
-chrome-cdp-cli eval "
-fetch('/api/users', {
-  method: 'POST',
-  headers: {'Content-Type': 'application/json'},
-  body: JSON.stringify({name: 'John', email: 'john@example.com'})
-}).then(r => r.json())
-"
-
-# Check network connectivity
-chrome-cdp-cli eval "navigator.onLine"
-```
-
-#### Browser Information
-```bash
-# Get user agent
-chrome-cdp-cli eval "navigator.userAgent"
-
-# Get viewport size
-chrome-cdp-cli eval "{width: window.innerWidth, height: window.innerHeight}"
-
-# Get screen resolution
-chrome-cdp-cli eval "{width: screen.width, height: screen.height}"
-
-# Get browser language
-chrome-cdp-cli eval "navigator.language"
-
-# Get cookies
-chrome-cdp-cli eval "document.cookie"
-```
-
-### ⏳ Not Yet Implemented
-
-These features require dedicated handlers and are not yet available:
-
-- Native page management commands (new_page, close_page, list_pages, select_page)
-- Native performance profiling commands
-- Native device emulation commands
-- Advanced output formatting options
-
-## The Power of Eval
-
-The `eval` command is the most powerful feature of this CLI tool. It allows you to execute any JavaScript code in the browser context, making it possible to achieve almost any browser automation task. Here are some advanced examples:
-
-### Advanced Automation Examples
-
-```bash
-# Wait for element to appear
-chrome-cdp-cli eval "
-new Promise(resolve => {
-  const check = () => {
-    const element = document.querySelector('#dynamic-content');
-    if (element) resolve(element.textContent);
-    else setTimeout(check, 100);
-  };
-  check();
-})
-"
-
-# Scroll to element
-chrome-cdp-cli eval "
-document.querySelector('#target').scrollIntoView({behavior: 'smooth'});
-"
-
-# Take element screenshot (get element bounds for screenshot)
-chrome-cdp-cli eval "
-const element = document.querySelector('#target');
-const rect = element.getBoundingClientRect();
-({x: rect.x, y: rect.y, width: rect.width, height: rect.height})
-"
-
-# Simulate complex user interactions
-chrome-cdp-cli eval "
-const element = document.querySelector('#button');
-element.dispatchEvent(new MouseEvent('mousedown'));
-setTimeout(() => element.dispatchEvent(new MouseEvent('mouseup')), 100);
-"
-
-# Extract structured data
-chrome-cdp-cli eval "
-Array.from(document.querySelectorAll('.product')).map(product => ({
-  name: product.querySelector('.name').textContent,
-  price: product.querySelector('.price').textContent,
-  image: product.querySelector('img').src
-}))
-"
-
-# Monitor page changes
-chrome-cdp-cli eval "
-new Promise(resolve => {
-  const observer = new MutationObserver(mutations => {
-    resolve(mutations.length + ' changes detected');
-    observer.disconnect();
-  });
-  observer.observe(document.body, {childList: true, subtree: true});
-  setTimeout(() => {
-    observer.disconnect();
-    resolve('No changes in 5 seconds');
-  }, 5000);
-})
-"
-```
-
-## Current Limitations & Roadmap
-
-### Current Limitations
-
-- **No native page management**: Creating, closing, and switching between tabs requires manual implementation
-- **No performance profiling**: Advanced performance analysis requires manual JavaScript
-- **No device emulation**: Mobile/tablet simulation not yet implemented
-- **Basic output formatting**: Advanced JSON/text formatting options not available
-
-### Upcoming Features
-
-1. **Native Page Management Commands**
-   - `new_page`, `close_page`, `list_pages`, `select_page`
-   - Direct CDP Target domain integration
-
-2. **Performance Analysis**
-   - `performance_start_trace`, `performance_stop_trace`
-   - Built-in performance metrics and analysis
-
-3. **Device Emulation**
-   - `emulate` command for device simulation
-   - Network condition simulation
-
-4. **Advanced Output Formatting**
-   - Enhanced JSON/text formatting
-   - Quiet and verbose modes
-   - Custom output templates
-
-### Why JavaScript Execution? (Built for Modern Development)
-
-**This is not a workaround - it's a core design philosophy optimized for modern development workflows:**
-
-1. **🧠 Universal Language**: JavaScript is the language of the web. Developers and AI assistants alike excel at writing JavaScript for browser automation.
-
-2. **⚡ Rapid Prototyping**: The perfect workflow: Write JavaScript → Execute → See Results → Refine. This iterative loop is ideal for both human developers and AI assistants.
-
-3. **🔄 Maximum Flexibility**: Any browser task, any complexity, any scenario - all through JavaScript. No waiting for specific command implementations.
-
-4. **🤖 AI-Native Workflow**: When you ask Claude or Cursor to automate something, they naturally write JavaScript - exactly what the `eval` command executes.
-
-5. **📚 Natural Language → Automation**: "Click the submit button" → AI generates `document.querySelector('#submit').click()` → Executes instantly.
-
-6. **🎯 Context-Aware**: AI understands your project and can write automation scripts that fit your specific needs.
-
-7. **⚡ Instant Iteration**: Both developers and AI can adjust scripts based on results immediately - no need to wait for feature releases.
-
-**This tool bridges the gap between dedicated commands for common tasks and unlimited flexibility through JavaScript execution, making it perfect for both traditional development and AI-assisted workflows.**
-
-## Form Filling & Element Interaction
-
-The CLI now includes native commands for element interaction and form filling, designed to work seamlessly with both simple and complex automation scenarios.
-
-### Single Field Filling
-
-```bash
-# Fill a text input
-chrome-cdp-cli fill "#username" "john@example.com"
-
-# Fill a password field
-chrome-cdp-cli fill "input[type='password']" "secret123"
-
-# Fill a textarea
-chrome-cdp-cli fill "#message" "Hello, this is a test message"
-
-# Select dropdown option (by value or text)
-chrome-cdp-cli fill "#country" "US"
-chrome-cdp-cli fill "#country" "United States"
-
-# Fill without clearing existing content
-chrome-cdp-cli fill "#notes" " - Additional note" --no-clear
-
-# Fill with custom timeout
-chrome-cdp-cli fill ".slow-loading-field" "value" --timeout 10000
-```
-
-### Batch Form Filling
-
-```bash
-# Fill multiple fields at once
-chrome-cdp-cli fill_form --fields '[
-  {"selector":"#firstName","value":"John"},
-  {"selector":"#lastName","value":"Doe"},
-  {"selector":"#email","value":"john.doe@example.com"},
-  {"selector":"#country","value":"United States"}
-]'
-
-# Fill form from JSON file
-echo '[
-  {"selector":"#username","value":"testuser"},
-  {"selector":"#password","value":"testpass"},
-  {"selector":"#confirmPassword","value":"testpass"}
-]' > login-form.json
-chrome-cdp-cli fill_form --fields-file login-form.json
-
-# Advanced options
-chrome-cdp-cli fill_form --fields '[
-  {"selector":"#field1","value":"value1"},
-  {"selector":"#field2","value":"value2"}
-]' --no-clear --timeout 15000 --stop-on-error
-```
-
-### Element Interaction
-
-```bash
-# Click elements
-chrome-cdp-cli click "#submit-button"
-chrome-cdp-cli click ".menu-item" --timeout 5000
-
-# Hover over elements
-chrome-cdp-cli hover "#dropdown-trigger"
-chrome-cdp-cli hover ".tooltip-element" --no-wait
-```
-
-### Form Filling Options
-
-**Single Field Options (`fill` command):**
-- `--wait-for-element` / `--no-wait`: Wait for element to appear (default: true)
-- `--timeout <ms>`: Timeout for waiting (default: 5000ms)
-- `--clear-first` / `--no-clear`: Clear field before filling (default: true)
-
-**Batch Form Options (`fill_form` command):**
-- `--fields <json>`: JSON array of field objects
-- `--fields-file <file>`: JSON file containing field array
-- `--wait-for-elements` / `--no-wait`: Wait for all elements (default: true)
-- `--timeout <ms>`: Timeout for each field (default: 5000ms)
-- `--clear-first` / `--no-clear`: Clear all fields before filling (default: true)
-- `--continue-on-error` / `--stop-on-error`: Continue if field fails (default: continue)
-
-### Supported Form Elements
-
-**Input Types:**
-- Text inputs (`<input type="text">`)
-- Email inputs (`<input type="email">`)
-- Password inputs (`<input type="password">`)
-- Number inputs (`<input type="number">`)
-- Search inputs (`<input type="search">`)
-- URL inputs (`<input type="url">`)
-
-**Other Elements:**
-- Textareas (`<textarea>`)
-- Select dropdowns (`<select>`) - matches by value or text content
-
-### Error Handling
-
-The form filling commands include comprehensive error handling:
-
-```bash
-# Continue filling other fields if one fails (default)
-chrome-cdp-cli fill_form --fields '[
-  {"selector":"#valid-field","value":"works"},
-  {"selector":"#invalid-field","value":"fails"},
-  {"selector":"#another-field","value":"also works"}
-]' --continue-on-error
-
-# Stop on first error
-chrome-cdp-cli fill_form --fields '[
-  {"selector":"#field1","value":"value1"},
-  {"selector":"#nonexistent","value":"value2"}
-]' --stop-on-error
-```
-
-### Integration with Eval
-
-For complex scenarios, combine native commands with eval:
-
-```bash
-# Use native commands for standard operations
-chrome-cdp-cli fill "#username" "john@example.com"
-chrome-cdp-cli fill "#password" "secret123"
-
-# Use eval for complex validation or custom logic
-chrome-cdp-cli eval "
-// Validate form before submission
-const username = document.querySelector('#username').value;
-const password = document.querySelector('#password').value;
-if (username && password && password.length >= 8) {
-  document.querySelector('#submit').click();
-  return 'Form submitted successfully';
-} else {
-  return 'Validation failed';
-}
-"
-```
-
-## Quick Reference
-
-### Form Filling Commands
-
-```bash
-# Single field filling
-chrome-cdp-cli fill "#username" "john@example.com"
-chrome-cdp-cli fill "#country" "United States"  # Works with dropdowns
-
-# Batch form filling
-chrome-cdp-cli fill_form --fields '[
-  {"selector":"#username","value":"john"},
-  {"selector":"#password","value":"secret"}
+  {"selector":"#email","value":"john@example.com"}
 ]'
 
 # From JSON file
-chrome-cdp-cli fill_form --fields-file form-data.json
+cdp fill_form --fields-file form-data.json
+
+# Stop on first error (default: continue on error)
+cdp fill_form --fields '[...]' --stop-on-error
 ```
 
-### Element Interaction Commands
+### `drag` — Drag and Drop
 
 ```bash
-# Click and hover
-chrome-cdp-cli click "#submit-button"
-chrome-cdp-cli hover ".dropdown-trigger"
-
-# With options
-chrome-cdp-cli fill "#field" "value" --timeout 10000 --no-clear
-chrome-cdp-cli click "#button" --no-wait
+cdp drag "#draggable-item" "#drop-zone"
+cdp drag ".file-item" ".upload-area" --timeout 10000
 ```
 
-### Core Commands
+### `press_key` — Keyboard Input
 
 ```bash
-# JavaScript execution
-chrome-cdp-cli eval "document.title"
-chrome-cdp-cli eval --file script.js
-
-# Visual capture
-chrome-cdp-cli screenshot --filename page.png
-chrome-cdp-cli snapshot --filename dom.txt
-
-# Monitoring
-chrome-cdp-cli console --latest
-chrome-cdp-cli network
-
-# Proxy management
-chrome-cdp-cli restart
+cdp press_key "Enter"
+cdp press_key "Escape"
+cdp press_key "Tab"
+cdp press_key "a" --modifiers Ctrl          # Ctrl+A
+cdp press_key "s" --modifiers Ctrl          # Ctrl+S
+cdp press_key "c" --modifiers Ctrl,Shift    # Ctrl+Shift+C
+cdp press_key "ArrowDown" --selector "#dropdown"
 ```
 
-For detailed documentation, see the [Form Filling Guide](docs/FORM_FILLING.md).
+### `upload_file` — File Upload
+
+```bash
+cdp upload_file "input[type='file']" "./document.pdf"
+cdp upload_file "#file-input" "/path/to/image.jpg"
+```
+
+### `wait_for` — Wait for Element State
+
+```bash
+cdp wait_for "#loading-spinner"              # exists
+cdp wait_for "#modal" --condition visible
+cdp wait_for "#loading" --condition hidden
+cdp wait_for "#submit-btn" --condition enabled
+cdp wait_for "#processing" --condition disabled
+cdp wait_for "#slow-element" --timeout 30000
+```
+
+### `handle_dialog` — Handle Browser Dialogs
+
+```bash
+cdp handle_dialog accept
+cdp handle_dialog dismiss
+cdp handle_dialog accept --text "John Doe"   # prompt with text
+cdp handle_dialog accept --timeout 10000
+```
+
+### `install_cursor_command` — Install Cursor Integration
+
+```bash
+cdp install_cursor_command
+cdp install_cursor_command --force
+cdp install_cursor_command --target-directory /custom/.cursor/commands
+```
+
+### `install_claude_skill` — Install Claude Skill
+
+```bash
+cdp install_claude_skill                              # project scope
+cdp install_claude_skill --skill-type personal        # user home scope
+cdp install_claude_skill --include-examples --include-references
+```
+
+---
+
+## The Power of `eval`
+
+`eval` is the most powerful command — it runs any JavaScript in the browser, making virtually any automation task possible without waiting for dedicated command implementations.
+
+```bash
+# Navigation
+cdp eval "window.location.href = 'https://example.com'"
+cdp eval "window.history.back()"
+cdp eval "window.location.reload()"
+
+# Content extraction
+cdp eval "document.title"
+cdp eval "Array.from(document.querySelectorAll('a')).map(a => a.href)"
+cdp eval "Array.from(document.querySelectorAll('.product')).map(p => ({
+  name: p.querySelector('.name').textContent,
+  price: p.querySelector('.price').textContent
+}))"
+
+# Wait for dynamic content
+cdp eval "new Promise(resolve => {
+  const check = () => {
+    const el = document.querySelector('#dynamic-content');
+    if (el) resolve(el.textContent);
+    else setTimeout(check, 100);
+  };
+  check();
+})"
+
+# Make HTTP requests from browser context
+cdp eval "fetch('/api/data').then(r => r.json())"
+cdp eval "fetch('/api/users', {
+  method: 'POST',
+  headers: {'Content-Type': 'application/json'},
+  body: JSON.stringify({name: 'John'})
+}).then(r => r.json())"
+
+# Performance data
+cdp eval "performance.getEntriesByType('navigation')"
+cdp eval "performance.getEntriesByType('resource').length"
+
+# Browser info
+cdp eval "navigator.userAgent"
+cdp eval "{width: window.innerWidth, height: window.innerHeight}"
+```
+
+---
 
 ## Configuration
 
-The CLI supports comprehensive configuration management with multiple sources and precedence handling.
+### Config File
 
-### Quick Configuration
-
-Create a `.chrome-cdp-cli.yaml` file in your project root or home directory:
+Create `.chrome-cdp-cli.yaml` in your project root or home directory:
 
 ```yaml
-# Basic configuration
 host: localhost
 port: 9222
 timeout: 30000
 outputFormat: text
 verbose: false
 
-# Profiles for different environments
 profiles:
   development:
     debug: true
@@ -941,18 +411,9 @@ profiles:
     quiet: true
     outputFormat: json
 
-# Command aliases
 aliases:
   ss: screenshot
   js: eval
-  health: eval "document.readyState === 'complete'"
-
-# Command-specific defaults
-commands:
-  screenshot:
-    defaults:
-      format: png
-      quality: 90
 ```
 
 ### Environment Variables
@@ -962,248 +423,212 @@ export CHROME_CDP_CLI_HOST=localhost
 export CHROME_CDP_CLI_PORT=9222
 export CHROME_CDP_CLI_TIMEOUT=30000
 export CHROME_CDP_CLI_VERBOSE=true
-export CHROME_CDP_CLI_PROFILE=development
 ```
 
-### Configuration Precedence
+### Precedence
 
-Configuration values are resolved in order (highest to lowest priority):
-1. **Command-line arguments** (highest)
-2. **Environment variables**
-3. **Configuration files** (profile-specific, then default)
-4. **Default values** (lowest)
+1. Command-line arguments (highest)
+2. Environment variables
+3. Config file values
+4. Built-in defaults (lowest)
 
-### Advanced Configuration
+---
 
-For comprehensive configuration options, see the [Configuration Guide](docs/CONFIGURATION.md).
-
-## Enhanced Help System
-
-The CLI includes a comprehensive help system with contextual assistance:
+## Help System
 
 ```bash
-# General help with categorized commands
-chrome-cdp-cli help
-
-# Command-specific help with examples
-chrome-cdp-cli help eval
-chrome-cdp-cli help screenshot
-
-# Advanced help topics
-chrome-cdp-cli help topic configuration
-chrome-cdp-cli help topic selectors
-chrome-cdp-cli help topic automation
-chrome-cdp-cli help topic debugging
-
-# Contextual help (shown automatically on errors)
-chrome-cdp-cli click "#nonexistent"  # Shows selector help
+cdp help                        # all commands, categorized
+cdp help eval                   # command-specific help with examples
+cdp help screenshot
+cdp help log
+cdp help network
+cdp help topic configuration
+cdp help topic selectors
+cdp help topic automation
 ```
 
-## Plugin System
+---
 
-Extend the CLI with custom commands and functionality:
+## Scripting & Automation
+
+### Shell Pipelines
 
 ```bash
-# Install plugins
-npm install -g chrome-cdp-cli-plugin-form-automation
+# Screenshot to file via redirect
+cdp screenshot > page.png
 
-# Load plugins from directory
-chrome-cdp-cli --plugin-dir ./plugins custom-command
+# Get page title as plain text
+cdp eval "document.title" --format text
 
-# List available plugins
-chrome-cdp-cli --show-plugins
+# Extract data as JSON for processing
+cdp eval "Array.from(document.links).map(l => l.href)" --format json | jq '.[]'
+
+# Capture logs from a specific tab
+cdp -i 2 log -f --types error 2>&1 | tee errors.log
 ```
 
-For plugin development, see the [Plugin Development Guide](docs/PLUGIN_DEVELOPMENT.md).
+### Scripting with Multiple Commands
+
+```bash
+#!/bin/bash
+# Navigate and capture
+cdp eval "window.location.href = 'https://example.com'"
+sleep 1
+cdp screenshot --filename after-nav.png
+cdp dom --filename after-nav.txt
+```
+
+### Exit Codes
+
+| Code | Meaning |
+|------|---------|
+| `0` | Success (including user-cancelled interactive selector) |
+| `1` | General error |
+| `3` | Chrome connection error |
+| `8` | Invalid arguments |
+
+---
+
+## Troubleshooting
+
+### Chrome Won't Enable Remote Debugging
+
+**Most common cause:** missing `--user-data-dir`.
+
+```bash
+# Wrong (Chrome 136+ will ignore this)
+chrome --remote-debugging-port=9222
+
+# Correct
+chrome --remote-debugging-port=9222 --user-data-dir=/tmp/chrome-debug
+```
+
+See [Chrome's announcement](https://developer.chrome.com/blog/remote-debugging-port) for details.
+
+### Connection Refused
+
+- Verify Chrome is running with the correct flags
+- Check the port matches (`--port` option, default 9222)
+- Ensure no firewall is blocking the port
+
+### Multiple Pages / Tab Selector Appears
+
+If you have multiple Chrome tabs open, CDP shows an interactive selector. To avoid it:
+
+```bash
+cdp -i 1 eval "document.title"   # select tab by index
+```
+
+Or close unneeded tabs, leaving only the one you want to automate.
+
+### Command Timeout
+
+```bash
+cdp eval "await longOperation()" --timeout 60000
+```
+
+### Element Not Found
+
+```bash
+cdp wait_for "#dynamic-element" --timeout 10000
+cdp click "#dynamic-element"
+```
+
+### Debug Mode
+
+```bash
+cdp --debug eval "document.title"
+cdp --verbose screenshot --filename page.png
+```
+
+---
 
 ## Development
 
-### Setup
-
 ```bash
-# Clone repository
 git clone https://github.com/nicoster/chrome-devtools-cli.git
 cd chrome-devtools-cli
-
-# Install dependencies
 npm install
 
-# Run in development mode
-npm run dev -- eval "console.log('Development mode')"
-```
+# Development run
+npm run dev -- eval "document.title"
 
-### Build Scripts
+# Build
+npm run build         # development (with source maps)
+npm run build:prod    # production (optimized)
+npm run build:watch   # watch mode
 
-```bash
-# Development build (with source maps and declarations)
-npm run build
-
-# Production build (optimized, no source maps)
-npm run build:prod
-
-# Watch mode for development
-npm run build:watch
-
-# Clean build artifacts
-npm run clean
-```
-
-### Testing
-
-```bash
-# Run all tests
+# Test
 npm test
-
-# Run tests in watch mode
 npm run test:watch
+npm run test:ci       # CI mode with coverage
 
-# Generate coverage report
-npm run test:coverage
-
-# Run tests for CI (no watch, with coverage)
-npm run test:ci
-```
-
-### Code Quality
-
-```bash
-# Lint code
+# Lint
 npm run lint
-
-# Fix linting issues
 npm run lint:fix
 
-# Verify everything (lint + test + build)
+# Verify everything
 npm run verify
 ```
 
-### Packaging
-
-```bash
-# Create npm package
-npm run package
-
-# Prepare for publishing
-npm run prepublishOnly
-```
-
-## Project Structure
+### Project Structure
 
 ```
 chrome-devtools-cli/
 ├── src/
-│   ├── cli/              # CLI interface and command routing
-│   ├── client/           # CDP client implementation
-│   ├── connection/       # Connection management
-│   ├── handlers/         # Command handlers
-│   ├── interfaces/       # TypeScript interfaces
-│   ├── types/           # Type definitions
-│   ├── utils/           # Utility functions
-│   ├── test/            # Test setup and utilities
-│   └── index.ts         # Main entry point
-├── scripts/             # Build and utility scripts
-├── dist/               # Compiled JavaScript output
-├── coverage/           # Test coverage reports
-├── tsconfig.json       # TypeScript configuration
-├── tsconfig.prod.json  # Production TypeScript config
-├── jest.config.js      # Jest test configuration
-├── package.json        # Package configuration
-└── README.md          # This file
+│   ├── cli/              # ArgumentParser, CommandRouter, HelpSystem, CLIApplication
+│   ├── client/           # CDP client
+│   ├── connection/       # Connection management & target discovery
+│   ├── handlers/         # One file per command
+│   ├── monitors/         # ConsoleMonitor, NetworkMonitor (real-time event streams)
+│   ├── proxy/            # Background proxy server (used by IDE integrations)
+│   ├── config/           # Configuration management
+│   └── index.ts          # Entry point
+├── dist/                 # Compiled output
+└── package.json
 ```
 
-## API Documentation
+---
 
-### TypeScript Support
+## Changelog
 
-The package includes full TypeScript definitions. Import types for programmatic usage:
+### v2.1.0
 
-```typescript
-import { 
-  CDPClient, 
-  CommandResult, 
-  CLIConfig,
-  BrowserTarget 
-} from 'chrome-cdp-cli';
-```
+- **`cdp` alias**: `cdp` is now the primary command name (`chrome-cdp-cli` still works)
+- **`log` command**: renamed from `console` (`console` kept as alias); follow-only real-time streaming via CDP, no background proxy required
+- **`network` command**: follow-only real-time streaming; filter flags (`--methods`, `--url-pattern`, `--status-codes`) are now top-level instead of nested under `--filter`
+- **`dom` command**: renamed from `snapshot` (`snapshot` kept as alias)
+- **`screenshot` binary output**: omit `--filename` to write raw PNG/JPEG bytes to stdout for piping; `--format` renamed to `--image-format` to avoid conflict with the global `--format`
+- **Interactive target selector**: when multiple Chrome pages are open, an arrow-key menu lets you pick one; pass `-i <n>` to skip it
+- **`-i` global option**: `--target-index` / `-i` now works before or after the command name
+- **Removed `restart` command**: proxy-based log collection has been removed entirely
+- **Better error messages**: connection errors now include the `--user-data-dir` tip and a link to Chrome's announcement
 
-### Programmatic Usage
+### v2.0.x
 
-```typescript
-import { CLIApplication } from 'chrome-cdp-cli';
+- Enhanced argument parser with schema validation
+- Comprehensive help system with contextual assistance
+- Configuration management with YAML/JSON support and profiles
+- Standardized output formatting (JSON/text)
+- Full element interaction suite: click, hover, fill, drag, press_key, upload_file, wait_for, handle_dialog
+- Batch form filling with `fill_form`
+- IDE integrations: Cursor commands, Claude skills
 
-const app = new CLIApplication();
-const result = await app.run(['eval', 'document.title']);
-console.log(result);
-```
-
-## Troubleshooting
-
-### Common Issues
-
-1. **Connection Refused**
-   - Ensure Chrome is running with `--remote-debugging-port=9222 --user-data-dir=/tmp/chrome-debug`
-   - **Always include `--user-data-dir`** - it's required for security (Chrome won't enable debugging port without it)
-   - Check if the port is correct and not blocked by firewall
-   - Verify no other Chrome instances are using the same debugging port
-
-2. **Chrome Won't Start Debugging Port**
-   - **Most common cause**: Missing `--user-data-dir` parameter
-   - **Solution**: Use a dedicated profile directory: `--user-data-dir=/tmp/chrome-debug-profile`
-   - **Why needed**: Chrome requires `--user-data-dir` for security - it will not enable the debugging port without it to protect your default browser profile
-   - See [Chrome Remote Debugging documentation](https://developer.chrome.com/blog/remote-debugging-port) for details
-
-3. **Command Timeout**
-   - Increase timeout with `--timeout` option
-   - Check if the page is responsive
-
-4. **Element Not Found**
-   - Verify CSS selectors are correct
-   - Use `wait_for` command to wait for dynamic elements
-
-5. **Permission Denied**
-   - Ensure Chrome has necessary permissions
-   - Check file system permissions for screenshot output
-
-### Debug Mode
-
-Enable verbose logging for troubleshooting:
-
-```bash
-chrome-cdp-cli --verbose eval "console.log('debug')"
-```
-
-### Packaging
-
-```bash
-# Create npm package
-npm run package
-
-# Prepare for publishing
-npm run prepublishOnly
-```
-
+---
 
 ## Contributing
 
 1. Fork the repository
 2. Create a feature branch: `git checkout -b feature-name`
-3. Make your changes and add tests
-4. Run the verification suite: `npm run verify`
-5. Commit your changes: `git commit -am 'Add feature'`
-6. Push to the branch: `git push origin feature-name`
-7. Submit a pull request
+3. Add tests for your changes
+4. Run `npm run verify`
+5. Commit and open a pull request
 
 ## License
 
-MIT License - see [LICENSE](LICENSE) file for details.
+MIT — see [LICENSE](LICENSE).
 
 ## Support
 
-- 📖 [Documentation](https://github.com/nickxiao42/chrome-devtools-cli/wiki)
-- 📝 [Form Filling Guide](docs/FORM_FILLING.md)
-- 🐛 [Issue Tracker](https://github.com/nickxiao42/chrome-devtools-cli/issues)
-- 💬 [Discussions](https://github.com/nickxiao42/chrome-devtools-cli/discussions)
-
-## Changelog
-
-See [CHANGELOG.md](CHANGELOG.md) for version history and updates.
+- [Issue Tracker](https://github.com/nicoster/chrome-devtools-cli/issues)
+- [Discussions](https://github.com/nicoster/chrome-devtools-cli/discussions)
