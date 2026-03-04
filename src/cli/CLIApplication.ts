@@ -233,6 +233,10 @@ export class CLIApplication {
     return (
       url.startsWith("chrome-devtools://") ||
       url.startsWith("devtools://") ||
+      // Chrome internal UI pages (omnibox popup, settings, new tab service, etc.)
+      url.startsWith("chrome://") ||
+      url.startsWith("chrome-extension://") ||
+      url.startsWith("chrome-untrusted://") ||
       title.includes("devtools") ||
       title.includes("chrome devtools")
     );
