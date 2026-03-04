@@ -1,6 +1,6 @@
-import { ICommandRegistry } from '../interfaces/CommandHandler';
-import { CLICommand, CommandResult, CDPClient } from '../types';
-import { Logger } from '../utils/logger';
+import { ICommandRegistry } from "../interfaces/CommandHandler";
+import { CLICommand, CommandResult, CDPClient } from "../types";
+import { Logger } from "../utils/logger";
 
 /**
  * Exit codes for different error conditions
@@ -14,7 +14,7 @@ export enum ExitCode {
   VALIDATION_ERROR = 5,
   FILE_ERROR = 6,
   CONFIG_ERROR = 7,
-  INVALID_ARGUMENTS = 8
+  INVALID_ARGUMENTS = 8,
 }
 
 /**
@@ -51,8 +51,11 @@ export class CommandRouter {
       if (!this.client) {
         return {
           success: false,
-          error: 'Not connected to Chrome. Use "connect" command first.',
-          exitCode: ExitCode.CONNECTION_ERROR
+          error:
+            "Not connected to Chrome.\n" +
+            "Launch Chrome with: google-chrome --remote-debugging-port=9222 --user-data-dir=/tmp/chrome-debug\n" +
+            "From Chrome 136, --user-data-dir is required. See: https://developer.chrome.com/blog/remote-debugging-port",
+          exitCode: ExitCode.CONNECTION_ERROR,
         };
       }
 
@@ -62,7 +65,7 @@ export class CommandRouter {
         return {
           success: false,
           error: `Unknown command: ${command.name}. Use "help" to see available commands.`,
-          exitCode: ExitCode.INVALID_COMMAND
+          exitCode: ExitCode.INVALID_COMMAND,
         };
       }
 
@@ -71,7 +74,7 @@ export class CommandRouter {
         return {
           success: false,
           error: `Invalid arguments for command "${command.name}". Use "help ${command.name}" for usage information.`,
-          exitCode: ExitCode.VALIDATION_ERROR
+          exitCode: ExitCode.VALIDATION_ERROR,
         };
       }
 
@@ -89,10 +92,10 @@ export class CommandRouter {
       }
 
       return result;
-
     } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : String(error);
-      
+      const errorMessage =
+        error instanceof Error ? error.message : String(error);
+
       // Log error if not in quiet mode
       if (!command.config.quiet) {
         this.logger.error(`Command execution failed: ${errorMessage}`);
@@ -101,7 +104,7 @@ export class CommandRouter {
       return {
         success: false,
         error: errorMessage,
-        exitCode: this.getExitCodeForError(error)
+        exitCode: this.getExitCodeForError(error),
       };
     }
   }
@@ -111,11 +114,11 @@ export class CommandRouter {
    */
   private isSpecialCommand(commandName: string): boolean {
     const specialCommands = [
-      'help', 
-      'connect', 
-      'disconnect', 
-      'install_cursor_command', 
-      'install_claude_skill'
+      "help",
+      "connect",
+      "disconnect",
+      "install_cursor_command",
+      "install_claude_skill",
     ];
     return specialCommands.includes(commandName);
   }
@@ -123,38 +126,40 @@ export class CommandRouter {
   /**
    * Execute special commands that don't require CDP client
    */
-  private async executeSpecialCommand(command: CLICommand): Promise<CommandResult> {
+  private async executeSpecialCommand(
+    command: CLICommand,
+  ): Promise<CommandResult> {
     switch (command.name) {
-      case 'help':
+      case "help":
         return this.executeHelpCommand(command);
-      
-      case 'connect':
+
+      case "connect":
         return this.executeConnectCommand(command);
-      
-      case 'disconnect':
+
+      case "disconnect":
         return this.executeDisconnectCommand();
-      
-      case 'install_cursor_command':
-      case 'install_claude_skill': {
+
+      case "install_cursor_command":
+      case "install_claude_skill": {
         // These commands have their own handlers, execute them directly
         const handler = this.registry.get(command.name);
         if (!handler) {
           return {
             success: false,
             error: `Handler not found for command: ${command.name}`,
-            exitCode: ExitCode.INVALID_COMMAND
+            exitCode: ExitCode.INVALID_COMMAND,
           };
         }
-        
+
         // Execute without CDP client (pass null)
         return await handler.execute(null as any, command.args);
       }
-      
+
       default:
         return {
           success: false,
           error: `Unknown special command: ${command.name}`,
-          exitCode: ExitCode.INVALID_COMMAND
+          exitCode: ExitCode.INVALID_COMMAND,
         };
     }
   }
@@ -164,25 +169,27 @@ export class CommandRouter {
    */
   private executeHelpCommand(command: CLICommand): CommandResult {
     const commandName = command.args.command as string;
-    
+
     if (commandName) {
       // Normalize command name for handler lookup
-      const normalizedCommandName = commandName.replace(/-/g, '_');
-      
+      const normalizedCommandName = commandName.replace(/-/g, "_");
+
       // Show help for specific command
       const handler = this.registry.get(normalizedCommandName);
       if (!handler) {
         return {
           success: false,
           error: `Unknown command: ${commandName}`,
-          exitCode: ExitCode.INVALID_COMMAND
+          exitCode: ExitCode.INVALID_COMMAND,
         };
       }
-      
-      const helpText = handler.getHelp ? handler.getHelp() : `No help available for command: ${commandName}`;
+
+      const helpText = handler.getHelp
+        ? handler.getHelp()
+        : `No help available for command: ${commandName}`;
       return {
         success: true,
-        data: helpText
+        data: helpText,
       };
     } else {
       // Show general help
@@ -190,7 +197,7 @@ export class CommandRouter {
       const helpText = this.generateGeneralHelp(commands);
       return {
         success: true,
-        data: helpText
+        data: helpText,
       };
     }
   }
@@ -198,19 +205,21 @@ export class CommandRouter {
   /**
    * Execute connect command
    */
-  private async executeConnectCommand(command: CLICommand): Promise<CommandResult> {
+  private async executeConnectCommand(
+    command: CLICommand,
+  ): Promise<CommandResult> {
     try {
       // This would typically create and connect a CDP client
       // For now, we'll return a placeholder result
       return {
         success: true,
-        data: `Connected to Chrome at ${command.config.host}:${command.config.port}`
+        data: `Connected to Chrome at ${command.config.host}:${command.config.port}`,
       };
     } catch (error) {
       return {
         success: false,
         error: `Failed to connect: ${error instanceof Error ? error.message : String(error)}`,
-        exitCode: ExitCode.CONNECTION_ERROR
+        exitCode: ExitCode.CONNECTION_ERROR,
       };
     }
   }
@@ -224,16 +233,16 @@ export class CommandRouter {
         await this.client.disconnect();
         this.client = undefined;
       }
-      
+
       return {
         success: true,
-        data: 'Disconnected from Chrome'
+        data: "Disconnected from Chrome",
       };
     } catch (error) {
       return {
         success: false,
         error: `Failed to disconnect: ${error instanceof Error ? error.message : String(error)}`,
-        exitCode: ExitCode.CONNECTION_ERROR
+        exitCode: ExitCode.CONNECTION_ERROR,
       };
     }
   }
@@ -241,42 +250,83 @@ export class CommandRouter {
   /**
    * Execute command with timeout handling
    */
-  private async executeWithTimeout(handler: any, command: CLICommand): Promise<CommandResult> {
+  private async executeWithTimeout(
+    handler: any,
+    command: CLICommand,
+  ): Promise<CommandResult> {
     const timeout = command.config.timeout;
-    
+
     // Configure logger based on debug flag
     if (command.config.debug) {
       this.logger.setLevel(3); // DEBUG level
     } else {
       this.logger.setLevel(2); // INFO level
     }
-    
-    this.logger.debug(`CommandRouter.executeWithTimeout called for command: ${command.name}, timeout: ${timeout}ms`);
-    
-    // Create timeout promise
-    const timeoutPromise = new Promise<CommandResult>((_, reject) => {
-      setTimeout(() => {
-        this.logger.debug(`Command timeout reached for: ${command.name} after ${timeout}ms`);
-        reject(new Error(`Command timeout after ${timeout}ms`));
-      }, timeout);
-    });
+
+    this.logger.debug(
+      `CommandRouter.executeWithTimeout called for command: ${command.name}, timeout: ${timeout}ms`,
+    );
 
     // Create execution promise
     this.logger.debug(`Starting handler execution for: ${command.name}`);
     const executionPromise = handler.execute(this.client!, command.args);
 
+    // For long-running commands (log, network are always follow-only), skip timeout
+    const longRunningCommands = ["log", "console", "network"];
+    const isLongRunning =
+      longRunningCommands.includes(command.name) ||
+      (command.args as any)?.follow ||
+      (command.args as any)?.f;
+
+    if (isLongRunning) {
+      // For long-running commands, wait indefinitely
+      // The command will exit via signal handler (Ctrl+C)
+      this.logger.debug(
+        `Command ${command.name} is long-running, skipping timeout`,
+      );
+      try {
+        const result = await executionPromise;
+
+        // Check if result indicates long-running
+        if ((result as any)?.isLongRunning) {
+          // Keep process alive - it will exit via signal handler
+          return new Promise<CommandResult>(() => {
+            // Never resolve - process will exit via SIGINT/SIGTERM
+          });
+        }
+
+        return result;
+      } catch (error) {
+        this.logger.debug(
+          `Command execution error for: ${command.name}:`,
+          error,
+        );
+        throw error;
+      }
+    }
+
+    // For regular commands, apply timeout
+    const timeoutPromise = new Promise<CommandResult>((_, reject) => {
+      setTimeout(() => {
+        this.logger.debug(
+          `Command timeout reached for: ${command.name} after ${timeout}ms`,
+        );
+        reject(new Error(`Command timeout after ${timeout}ms`));
+      }, timeout);
+    });
+
     // Race between execution and timeout
     try {
       const result = await Promise.race([executionPromise, timeoutPromise]);
-      
+
       this.logger.debug(`Command completed successfully for: ${command.name}`);
-      
+
       // Ensure result has proper structure
-      if (!result || typeof result !== 'object') {
+      if (!result || typeof result !== "object") {
         return {
           success: false,
-          error: 'Invalid command result format',
-          exitCode: ExitCode.GENERAL_ERROR
+          error: "Invalid command result format",
+          exitCode: ExitCode.GENERAL_ERROR,
         };
       }
 
@@ -288,12 +338,12 @@ export class CommandRouter {
       return result;
     } catch (error) {
       this.logger.debug(`Command execution error for: ${command.name}:`, error);
-      
-      if (error instanceof Error && error.message.includes('timeout')) {
+
+      if (error instanceof Error && error.message.includes("timeout")) {
         return {
           success: false,
           error: error.message,
-          exitCode: ExitCode.TIMEOUT_ERROR
+          exitCode: ExitCode.TIMEOUT_ERROR,
         };
       }
       throw error;
@@ -305,9 +355,9 @@ export class CommandRouter {
    */
   private generateGeneralHelp(commands: string[]): string {
     return `
-Chrome DevTools CLI - Command-line tool for controlling Chrome browser
+CDP - Chrome DevTools Protocol CLI
 
-Usage: chrome-cdp-cli [options] <command> [command-options]
+Usage: cdp [options] <command> [command-options]
 
 Global Options:
   -h, --host <host>        Chrome host address (default: localhost)
@@ -321,17 +371,19 @@ Global Options:
   -V, --version            Show version number
 
 Available Commands:
-${commands.map(cmd => `  ${cmd.padEnd(20)} - ${this.getCommandDescription(cmd)}`).join('\n')}
+${commands.map((cmd) => `  ${cmd.padEnd(20)} - ${this.getCommandDescription(cmd)}`).join("\n")}
 
 Examples:
-  chrome-cdp-cli eval "document.title"
-  chrome-cdp-cli eval --file script.js
-  chrome-cdp-cli screenshot --filename page.png
-  chrome-cdp-cli snapshot --format html --filename dom.html
-  chrome-cdp-cli help <command>
+  cdp eval "document.title"
+  cdp eval --file script.js
+  cdp screenshot --filename page.png
+  cdp snapshot --filename dom.html
+  cdp log -f
+  cdp network --urlPattern "/api"
+  cdp help <command>
 
 For more information about a specific command, use:
-  chrome-cdp-cli help <command>
+  cdp help <command>
 `;
   }
 
@@ -340,36 +392,36 @@ For more information about a specific command, use:
    */
   private getCommandDescription(commandName: string): string {
     const descriptions: Record<string, string> = {
-      'connect': 'Connect to Chrome instance',
-      'disconnect': 'Disconnect from Chrome instance',
-      'navigate': 'Navigate to URL',
-      'new-page': 'Create new page/tab',
-      'close-page': 'Close current or specified page',
-      'list-pages': 'List all open pages',
-      'select-page': 'Select/focus page',
-      'resize-page': 'Resize browser viewport',
-      'eval': 'Execute JavaScript code',
-      'click': 'Click element',
-      'fill': 'Fill form field',
-      'fill_form': 'Fill multiple form fields in batch',
-      'hover': 'Hover over element',
-      'drag': 'Perform drag and drop operations',
-      'press_key': 'Simulate keyboard input with modifiers',
-      'upload_file': 'Upload files to file input elements',
-      'wait_for': 'Wait for elements to appear or meet conditions',
-      'handle_dialog': 'Handle browser dialogs (alert, confirm, prompt)',
-      'screenshot': 'Capture page screenshot',
-      'snapshot': 'Capture DOM snapshot with structure and styles',
-      'console-messages': 'Get console messages',
-      'network-requests': 'Get network requests',
-      'console': 'List console messages',
-      'network': 'List network requests',
-      'install_cursor_command': 'Install Cursor IDE commands for Chrome automation',
-      'install_claude_skill': 'Install Claude Code skill for Chrome automation',
-      'help': 'Show help information'
+      connect: "Connect to Chrome instance",
+      disconnect: "Disconnect from Chrome instance",
+      navigate: "Navigate to URL",
+      "new-page": "Create new page/tab",
+      "close-page": "Close current or specified page",
+      "list-pages": "List all open pages",
+      "select-page": "Select/focus page",
+      "resize-page": "Resize browser viewport",
+      eval: "Execute JavaScript code",
+      click: "Click element",
+      fill: "Fill form field",
+      fill_form: "Fill multiple form fields in batch",
+      hover: "Hover over element",
+      drag: "Perform drag and drop operations",
+      press_key: "Simulate keyboard input with modifiers",
+      upload_file: "Upload files to file input elements",
+      wait_for: "Wait for elements to appear or meet conditions",
+      handle_dialog: "Handle browser dialogs (alert, confirm, prompt)",
+      screenshot: "Capture page screenshot",
+      snapshot: "Capture DOM snapshot with structure and styles",
+      log: "Follow console messages in real-time",
+      console: "Follow console messages (alias for log)",
+      network: "Follow network requests in real-time",
+      install_cursor_command:
+        "Install Cursor IDE commands for Chrome automation",
+      install_claude_skill: "Install Claude Code skill for Chrome automation",
+      help: "Show help information",
     };
 
-    return descriptions[commandName] || 'No description available';
+    return descriptions[commandName] || "No description available";
   }
 
   /**
@@ -378,24 +430,24 @@ For more information about a specific command, use:
   private getExitCodeForError(error: unknown): ExitCode {
     if (error instanceof Error) {
       const message = error.message.toLowerCase();
-      
-      if (message.includes('timeout')) {
+
+      if (message.includes("timeout")) {
         return ExitCode.TIMEOUT_ERROR;
       }
-      
-      if (message.includes('connection') || message.includes('connect')) {
+
+      if (message.includes("connection") || message.includes("connect")) {
         return ExitCode.CONNECTION_ERROR;
       }
-      
-      if (message.includes('file') || message.includes('path')) {
+
+      if (message.includes("file") || message.includes("path")) {
         return ExitCode.FILE_ERROR;
       }
-      
-      if (message.includes('invalid') || message.includes('validation')) {
+
+      if (message.includes("invalid") || message.includes("validation")) {
         return ExitCode.VALIDATION_ERROR;
       }
     }
-    
+
     return ExitCode.GENERAL_ERROR;
   }
 

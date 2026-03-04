@@ -611,3 +611,82 @@ describe('NetworkMonitor', () => {
     });
   });
 });
+describe('NetworkMonitor - onRequest/offRequest callbacks', () => {
+  let mockClient: any;
+  let networkMonitor: NetworkMonitor;
+
+  beforeEach(async () => {
+    // Re-use the MockCDPClient from the outer scope by reconstructing it inline
+    const listeners = new Map<string, Array<(p: unknown) => void>>();
+    mockClient = {
+      connect: jest.fn(),
+      disconnect: jest.fn(),
+      send: jest.fn().mockResolvedValue({}),
+      on: (event: string, cb: (p: unknown) => void) => {
+        if (!listeners.has(event)) listeners.set(event, []);
+        listeners.get(event)!.push(cb);
+      },
+      off: (event: string, cb: (p: unknown) => void) => {
+        const arr = listeners.get(event);
+        if (arr) {
+          const i = arr.indexOf(cb);
+          if (i > -1) arr.splice(i, 1);
+        }
+      },
+      emit: (event: string, params: unknown) => {
+        (listeners.get(event) || []).forEach(cb => cb(params));
+      }
+    };
+    networkMonitor = new NetworkMonitor(mockClient);
+    await networkMonitor.startMonitoring();
+  });
+
+  afterEach(async () => {
+    await networkMonitor.stopMonitoring();
+  });
+
+  const makeRequest = (id: string, url: string, method = 'GET') => {
+    const ts = Date.now() / 1000;
+    mockClient.emit('Network.requestWillBeSent', {
+      requestId: id,
+      request: { url, method, headers: {} },
+      timestamp: ts,
+      wallTime: ts
+    });
+    mockClient.emit('Network.responseReceived', {
+      requestId: id,
+      response: { url, status: 200, statusText: 'OK', headers: {}, mimeType: 'text/html', connectionReused: false, connectionId: 1, encodedDataLength: 100 }
+    });
+    mockClient.emit('Network.loadingFinished', {
+      requestId: id,
+      timestamp: ts + 0.1,
+      encodedDataLength: 100
+    });
+  };
+
+  it('onRequest callback is called when request completes', () => {
+    const cb = jest.fn();
+    networkMonitor.onRequest(cb);
+    makeRequest('r1', 'https://example.com/');
+    expect(cb).toHaveBeenCalledTimes(1);
+    expect(cb.mock.calls[0][0].url).toBe('https://example.com/');
+  });
+
+  it('offRequest removes callback', () => {
+    const cb = jest.fn();
+    networkMonitor.onRequest(cb);
+    networkMonitor.offRequest(cb);
+    makeRequest('r2', 'https://example.com/after');
+    expect(cb).not.toHaveBeenCalled();
+  });
+
+  it('multiple callbacks can be registered', () => {
+    const cb1 = jest.fn();
+    const cb2 = jest.fn();
+    networkMonitor.onRequest(cb1);
+    networkMonitor.onRequest(cb2);
+    makeRequest('r3', 'https://example.com/multi');
+    expect(cb1).toHaveBeenCalledTimes(1);
+    expect(cb2).toHaveBeenCalledTimes(1);
+  });
+});

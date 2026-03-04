@@ -452,7 +452,7 @@ describe('ArgumentParser', () => {
     it('should generate general help', () => {
       const help = parser.generateHelp();
       
-      expect(help).toContain('CHROME DEVTOOLS CLI - ENHANCED HELP SYSTEM');
+      expect(help).toContain('CDP - Chrome DevTools Protocol CLI');
       expect(help).toContain('GLOBAL OPTIONS');
       expect(help).toContain('AVAILABLE COMMANDS');
       expect(help).toContain('help-test');

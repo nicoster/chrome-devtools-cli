@@ -124,6 +124,9 @@ export class CDPProxyServer {
       // Setup API routes
       this.apiServer.setupRoutes(this.app);
       
+      // Setup error handling middleware (must be after all routes)
+      this.setupErrorHandling();
+      
       // Setup WebSocket server
       this.wsServer = new WebSocketServer({ server: this.httpServer });
       this.wsProxy.start(this.wsServer);
@@ -429,9 +432,14 @@ export class CDPProxyServer {
       this.resetAutoShutdownTimer(); // Reset timer on any activity
       next();
     });
+  }
 
-    // Error handling middleware
-    this.app.use((error: Error, req: express.Request, res: express.Response) => {
+  /**
+   * Setup error handling middleware (must be called after all routes)
+   */
+  private setupErrorHandling(): void {
+    // Error handling middleware (must have 4 parameters for Express to recognize it as error handler)
+    this.app.use((error: Error, req: express.Request, res: express.Response, _next: express.NextFunction) => {
       this.logger.logAPIEvent(
         req.method,
         req.path,

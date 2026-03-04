@@ -1,21 +1,6 @@
 import { ListNetworkRequestsHandler } from './ListNetworkRequestsHandler';
-import { NetworkMonitor } from '../monitors/NetworkMonitor';
-import { CDPClient, NetworkRequest } from '../types';
+import { CDPClient } from '../types';
 
-// Mock ProxyClient
-jest.mock('../client/ProxyClient', () => {
-  return {
-    ProxyClient: jest.fn().mockImplementation(() => ({
-      isProxyAvailable: jest.fn().mockResolvedValue(false),
-      ensureProxyRunning: jest.fn().mockResolvedValue(false),
-      getConnectionId: jest.fn().mockReturnValue(null),
-      connect: jest.fn().mockResolvedValue(undefined),
-      getNetworkRequests: jest.fn().mockResolvedValue([])
-    }))
-  };
-});
-
-// Mock CDPClient for testing
 class MockCDPClient implements CDPClient {
   async connect(): Promise<void> {}
   async disconnect(): Promise<void> {}
@@ -24,224 +9,80 @@ class MockCDPClient implements CDPClient {
   off(): void {}
 }
 
-// Mock NetworkMonitor for testing
-class MockNetworkMonitor extends NetworkMonitor {
-  private mockRequests: NetworkRequest[] = [];
-  private mockIsActive = false;
-
-  constructor() {
-    super(new MockCDPClient());
-  }
-
-  async startMonitoring(): Promise<void> {
-    this.mockIsActive = true;
-  }
-
-  async stopMonitoring(): Promise<void> {
-    this.mockIsActive = false;
-  }
-
-  getRequests(): NetworkRequest[] {
-    return [...this.mockRequests];
-  }
-
-  isActive(): boolean {
-    return this.mockIsActive;
-  }
-
-  // Test helper methods
-  addMockRequest(request: NetworkRequest): void {
-    this.mockRequests.push(request);
-  }
-
-  clearMockRequests(): void {
-    this.mockRequests = [];
-  }
-}
-
 describe('ListNetworkRequestsHandler', () => {
   let handler: ListNetworkRequestsHandler;
   let mockClient: MockCDPClient;
-  let mockMonitor: MockNetworkMonitor;
-  let consoleWarnSpy: jest.SpyInstance;
 
   beforeEach(() => {
     handler = new ListNetworkRequestsHandler();
     mockClient = new MockCDPClient();
-    mockMonitor = new MockNetworkMonitor();
-    handler.setNetworkMonitor(mockMonitor);
-    
-    // Suppress console.warn during tests
-    consoleWarnSpy = jest.spyOn(console, 'warn').mockImplementation(() => {});
+    jest.spyOn(process, 'on').mockImplementation(() => process);
+    jest.spyOn(process, 'removeAllListeners').mockImplementation(() => process);
   });
 
   afterEach(() => {
-    consoleWarnSpy.mockRestore();
+    jest.restoreAllMocks();
   });
 
-  describe('execute', () => {
-    it('should return empty list when no requests are available', async () => {
-      const result = await handler.execute(mockClient, {});
-
-      expect(result.success).toBe(true);
-      expect(result.data).toEqual({
-        requests: [],
-        count: 0,
-        isMonitoring: true // After startMonitoring is called
-      });
-    });
-
-    it('should return all network requests', async () => {
-      const mockRequests: NetworkRequest[] = [
-        {
-          requestId: 'req-1',
-          url: 'http://api.example.com/users',
-          method: 'GET',
-          headers: { 'Accept': 'application/json' },
-          timestamp: Date.now() - 2000,
-          status: 200,
-          responseHeaders: { 'Content-Type': 'application/json' }
-        },
-        {
-          requestId: 'req-2',
-          url: 'http://api.example.com/posts',
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          timestamp: Date.now() - 1000,
-          status: 201
-        },
-        {
-          requestId: 'req-3',
-          url: 'http://cdn.example.com/image.jpg',
-          method: 'GET',
-          headers: { 'Accept': 'image/*' },
-          timestamp: Date.now(),
-          status: 404
-        }
-      ];
-
-      mockRequests.forEach(req => mockMonitor.addMockRequest(req));
-
-      const result = await handler.execute(mockClient, {});
-
-      expect(result.success).toBe(true);
-      expect(result.data).toEqual({
-        requests: mockRequests,
-        count: 3,
-        isMonitoring: true // After startMonitoring is called
-      });
-    });
-
-    it('should handle filter parameters', async () => {
-      const mockRequests: NetworkRequest[] = [
-        {
-          requestId: 'req-get',
-          url: 'http://api.example.com/users',
-          method: 'GET',
-          headers: {},
-          timestamp: Date.now() - 1000,
-          status: 200
-        },
-        {
-          requestId: 'req-post',
-          url: 'http://api.example.com/posts',
-          method: 'POST',
-          headers: {},
-          timestamp: Date.now(),
-          status: 201
-        }
-      ];
-
-      mockRequests.forEach(req => mockMonitor.addMockRequest(req));
-
-      const args = {
-        filter: {
-          methods: ['GET'],
-          urlPattern: 'users',
-          statusCodes: [200],
-          maxRequests: 10,
-          startTime: Date.now() - 2000,
-          endTime: Date.now()
-        }
-      };
-
-      const result = await handler.execute(mockClient, args);
-
-      expect(result.success).toBe(true);
-      expect(result.data).toEqual({
-        requests: mockRequests, // Mock doesn't actually filter, but structure is correct
-        count: 2,
-        isMonitoring: true // After startMonitoring is called
-      });
-    });
-
-    it('should initialize network monitor if not already done', async () => {
-      const newHandler = new ListNetworkRequestsHandler();
-      expect(newHandler.getNetworkMonitor()).toBeNull();
-
-      await newHandler.execute(mockClient, {});
-
-      expect(newHandler.getNetworkMonitor()).not.toBeNull();
-    });
-
-    it('should handle errors gracefully', async () => {
-      // Create a mock monitor that throws an error on getRequests
-      const errorMonitor = {
-        isActive: jest.fn().mockReturnValue(true),
-        startMonitoring: jest.fn().mockResolvedValue(undefined),
-        getRequests: jest.fn().mockImplementation(() => {
-          throw new Error('Network error');
-        })
-      } as unknown as NetworkMonitor;
-
-      const newHandler = new ListNetworkRequestsHandler();
-      newHandler.setNetworkMonitor(errorMonitor);
-
-      const result = await newHandler.execute(mockClient, {});
-
-      expect(result.success).toBe(false);
-      expect(result.error).toBe('Network error');
-    });
-
-    it('should handle unknown errors', async () => {
-      // Create a mock monitor that throws a non-Error object
-      const errorMonitor = {
-        isActive: jest.fn().mockReturnValue(true),
-        startMonitoring: jest.fn().mockResolvedValue(undefined),
-        getRequests: jest.fn().mockImplementation(() => {
-          throw 'String error';
-        })
-      } as unknown as NetworkMonitor;
-
-      const newHandler = new ListNetworkRequestsHandler();
-      newHandler.setNetworkMonitor(errorMonitor);
-
-      const result = await newHandler.execute(mockClient, {});
-
-      expect(result.success).toBe(false);
-      expect(result.error).toBe('Unknown error occurred');
-    });
-
-    it('should return correct monitoring status', async () => {
-      // Test when monitoring is active
-      await mockMonitor.startMonitoring();
-      let result = await handler.execute(mockClient, {});
-      expect((result.data as any).isMonitoring).toBe(true);
-
-      // Test when monitoring is stopped - but handler will restart it
-      await mockMonitor.stopMonitoring();
-      result = await handler.execute(mockClient, {});
-      expect((result.data as any).isMonitoring).toBe(true); // Handler restarts monitoring
-    });
+  it('should have name "network"', () => {
+    expect(handler.name).toBe('network');
   });
 
-  describe('getNetworkMonitor and setNetworkMonitor', () => {
-    it('should get and set network monitor', () => {
-      const newHandler = new ListNetworkRequestsHandler();
-      expect(newHandler.getNetworkMonitor()).toBeNull();
+  it('execute() returns isLongRunning result', async () => {
+    const consoleSpy = jest.spyOn(console, 'log').mockImplementation(() => {});
+    const result = await handler.execute(mockClient as any, {});
+    expect(result.success).toBe(true);
+    expect((result as any).isLongRunning).toBe(true);
+    consoleSpy.mockRestore();
+  });
 
-      newHandler.setNetworkMonitor(mockMonitor);
-      expect(newHandler.getNetworkMonitor()).toBe(mockMonitor);
-    });
+  it('execute() with format=json does not print follow header', async () => {
+    const consoleSpy = jest.spyOn(console, 'log').mockImplementation(() => {});
+    await handler.execute(mockClient as any, { format: 'json' });
+    expect(consoleSpy).not.toHaveBeenCalledWith(expect.stringContaining('Following'));
+    consoleSpy.mockRestore();
+  });
+
+  it('shouldOutputRequest filters by method', () => {
+    const shouldOutput = (handler as any).shouldOutputRequest.bind(handler);
+    const req = { method: 'GET', url: 'https://example.com', status: 200 };
+    expect(shouldOutput(req, ['POST'], undefined, [])).toBe(false);
+    expect(shouldOutput(req, ['GET'], undefined, [])).toBe(true);
+    expect(shouldOutput(req, [], undefined, [])).toBe(true);
+  });
+
+  it('shouldOutputRequest filters by urlPattern', () => {
+    const shouldOutput = (handler as any).shouldOutputRequest.bind(handler);
+    const req = { method: 'GET', url: 'https://example.com/api/users', status: 200 };
+    expect(shouldOutput(req, [], '/api/', [])).toBe(true);
+    expect(shouldOutput(req, [], '/other/', [])).toBe(false);
+  });
+
+  it('shouldOutputRequest filters by statusCodes', () => {
+    const shouldOutput = (handler as any).shouldOutputRequest.bind(handler);
+    const req = { method: 'GET', url: 'https://example.com', status: 404 };
+    expect(shouldOutput(req, [], undefined, [404, 500])).toBe(true);
+    expect(shouldOutput(req, [], undefined, [200])).toBe(false);
+    expect(shouldOutput(req, [], undefined, [])).toBe(true);
+  });
+
+  it('parseList handles comma-separated string', () => {
+    const parseList = (handler as any).parseList.bind(handler);
+    expect(parseList('GET,POST,PUT')).toEqual(['GET', 'POST', 'PUT']);
+    expect(parseList(undefined)).toEqual([]);
+    expect(parseList(['GET', 'POST'])).toEqual(['GET', 'POST']);
+  });
+
+  it('getHelp returns cdp network examples', () => {
+    const help = handler.getHelp();
+    expect(help).toContain('cdp network');
+    expect(help).toContain('--methods');
+    expect(help).toContain('--urlPattern');
+    expect(help).toContain('--statusCodes');
+  });
+
+  it('getHelp does not reference --filter object', () => {
+    const help = handler.getHelp();
+    expect(help).not.toContain('--filter');
   });
 });

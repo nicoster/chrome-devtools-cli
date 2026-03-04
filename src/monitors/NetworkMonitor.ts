@@ -1,4 +1,4 @@
-import { CDPClient, NetworkRequest } from '../types';
+import { CDPClient, NetworkRequest } from "../types";
 
 /**
  * Network request filter options
@@ -24,6 +24,7 @@ export class NetworkMonitor {
   private responseReceivedHandler: ((params: unknown) => void) | null = null;
   private loadingFinishedHandler: ((params: unknown) => void) | null = null;
   private loadingFailedHandler: ((params: unknown) => void) | null = null;
+  private requestCallbacks: Array<(request: NetworkRequest) => void> = [];
 
   constructor(client: CDPClient) {
     this.client = client;
@@ -38,7 +39,7 @@ export class NetworkMonitor {
     }
 
     // Enable Network domain to receive network events
-    await this.client.send('Network.enable');
+    await this.client.send("Network.enable");
 
     // Set up event listeners for network events
     this.requestWillBeSentHandler = (params: unknown) => {
@@ -57,11 +58,11 @@ export class NetworkMonitor {
       this.handleLoadingFailed(params);
     };
 
-    this.client.on('Network.requestWillBeSent', this.requestWillBeSentHandler);
-    this.client.on('Network.responseReceived', this.responseReceivedHandler);
-    this.client.on('Network.loadingFinished', this.loadingFinishedHandler);
-    this.client.on('Network.loadingFailed', this.loadingFailedHandler);
-    
+    this.client.on("Network.requestWillBeSent", this.requestWillBeSentHandler);
+    this.client.on("Network.responseReceived", this.responseReceivedHandler);
+    this.client.on("Network.loadingFinished", this.loadingFinishedHandler);
+    this.client.on("Network.loadingFailed", this.loadingFailedHandler);
+
     this.isMonitoring = true;
   }
 
@@ -74,22 +75,25 @@ export class NetworkMonitor {
     }
 
     if (this.requestWillBeSentHandler) {
-      this.client.off('Network.requestWillBeSent', this.requestWillBeSentHandler);
+      this.client.off(
+        "Network.requestWillBeSent",
+        this.requestWillBeSentHandler,
+      );
       this.requestWillBeSentHandler = null;
     }
 
     if (this.responseReceivedHandler) {
-      this.client.off('Network.responseReceived', this.responseReceivedHandler);
+      this.client.off("Network.responseReceived", this.responseReceivedHandler);
       this.responseReceivedHandler = null;
     }
 
     if (this.loadingFinishedHandler) {
-      this.client.off('Network.loadingFinished', this.loadingFinishedHandler);
+      this.client.off("Network.loadingFinished", this.loadingFinishedHandler);
       this.loadingFinishedHandler = null;
     }
 
     if (this.loadingFailedHandler) {
-      this.client.off('Network.loadingFailed', this.loadingFailedHandler);
+      this.client.off("Network.loadingFailed", this.loadingFailedHandler);
       this.loadingFailedHandler = null;
     }
 
@@ -105,36 +109,36 @@ export class NetworkMonitor {
     if (filter) {
       // Filter by HTTP methods
       if (filter.methods && filter.methods.length > 0) {
-        filteredRequests = filteredRequests.filter(req => 
-          filter.methods!.includes(req.method.toUpperCase())
+        filteredRequests = filteredRequests.filter((req) =>
+          filter.methods!.includes(req.method.toUpperCase()),
         );
       }
 
       // Filter by URL pattern
       if (filter.urlPattern) {
-        const pattern = new RegExp(filter.urlPattern, 'i');
-        filteredRequests = filteredRequests.filter(req => 
-          pattern.test(req.url)
+        const pattern = new RegExp(filter.urlPattern, "i");
+        filteredRequests = filteredRequests.filter((req) =>
+          pattern.test(req.url),
         );
       }
 
       // Filter by status codes
       if (filter.statusCodes && filter.statusCodes.length > 0) {
-        filteredRequests = filteredRequests.filter(req => 
-          req.status && filter.statusCodes!.includes(req.status)
+        filteredRequests = filteredRequests.filter(
+          (req) => req.status && filter.statusCodes!.includes(req.status),
         );
       }
 
       // Filter by time range
       if (filter.startTime) {
-        filteredRequests = filteredRequests.filter(req => 
-          req.timestamp >= filter.startTime!
+        filteredRequests = filteredRequests.filter(
+          (req) => req.timestamp >= filter.startTime!,
         );
       }
 
       if (filter.endTime) {
-        filteredRequests = filteredRequests.filter(req => 
-          req.timestamp <= filter.endTime!
+        filteredRequests = filteredRequests.filter(
+          (req) => req.timestamp <= filter.endTime!,
         );
       }
 
@@ -178,6 +182,23 @@ export class NetworkMonitor {
   }
 
   /**
+   * Register a callback to be invoked when a network request completes
+   */
+  onRequest(callback: (request: NetworkRequest) => void): void {
+    this.requestCallbacks.push(callback);
+  }
+
+  /**
+   * Deregister a previously registered request callback
+   */
+  offRequest(callback: (request: NetworkRequest) => void): void {
+    const index = this.requestCallbacks.indexOf(callback);
+    if (index > -1) {
+      this.requestCallbacks.splice(index, 1);
+    }
+  }
+
+  /**
    * Handle Network.requestWillBeSent events from CDP
    */
   private handleRequestWillBeSent(params: unknown): void {
@@ -210,7 +231,7 @@ export class NetworkMonitor {
       // Store the request for later matching with response
       this.requests.set(requestParams.requestId, networkRequest);
     } catch (error) {
-      console.error('Error handling requestWillBeSent:', error);
+      console.error("Error handling requestWillBeSent:", error);
     }
   }
 
@@ -248,7 +269,7 @@ export class NetworkMonitor {
         request.responseHeaders = responseParams.response.headers;
       }
     } catch (error) {
-      console.error('Error handling responseReceived:', error);
+      console.error("Error handling responseReceived:", error);
     }
   }
 
@@ -273,9 +294,18 @@ export class NetworkMonitor {
         if (this.completedRequests.length > 1000) {
           this.completedRequests = this.completedRequests.slice(-1000);
         }
+
+        // Notify real-time callbacks
+        this.requestCallbacks.forEach((cb) => {
+          try {
+            cb(request);
+          } catch (e) {
+            /* ignore callback errors */
+          }
+        });
       }
     } catch (error) {
-      console.error('Error handling loadingFinished:', error);
+      console.error("Error handling loadingFinished:", error);
     }
   }
 
@@ -304,9 +334,18 @@ export class NetworkMonitor {
         if (this.completedRequests.length > 1000) {
           this.completedRequests = this.completedRequests.slice(-1000);
         }
+
+        // Notify real-time callbacks
+        this.requestCallbacks.forEach((cb) => {
+          try {
+            cb(request);
+          } catch (e) {
+            /* ignore callback errors */
+          }
+        });
       }
     } catch (error) {
-      console.error('Error handling loadingFailed:', error);
+      console.error("Error handling loadingFailed:", error);
     }
   }
 }

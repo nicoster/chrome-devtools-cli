@@ -1,196 +1,202 @@
-import { CDPClient, CommandResult } from '../types';
-import { NetworkMonitor, NetworkRequestFilter } from '../monitors/NetworkMonitor';
-import { ProxyClient } from '../client/ProxyClient';
-import { NetworkRequestFilter as ProxyNetworkRequestFilter } from '../proxy/types/ProxyTypes';
+import { CDPClient, CommandResult, NetworkRequest } from "../types";
+import { NetworkMonitor } from "../monitors/NetworkMonitor";
 
 /**
- * Handler for listing network requests
+ * Handler for real-time network request monitoring (follow-only mode)
  */
 export class ListNetworkRequestsHandler {
-  name = 'network';
+  name = "network";
   private networkMonitor: NetworkMonitor | null = null;
-  private proxyClient: ProxyClient | null = null;
 
   async execute(client: CDPClient, args: unknown): Promise<CommandResult> {
     try {
       const params = args as {
-        filter?: {
-          methods?: string[];
-          urlPattern?: string;
-          statusCodes?: number[];
-          maxRequests?: number;
-          startTime?: number;
-          endTime?: number;
-        };
-        latest?: boolean;
-        host?: string;
-        port?: number;
-        targetId?: string;
+        methods?: string | string[];
+        urlPattern?: string;
+        statusCodes?: string | number[];
+        follow?: boolean;
+        f?: boolean;
+        format?: "text" | "json" | "pretty";
       };
 
-      // Try to use proxy first
-      const proxyResult = await this.tryProxyExecution(params);
-      if (proxyResult) {
-        return proxyResult;
-      }
-
-      // Fallback to direct CDP connection
-      return await this.executeDirectCDP(client, params);
+      return await this.executeFollowMode(client, params);
     } catch (error) {
       return {
         success: false,
-        error: error instanceof Error ? error.message : 'Unknown error occurred'
+        error:
+          error instanceof Error ? error.message : "Unknown error occurred",
       };
     }
   }
 
-  /**
-   * Try to execute using proxy server
-   */
-  private async tryProxyExecution(params: any): Promise<CommandResult | null> {
-    try {
-      // Initialize proxy client if not already done
-      if (!this.proxyClient) {
-        this.proxyClient = new ProxyClient();
-      }
-
-      // Check if proxy is available
-      const isProxyAvailable = await this.proxyClient.isProxyAvailable();
-      if (!isProxyAvailable) {
-        // Try to start proxy if needed
-        const proxyStarted = await this.proxyClient.ensureProxyRunning();
-        if (!proxyStarted) {
-          console.warn('⚠️  Proxy server unavailable. Falling back to direct CDP connection.');
-          console.warn('⚠️  Note: Direct connection only captures NEW network requests, not historical data.');
-          return null; // Fallback to direct CDP
-        }
-      }
-
-      // Connect through proxy if not already connected
-      if (!this.proxyClient.getConnectionId()) {
-        const host = params.host || 'localhost';
-        const port = params.port || 9222;
-        await this.proxyClient.connect(host, port, params.targetId);
-      }
-
-      // Prepare filter options for proxy
-      const filter: ProxyNetworkRequestFilter | undefined = params.filter ? {
-        methods: params.filter.methods,
-        urlPattern: params.filter.urlPattern,
-        statusCodes: params.filter.statusCodes,
-        maxRequests: params.latest ? 1 : params.filter.maxRequests,
-        startTime: params.filter.startTime,
-        endTime: params.filter.endTime,
-      } : params.latest ? { maxRequests: 1 } : undefined;
-
-      // Get network requests from proxy
-      const requests = await this.proxyClient.getNetworkRequests(filter);
-
-      // If latest is requested, return single request object instead of array
-      if (params.latest) {
-        const latestRequest = requests.length > 0 ? requests[requests.length - 1] : null;
-        if (!latestRequest) {
-          return {
-            success: true,
-            data: null,
-            dataSource: 'proxy',
-            hasHistoricalData: true
-          };
-        }
-        return {
-          success: true,
-          data: latestRequest,
-          dataSource: 'proxy',
-          hasHistoricalData: true
-        };
-      }
-
-      return {
-        success: true,
-        data: {
-          requests,
-          count: requests.length,
-          isMonitoring: true
-        },
-        dataSource: 'proxy',
-        hasHistoricalData: true
-      };
-    } catch (error) {
-      console.warn('⚠️  Proxy execution failed, falling back to direct CDP:', error instanceof Error ? error.message : error);
-      console.warn('⚠️  Note: Direct connection only captures NEW network requests, not historical data.');
-      return null;
-    }
-  }
-
-  /**
-   * Execute using direct CDP connection (fallback)
-   */
-  private async executeDirectCDP(client: CDPClient, params: any): Promise<CommandResult> {
-    // Initialize network monitor if not already done
+  private async executeFollowMode(
+    client: CDPClient,
+    params: any,
+  ): Promise<CommandResult> {
     if (!this.networkMonitor) {
       this.networkMonitor = new NetworkMonitor(client);
     }
-    
-    // Start monitoring if not already active
-    if (!this.networkMonitor.isActive()) {
-      await this.networkMonitor.startMonitoring();
-    }
 
-    // Prepare filter options
-    const filter: NetworkRequestFilter | undefined = params.filter ? {
-      methods: params.filter.methods,
-      urlPattern: params.filter.urlPattern,
-      statusCodes: params.filter.statusCodes,
-      maxRequests: params.filter.maxRequests,
-      startTime: params.filter.startTime,
-      endTime: params.filter.endTime,
-    } : undefined;
+    await this.networkMonitor.startMonitoring();
 
-    // If latest is requested, get single request
-    if (params.latest) {
-      const latestRequest = this.networkMonitor.getLatestRequest(filter);
-      if (!latestRequest) {
-        return {
-          success: true,
-          data: null,
-          dataSource: 'direct',
-          hasHistoricalData: false
-        };
+    // Normalize comma-separated string params to arrays
+    const methods: string[] = this.parseList(params.methods);
+    const statusCodes: number[] = this.parseList(params.statusCodes)
+      .map(Number)
+      .filter((n) => !isNaN(n));
+    const urlPattern: string | undefined = params.urlPattern;
+    const outputFormat: "text" | "json" | "pretty" = params.format || "text";
+
+    const requestCallback = (request: NetworkRequest) => {
+      if (
+        !this.shouldOutputRequest(request, methods, urlPattern, statusCodes)
+      ) {
+        return;
       }
-      return {
-        success: true,
-        data: latestRequest,
-        dataSource: 'direct',
-        hasHistoricalData: false
-      };
-    }
+      this.outputRequest(request, outputFormat);
+    };
 
-    // Get all network requests
-    const requests = this.networkMonitor.getRequests(filter);
+    this.networkMonitor.onRequest(requestCallback);
+
+    let isShuttingDown = false;
+    const cleanup = async () => {
+      if (isShuttingDown) return;
+      isShuttingDown = true;
+      this.networkMonitor?.offRequest(requestCallback);
+      await this.networkMonitor?.stopMonitoring();
+    };
+
+    const signalHandler = async () => {
+      process.stderr.write("\n");
+      await cleanup();
+      process.exit(0);
+    };
+
+    process.removeAllListeners("SIGINT");
+    process.removeAllListeners("SIGTERM");
+    process.on("SIGINT", signalHandler);
+    process.on("SIGTERM", signalHandler);
+
+    if (outputFormat === "text") {
+      console.log("Following network requests (press Ctrl+C to stop)...\n");
+    }
 
     return {
       success: true,
       data: {
-        requests,
-        count: requests.length,
-        isMonitoring: this.networkMonitor.isActive()
+        message:
+          "Following network requests in real-time. Press Ctrl+C to stop.",
+        isLongRunning: true,
       },
-      dataSource: 'direct',
-      hasHistoricalData: false
-    };
+      isLongRunning: true,
+    } as CommandResult & { isLongRunning?: boolean };
   }
 
-  /**
-   * Get the network monitor instance (for testing purposes)
-   */
-  getNetworkMonitor(): NetworkMonitor | null {
-    return this.networkMonitor;
+  private parseList(value: string | string[] | undefined): string[] {
+    if (!value) return [];
+    if (Array.isArray(value)) return value;
+    return value
+      .split(",")
+      .map((s) => s.trim())
+      .filter(Boolean);
   }
 
-  /**
-   * Set the network monitor instance (for testing purposes)
-   */
-  setNetworkMonitor(monitor: NetworkMonitor): void {
-    this.networkMonitor = monitor;
+  private shouldOutputRequest(
+    request: NetworkRequest,
+    methods: string[],
+    urlPattern: string | undefined,
+    statusCodes: number[],
+  ): boolean {
+    if (
+      methods.length > 0 &&
+      !methods
+        .map((m) => m.toUpperCase())
+        .includes(request.method.toUpperCase())
+    ) {
+      return false;
+    }
+    if (urlPattern) {
+      const pattern = new RegExp(urlPattern, "i");
+      if (!pattern.test(request.url)) return false;
+    }
+    if (
+      statusCodes.length > 0 &&
+      request.status !== undefined &&
+      !statusCodes.includes(request.status)
+    ) {
+      return false;
+    }
+    return true;
+  }
+
+  private outputRequest(
+    request: NetworkRequest,
+    format: "text" | "json" | "pretty",
+  ): void {
+    const status = request.status ?? "???";
+    const method = request.method.toUpperCase().padEnd(7);
+    const time = new Date(request.timestamp).toISOString();
+
+    switch (format) {
+      case "json":
+        console.log(
+          JSON.stringify({
+            method: request.method,
+            url: request.url,
+            status: request.status,
+            timestamp: request.timestamp,
+          }),
+        );
+        break;
+
+      case "pretty": {
+        const statusColor = this.getStatusColor(request.status);
+        console.log(
+          `[${time}] ${method} ${statusColor}${status}\x1b[0m ${request.url}`,
+        );
+        break;
+      }
+
+      case "text":
+      default:
+        console.log(`[${time}] ${method} ${status} ${request.url}`);
+        break;
+    }
+  }
+
+  private getStatusColor(status: number | undefined): string {
+    if (status === undefined || status === 0) return "\x1b[31m"; // red — error/failed
+    if (status >= 500) return "\x1b[31m"; // red
+    if (status >= 400) return "\x1b[33m"; // yellow
+    if (status >= 300) return "\x1b[36m"; // cyan
+    return "\x1b[32m"; // green
+  }
+
+  getHelp(): string {
+    return `network - Follow network requests in real-time
+
+Usage:
+  cdp network [options]
+
+Options:
+  --methods <methods>         Filter by HTTP methods (comma-separated: GET,POST,PUT,DELETE,...)
+  --urlPattern <pattern>      Filter by URL pattern (regex, case-insensitive)
+  --statusCodes <codes>       Filter by HTTP status codes (comma-separated: 200,404,500)
+  --format <format>           Output format: text, json, or pretty (default: text)
+  -f, --follow                Alias flag (follow mode is always active)
+
+Examples:
+  cdp network                                    # Follow all network requests
+  cdp network --methods POST,PUT                 # Follow only POST and PUT requests
+  cdp network --urlPattern "/api/"               # Follow requests matching /\\/api\\//i
+  cdp network --statusCodes 404,500              # Follow requests with error status
+  cdp network --format json                      # Output as JSON (one object per line)
+  cdp network --format pretty                    # Colorized output
+  cdp network --methods GET --urlPattern "/api"  # Combined filters
+
+Note:
+  This command runs continuously and streams network requests in real-time.
+  Each entry is printed when the request fully completes (or fails).
+  Press Ctrl+C to stop. No background process is required.`;
   }
 }

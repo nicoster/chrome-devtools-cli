@@ -1,161 +1,52 @@
-import { ICommandHandler } from '../interfaces/CommandHandler';
-import { CDPClient, CommandResult } from '../types';
-import { ConsoleMonitor, ConsoleMessageFilter } from '../monitors/ConsoleMonitor';
-import { ProxyClient } from '../client/ProxyClient';
-import { ConsoleMessageFilter as ProxyConsoleMessageFilter } from '../proxy/types/ProxyTypes';
+import { ICommandHandler } from "../interfaces/CommandHandler";
+import { CDPClient, CommandResult } from "../types";
+import {
+  ConsoleMonitor,
+  ConsoleMessageFilter,
+} from "../monitors/ConsoleMonitor";
+import { ConsoleMessage } from "../types";
 
 /**
- * Handler for listing console messages
+ * Handler for real-time console log monitoring (follow-only mode)
  */
 export class ListConsoleMessagesHandler implements ICommandHandler {
-  readonly name = 'console';
+  readonly name = "log";
+  readonly aliases = ["console"];
   private consoleMonitor: ConsoleMonitor | null = null;
-  private proxyClient: ProxyClient | null = null;
 
   async execute(client: CDPClient, args: unknown): Promise<CommandResult> {
     try {
       const params = args as {
-        types?: Array<'log' | 'info' | 'warn' | 'error' | 'debug'>;
+        types?: Array<"log" | "info" | "warn" | "error" | "debug">;
         textPattern?: string;
-        maxMessages?: number;
-        startTime?: number;
-        endTime?: number;
-        startMonitoring?: boolean;
-        latest?: boolean;
-        host?: string;
-        port?: number;
-        targetId?: string;
+        follow?: boolean;
+        f?: boolean;
+        format?: "text" | "json" | "pretty";
       };
 
-      // Try to use proxy first
-      const proxyResult = await this.tryProxyExecution(params);
-      if (proxyResult) {
-        return proxyResult;
-      }
-
-      // Fallback to direct CDP connection
-      return await this.executeDirectCDP(client, params);
+      return await this.executeFollowMode(client, params);
     } catch (error) {
       return {
         success: false,
-        error: error instanceof Error ? error.message : 'Unknown error occurred'
+        error:
+          error instanceof Error ? error.message : "Unknown error occurred",
       };
     }
   }
 
   /**
-   * Try to execute using proxy server
+   * Execute in follow mode (real-time tail) — the only supported mode
    */
-  private async tryProxyExecution(params: any): Promise<CommandResult | null> {
-    try {
-      // Initialize proxy client if not already done
-      if (!this.proxyClient) {
-        this.proxyClient = new ProxyClient();
-      }
-
-      // Proxy should already be ready thanks to ProxyManager in CLIApplication
-      // Just check if it's available and try to use it
-      const isProxyAvailable = await this.proxyClient.isProxyAvailable();
-      
-      if (!isProxyAvailable) {
-        console.warn('⚠️  Proxy server unavailable. Falling back to direct CDP connection.');
-        console.warn('⚠️  Note: Direct connection only captures NEW console messages, not historical data.');
-        return null; // Fallback to direct CDP
-      }
-
-      // Connect through proxy if not already connected
-      if (!this.proxyClient.getConnectionId()) {
-        const host = params.host || 'localhost';
-        const port = params.port || 9222;
-        await this.proxyClient.connect(host, port, params.targetId);
-      }
-
-      // Build filter for proxy
-      const filter: ProxyConsoleMessageFilter = {};
-      if (params.types && params.types.length > 0) {
-        filter.types = params.types;
-      }
-      if (params.textPattern) {
-        filter.textPattern = params.textPattern;
-      }
-      if (params.latest) {
-        filter.maxMessages = 1;
-      } else if (params.maxMessages && params.maxMessages > 0) {
-        filter.maxMessages = params.maxMessages;
-      }
-      if (params.startTime) {
-        filter.startTime = params.startTime;
-      }
-      if (params.endTime) {
-        filter.endTime = params.endTime;
-      }
-
-      // Get messages from proxy
-      const messages = await this.proxyClient.getConsoleMessages(filter);
-
-      // If latest is requested, return single message object instead of array
-      if (params.latest) {
-        const latestMessage = messages.length > 0 ? messages[messages.length - 1] : null;
-        if (!latestMessage) {
-          return {
-            success: true,
-            data: null,
-            dataSource: 'proxy',
-            hasHistoricalData: true
-          };
-        }
-        return {
-          success: true,
-          data: {
-            type: latestMessage.type,
-            text: latestMessage.text,
-            args: latestMessage.args,
-            timestamp: latestMessage.timestamp,
-            stackTrace: latestMessage.stackTrace
-          },
-          dataSource: 'proxy',
-          hasHistoricalData: true
-        };
-      }
-
-      return {
-        success: true,
-        data: {
-          messages: messages.map(msg => ({
-            type: msg.type,
-            text: msg.text,
-            args: msg.args,
-            timestamp: msg.timestamp,
-            stackTrace: msg.stackTrace
-          })),
-          totalCount: messages.length,
-          isMonitoring: true
-        },
-        dataSource: 'proxy',
-        hasHistoricalData: true
-      };
-    } catch (error) {
-      console.warn('⚠️  Proxy execution failed, falling back to direct CDP:', error instanceof Error ? error.message : error);
-      console.warn('⚠️  Note: Direct connection only captures NEW console messages, not historical data.');
-      return null;
-    }
-  }
-
-  /**
-   * Execute using direct CDP connection (fallback)
-   */
-  private async executeDirectCDP(client: CDPClient, params: any): Promise<CommandResult> {
-    // Initialize console monitor if not already done
+  private async executeFollowMode(
+    client: CDPClient,
+    params: any,
+  ): Promise<CommandResult> {
     if (!this.consoleMonitor) {
       this.consoleMonitor = new ConsoleMonitor(client);
     }
 
-    // Start monitoring if requested or if not already monitoring
-    if (params.startMonitoring || !this.consoleMonitor.isActive()) {
-      await this.consoleMonitor.startMonitoring();
-    }
+    await this.consoleMonitor.startMonitoring();
 
-    // Build filter
     const filter: ConsoleMessageFilter = {};
     if (params.types && params.types.length > 0) {
       filter.types = params.types;
@@ -163,140 +54,191 @@ export class ListConsoleMessagesHandler implements ICommandHandler {
     if (params.textPattern) {
       filter.textPattern = params.textPattern;
     }
-    if (params.maxMessages && params.maxMessages > 0) {
-      filter.maxMessages = params.maxMessages;
-    }
-    if (params.startTime) {
-      filter.startTime = params.startTime;
-    }
-    if (params.endTime) {
-      filter.endTime = params.endTime;
-    }
 
-    // If latest is requested, get single message
-    if (params.latest) {
-      const latestMessage = this.consoleMonitor.getLatestMessage(filter);
-      if (!latestMessage) {
-        return {
-          success: true,
-          data: null,
-          dataSource: 'direct',
-          hasHistoricalData: false
-        };
+    const outputFormat = params.format || "text";
+
+    const messageCallback = (message: ConsoleMessage) => {
+      if (!this.shouldOutputMessage(message, filter)) {
+        return;
       }
-      return {
-        success: true,
-        data: {
-          type: latestMessage.type,
-          text: latestMessage.text,
-          args: latestMessage.args,
-          timestamp: latestMessage.timestamp,
-          stackTrace: latestMessage.stackTrace
-        },
-        dataSource: 'direct',
-        hasHistoricalData: false
-      };
-    }
+      this.outputMessage(message, outputFormat);
+    };
 
-    // Get filtered messages
-    const messages = this.consoleMonitor.getMessages(filter);
+    this.consoleMonitor.onMessage(messageCallback);
+
+    let isShuttingDown = false;
+    const cleanup = async () => {
+      if (isShuttingDown) return;
+      isShuttingDown = true;
+      this.consoleMonitor?.offMessage(messageCallback);
+      await this.consoleMonitor?.stopMonitoring();
+    };
+
+    const signalHandler = async () => {
+      process.stderr.write("\n");
+      await cleanup();
+      process.exit(0);
+    };
+
+    process.removeAllListeners("SIGINT");
+    process.removeAllListeners("SIGTERM");
+    process.on("SIGINT", signalHandler);
+    process.on("SIGTERM", signalHandler);
+
+    if (outputFormat === "text") {
+      console.log("Following console messages (press Ctrl+C to stop)...\n");
+    }
 
     return {
       success: true,
       data: {
-        messages: messages.map(msg => ({
-          type: msg.type,
-          text: msg.text,
-          args: msg.args,
-          timestamp: msg.timestamp,
-          stackTrace: msg.stackTrace
-        })),
-        totalCount: messages.length,
-        isMonitoring: this.consoleMonitor.isActive()
+        message:
+          "Following console messages in real-time. Press Ctrl+C to stop.",
+        isLongRunning: true,
       },
-      dataSource: 'direct',
-      hasHistoricalData: false
-    };
+      isLongRunning: true,
+    } as CommandResult & { isLongRunning?: boolean };
+  }
+
+  private shouldOutputMessage(
+    message: ConsoleMessage,
+    filter: ConsoleMessageFilter,
+  ): boolean {
+    if (filter.types && filter.types.length > 0) {
+      if (!filter.types.includes(message.type)) {
+        return false;
+      }
+    }
+    if (filter.textPattern) {
+      const pattern = new RegExp(filter.textPattern, "i");
+      if (!pattern.test(message.text)) {
+        return false;
+      }
+    }
+    return true;
+  }
+
+  private outputMessage(
+    message: ConsoleMessage,
+    format: "text" | "json" | "pretty",
+  ): void {
+    switch (format) {
+      case "json":
+        console.log(
+          JSON.stringify({
+            type: message.type,
+            text: message.text,
+            timestamp: message.timestamp,
+            args: message.args,
+            stackTrace: message.stackTrace,
+          }),
+        );
+        break;
+
+      case "pretty": {
+        const timestamp = new Date(message.timestamp).toISOString();
+        const typeColor = this.getTypeColor(message.type);
+        const typeLabel = message.type.toUpperCase().padEnd(5);
+        console.log(
+          `[${timestamp}] ${typeColor}${typeLabel}\x1b[0m ${message.text}`,
+        );
+        if (message.stackTrace && message.stackTrace.length > 0) {
+          const frame = message.stackTrace[0];
+          console.log(
+            `  at ${frame.functionName} (${frame.url}:${frame.lineNumber}:${frame.columnNumber})`,
+          );
+        }
+        break;
+      }
+
+      case "text":
+      default: {
+        const time = new Date(message.timestamp).toISOString();
+        const type = message.type.toUpperCase().padEnd(5);
+        console.log(`[${time}] ${type} ${message.text}`);
+        break;
+      }
+    }
+  }
+
+  private getTypeColor(type: string): string {
+    switch (type) {
+      case "error":
+        return "\x1b[31m";
+      case "warn":
+        return "\x1b[33m";
+      case "info":
+        return "\x1b[36m";
+      case "debug":
+        return "\x1b[90m";
+      default:
+        return "\x1b[0m";
+    }
   }
 
   validateArgs(args: unknown): boolean {
-    if (!args || typeof args !== 'object') {
-      return true; // No args is valid
+    if (!args || typeof args !== "object") {
+      return true;
     }
 
     const params = args as Record<string, unknown>;
-    
-    // Validate types if provided
+
     if (params.types !== undefined) {
-      if (!Array.isArray(params.types)) {
-        return false;
-      }
-      const validTypes = ['log', 'info', 'warn', 'error', 'debug'];
+      if (!Array.isArray(params.types)) return false;
+      const validTypes = ["log", "info", "warn", "error", "debug"];
       for (const type of params.types) {
-        if (typeof type !== 'string' || !validTypes.includes(type)) {
+        if (typeof type !== "string" || !validTypes.includes(type))
           return false;
-        }
       }
     }
 
-    // Validate textPattern if provided
-    if (params.textPattern !== undefined && typeof params.textPattern !== 'string') {
+    if (
+      params.textPattern !== undefined &&
+      typeof params.textPattern !== "string"
+    ) {
       return false;
     }
 
-    // Validate maxMessages if provided
-    if (params.maxMessages !== undefined) {
-      if (typeof params.maxMessages !== 'number' || params.maxMessages <= 0) {
+    if (params.format !== undefined) {
+      const validFormats = ["text", "json", "pretty"];
+      if (
+        typeof params.format !== "string" ||
+        !validFormats.includes(params.format)
+      ) {
         return false;
       }
-    }
-
-    // Validate timestamps if provided
-    if (params.startTime !== undefined && typeof params.startTime !== 'number') {
-      return false;
-    }
-    if (params.endTime !== undefined && typeof params.endTime !== 'number') {
-      return false;
-    }
-
-    // Validate startMonitoring if provided
-    if (params.startMonitoring !== undefined && typeof params.startMonitoring !== 'boolean') {
-      return false;
-    }
-
-    // Validate latest if provided
-    if (params.latest !== undefined && typeof params.latest !== 'boolean') {
-      return false;
     }
 
     return true;
   }
 
   getHelp(): string {
-    return `console - List console messages
-    
-Usage:
-  console [options]
-  
-Options:
-  --latest                Get only the latest console message
-  --types <types>         Filter by message types (comma-separated: log,info,warn,error,debug)
-  --textPattern <pattern> Filter by text pattern (regex)
-  --maxMessages <count>   Maximum number of messages to return
-  --startTime <timestamp> Filter messages after this timestamp
-  --endTime <timestamp>   Filter messages before this timestamp
-  --startMonitoring       Start monitoring if not already active
-  
-Examples:
-  console
-  console --latest
-  console --types error,warn
-  console --latest --type error
-  console --textPattern "API" --maxMessages 10
-  console --startTime 1640995200000
+    return `log - Follow console messages in real-time
 
-Note: This command now uses the proxy server when available, providing access to
-historical console messages from connection establishment. When proxy is unavailable,
-falls back to direct CDP connection (captures only new messages).`;
+Usage:
+  cdp log [options]
+
+Options:
+  --types <types>         Filter by message types (comma-separated: log,info,warn,error,debug)
+  --textPattern <pattern> Filter by text pattern (regex, case-insensitive)
+  --format <format>       Output format: text, json, or pretty (default: text)
+  -f, --follow            Alias flag (follow mode is always active)
+
+Examples:
+  cdp log                                    # Follow all console messages
+  cdp log --types error,warn                 # Follow only errors and warnings
+  cdp log --textPattern "API"                # Follow messages matching /API/i
+  cdp log --format json                      # Output as JSON (one object per line)
+  cdp log --format pretty                    # Colorized output
+  cdp log --types error --textPattern "404"  # Combined filters
+
+Note:
+  This command runs continuously and streams console messages in real-time.
+  Press Ctrl+C to stop. The command connects directly to Chrome via CDP —
+  no background process is required. Only messages arriving after the command
+  starts will be shown.
+
+Aliases:
+  cdp console   (deprecated, use cdp log)`;
   }
 }

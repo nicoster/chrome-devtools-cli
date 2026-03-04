@@ -37,7 +37,7 @@ describe('CLIApplication Integration', () => {
       
       // Test that help generation works
       const helpText = cli.showHelp();
-      expect(helpText).toContain('CHROME DEVTOOLS CLI');
+      expect(helpText).toContain('CDP - Chrome DevTools Protocol CLI');
       expect(helpText).toContain('AVAILABLE COMMANDS');
     });
 

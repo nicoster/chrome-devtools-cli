@@ -68,7 +68,7 @@ describe('HelpSystem', () => {
     it('should generate comprehensive overview help', () => {
       const help = helpSystem.generateGeneralHelp();
       
-      expect(help).toContain('CHROME DEVTOOLS CLI');
+      expect(help).toContain('CDP - Chrome DevTools Protocol CLI');
       expect(help).toContain('USAGE');
       expect(help).toContain('GLOBAL OPTIONS');
       expect(help).toContain('AVAILABLE COMMANDS');
@@ -158,7 +158,7 @@ describe('HelpSystem', () => {
       expect(help).toContain('Verify the CSS selector');
       expect(help).toContain('DevTools → Console');
       expect(help).toContain('Wait for the page to load');
-      expect(help).toContain('chrome-cdp-cli help click');
+      expect(help).toContain('cdp help click');
     });
 
     it('should provide specific suggestions for timeout errors', () => {
@@ -180,7 +180,7 @@ describe('HelpSystem', () => {
     it('should provide command-specific suggestions', () => {
       const help = helpSystem.generateContextualHelp('some error', 'eval');
       
-      expect(help).toContain('chrome-cdp-cli help eval');
+      expect(help).toContain('cdp help eval');
     });
 
     it('should provide general suggestions when no specific match found', () => {

@@ -19,6 +19,7 @@ export class ConsoleMonitor {
   private messages: ConsoleMessage[] = [];
   private isMonitoring = false;
   private messageHandler: ((params: unknown) => void) | null = null;
+  private messageCallbacks: Array<(message: ConsoleMessage) => void> = [];
 
   constructor(client: CDPClient) {
     this.client = client;
@@ -145,6 +146,30 @@ export class ConsoleMonitor {
   }
 
   /**
+   * Register a callback to be called when a new console message is received
+   */
+  onMessage(callback: (message: ConsoleMessage) => void): void {
+    this.messageCallbacks.push(callback);
+  }
+
+  /**
+   * Unregister a message callback
+   */
+  offMessage(callback: (message: ConsoleMessage) => void): void {
+    const index = this.messageCallbacks.indexOf(callback);
+    if (index > -1) {
+      this.messageCallbacks.splice(index, 1);
+    }
+  }
+
+  /**
+   * Clear all message callbacks
+   */
+  clearCallbacks(): void {
+    this.messageCallbacks = [];
+  }
+
+  /**
    * Handle incoming console message events from CDP
    */
   private handleConsoleMessage(params: unknown): void {
@@ -184,6 +209,15 @@ export class ConsoleMonitor {
       if (this.messages.length > 1000) {
         this.messages = this.messages.slice(-1000);
       }
+
+      // Notify callbacks
+      this.messageCallbacks.forEach(callback => {
+        try {
+          callback(message);
+        } catch (error) {
+          console.error('Error in message callback:', error);
+        }
+      });
     } catch (error) {
       console.error('Error handling console message:', error);
     }
@@ -227,6 +261,15 @@ export class ConsoleMonitor {
       if (this.messages.length > 1000) {
         this.messages = this.messages.slice(-1000);
       }
+
+      // Notify callbacks
+      this.messageCallbacks.forEach(callback => {
+        try {
+          callback(message);
+        } catch (error) {
+          console.error('Error in message callback:', error);
+        }
+      });
     } catch (error) {
       console.error('Error handling log entry:', error);
     }

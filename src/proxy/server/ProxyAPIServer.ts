@@ -545,13 +545,18 @@ export class ProxyAPIServer {
    */
   private async handleServerHealth(
     _req: express.Request,
-    res: express.Response
+    res: express.Response,
+    next: express.NextFunction
   ): Promise<void> {
-    res.json({
-      success: true,
-      data: { status: 'healthy' },
-      timestamp: Date.now()
-    });
+    try {
+      res.json({
+        success: true,
+        data: { status: 'healthy' },
+        timestamp: Date.now()
+      });
+    } catch (error) {
+      next(error);
+    }
   }
 
   /**

@@ -1,13 +1,13 @@
-import { 
-  IArgumentParser, 
-  CommandDefinition, 
-  OptionDefinition, 
-  ArgumentDefinition, 
-  ParseResult, 
-  ParsedArguments, 
-  ValidationResult
-} from './interfaces/ArgumentParser';
-import { HelpSystem } from './HelpSystem';
+import {
+  IArgumentParser,
+  CommandDefinition,
+  OptionDefinition,
+  ArgumentDefinition,
+  ParseResult,
+  ParsedArguments,
+  ValidationResult,
+} from "./interfaces/ArgumentParser";
+import { HelpSystem } from "./HelpSystem";
 
 /**
  * Enhanced argument parser with schema validation and consistent option handling
@@ -17,6 +17,71 @@ export class ArgumentParser implements IArgumentParser {
   private commands: Map<string, CommandDefinition> = new Map();
   private aliases: Map<string, string> = new Map();
   private helpSystem: HelpSystem;
+
+  private readonly globalOptionDefs: OptionDefinition[] = [
+    {
+      name: "host",
+      short: "h",
+      type: "string",
+      description: "Chrome host address",
+      default: "localhost",
+    },
+    {
+      name: "port",
+      short: "p",
+      type: "number",
+      description: "DevTools port",
+      default: 9222,
+    },
+    {
+      name: "format",
+      short: "f",
+      type: "string",
+      description: "Output format",
+      choices: ["json", "text"],
+      default: "text",
+    },
+    {
+      name: "verbose",
+      short: "v",
+      type: "boolean",
+      description: "Enable verbose logging",
+      default: false,
+    },
+    {
+      name: "quiet",
+      short: "q",
+      type: "boolean",
+      description: "Enable quiet mode",
+      default: false,
+    },
+    {
+      name: "timeout",
+      short: "t",
+      type: "number",
+      description: "Command timeout in milliseconds",
+      default: 30000,
+    },
+    {
+      name: "debug",
+      short: "d",
+      type: "boolean",
+      description: "Enable debug logging",
+      default: false,
+    },
+    {
+      name: "config",
+      short: "c",
+      type: "string",
+      description: "Configuration file path",
+    },
+    {
+      name: "target-index",
+      short: "i",
+      type: "number",
+      description: "Target page index (1-based, excludes DevTools windows)",
+    },
+  ];
 
   constructor() {
     this.helpSystem = new HelpSystem(undefined, this);
@@ -29,33 +94,33 @@ export class ArgumentParser implements IArgumentParser {
     try {
       // Safely extract arguments, ensuring we have a valid array
       if (!Array.isArray(argv)) {
-        return this.createParseResult('help', {}, [], true);
+        return this.createParseResult("help", {}, [], true);
       }
-      
+
       // Ensure we have at least 2 elements before slicing
       // Use Math.max to ensure sliceStart is at least 0
       const sliceStart = Math.max(0, Math.min(2, argv.length));
       const args = argv.slice(sliceStart); // Remove node and script path
-      
+
       if (args.length === 0) {
-        return this.createParseResult('help', {}, [], true);
+        return this.createParseResult("help", {}, [], true);
       }
 
       // Handle help flag early (before parsing)
-      if (args.includes('--help')) {
-        return this.createParseResult('help', {}, [], true);
+      if (args.includes("--help")) {
+        return this.createParseResult("help", {}, [], true);
       }
 
       // Handle version flag
-      if (args.includes('--version') || args.includes('-V')) {
-        return this.createParseResult('version', {}, [], true);
+      if (args.includes("--version") || args.includes("-V")) {
+        return this.createParseResult("version", {}, [], true);
       }
 
       // Parse global options and command
       let globalOptions: Record<string, unknown>;
       let commandName: string;
       let commandArgs: string[];
-      
+
       try {
         const parseResult = this.parseGlobalAndCommand(args);
         globalOptions = parseResult.globalOptions;
@@ -63,69 +128,84 @@ export class ArgumentParser implements IArgumentParser {
         commandArgs = parseResult.commandArgs;
       } catch (parseError) {
         // If parsing fails, check if it's a help request
-        if (args.some(arg => arg === '--help' || arg === 'help')) {
-          return this.createParseResult('help', {}, [], true);
+        if (args.some((arg) => arg === "--help" || arg === "help")) {
+          return this.createParseResult("help", {}, [], true);
         }
         throw parseError;
       }
-      
+
       // Resolve command name (handle aliases)
       const resolvedCommand = this.resolveCommandName(commandName);
-      
+
       // For help command, always succeed even if not registered
-      if (resolvedCommand === 'help') {
-        return this.createParseResult(resolvedCommand, globalOptions, [], true, commandArgs);
+      if (resolvedCommand === "help") {
+        return this.createParseResult(
+          resolvedCommand,
+          globalOptions,
+          [],
+          true,
+          commandArgs,
+        );
       }
-      
+
       // Get command definition
       const commandDef = this.commands.get(resolvedCommand);
       if (!commandDef) {
         return this.createParseResult(
-          resolvedCommand, 
-          globalOptions, 
-          [`Unknown command: ${commandName}. Use 'help' to see available commands.`],
-          false
+          resolvedCommand,
+          globalOptions,
+          [
+            `Unknown command: ${commandName}. Use 'help' to see available commands.`,
+          ],
+          false,
         );
       }
 
       // Parse command-specific arguments
       const parseResult = this.parseCommandArguments(commandDef, commandArgs);
-      
-      // Merge global options with command options
-      const allOptions = { ...globalOptions, ...parseResult.options };
-      
+
+      // Merge: late global options (placed after command name) override early global defaults,
+      // then command-specific options take final precedence.
+      const allOptions = {
+        ...globalOptions,
+        ...parseResult.globalOptions,
+        ...parseResult.options,
+      };
+
       return this.createParseResult(
         resolvedCommand,
         allOptions,
         parseResult.errors,
         parseResult.errors.length === 0,
-        parseResult.arguments
+        parseResult.arguments,
       );
-
     } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : String(error);
+      const errorMessage =
+        error instanceof Error ? error.message : String(error);
       // Log the full error for debugging
       if (process.env.DEBUG) {
-        console.error('Parse error details:', error);
+        console.error("Parse error details:", error);
         if (error instanceof Error && error.stack) {
-          console.error('Stack trace:', error.stack);
+          console.error("Stack trace:", error.stack);
         }
       }
       // If error is "Invalid count value", it might be from array.slice()
       // Try to provide a more helpful error message
-      if (errorMessage.includes('Invalid count value')) {
+      if (errorMessage.includes("Invalid count value")) {
         return this.createParseResult(
-          'help',
+          "help",
           {},
-          [`Parse error: Invalid argument format. Please check your command syntax.`],
-          false
+          [
+            `Parse error: Invalid argument format. Please check your command syntax.`,
+          ],
+          false,
         );
       }
       return this.createParseResult(
-        'help',
+        "help",
         {},
         [`Parse error: ${errorMessage}`],
-        false
+        false,
       );
     }
   }
@@ -137,16 +217,20 @@ export class ArgumentParser implements IArgumentParser {
     // Validate command definition
     const validation = this.validateCommandDefinition(command);
     if (!validation.valid) {
-      throw new Error(`Invalid command definition: ${validation.errors.join(', ')}`);
+      throw new Error(
+        `Invalid command definition: ${validation.errors.join(", ")}`,
+      );
     }
 
     // Register main command name
     this.commands.set(command.name, command);
-    
+
     // Register aliases
     for (const alias of command.aliases) {
       if (this.aliases.has(alias)) {
-        throw new Error(`Alias '${alias}' is already registered for command '${this.aliases.get(alias)}'`);
+        throw new Error(
+          `Alias '${alias}' is already registered for command '${this.aliases.get(alias)}'`,
+        );
       }
       this.aliases.set(alias, command.name);
     }
@@ -158,7 +242,7 @@ export class ArgumentParser implements IArgumentParser {
   generateHelp(command?: string): string {
     if (command) {
       // Check if it's a help topic request
-      if (command.startsWith('topic ')) {
+      if (command.startsWith("topic ")) {
         const topicName = command.substring(6);
         return this.helpSystem.generateTopicHelp(topicName);
       }
@@ -176,7 +260,7 @@ export class ArgumentParser implements IArgumentParser {
       return {
         valid: false,
         errors: [`Unknown command: ${command}`],
-        warnings: []
+        warnings: [],
       };
     }
 
@@ -191,17 +275,31 @@ export class ArgumentParser implements IArgumentParser {
     }
 
     // Validate required arguments
-    const requiredArgs = commandDef.arguments.filter(arg => arg.required);
+    const requiredArgs = commandDef.arguments.filter((arg) => arg.required);
     if (args.arguments.length < requiredArgs.length) {
-      const providedCount = Math.max(0, Math.min(args.arguments.length, requiredArgs.length));
+      const providedCount = Math.max(
+        0,
+        Math.min(args.arguments.length, requiredArgs.length),
+      );
       const missingCount = Math.max(0, requiredArgs.length - providedCount);
       if (missingCount > 0) {
         const startIndex = Math.max(0, providedCount);
-        const endIndex = Math.min(requiredArgs.length, startIndex + missingCount);
-        if (startIndex < endIndex && startIndex >= 0 && endIndex <= requiredArgs.length) {
-          const missingArgs = requiredArgs.slice(startIndex, endIndex).map(arg => arg.name);
+        const endIndex = Math.min(
+          requiredArgs.length,
+          startIndex + missingCount,
+        );
+        if (
+          startIndex < endIndex &&
+          startIndex >= 0 &&
+          endIndex <= requiredArgs.length
+        ) {
+          const missingArgs = requiredArgs
+            .slice(startIndex, endIndex)
+            .map((arg) => arg.name);
           if (missingArgs.length > 0) {
-            errors.push(`Missing required arguments: ${missingArgs.join(', ')}`);
+            errors.push(
+              `Missing required arguments: ${missingArgs.join(", ")}`,
+            );
           }
         }
       }
@@ -209,7 +307,9 @@ export class ArgumentParser implements IArgumentParser {
 
     // Validate option types and constraints
     for (const [optionName, value] of Object.entries(args.options)) {
-      const optionDef = commandDef.options.find(opt => opt.name === optionName);
+      const optionDef = commandDef.options.find(
+        (opt) => opt.name === optionName,
+      );
       if (optionDef) {
         const optionValidation = this.validateOptionValue(optionDef, value);
         if (!optionValidation.valid) {
@@ -223,7 +323,10 @@ export class ArgumentParser implements IArgumentParser {
     for (let i = 0; i < args.arguments.length; i++) {
       const argDef = commandDef.arguments[i];
       if (argDef) {
-        const argValidation = this.validateArgumentValue(argDef, args.arguments[i]);
+        const argValidation = this.validateArgumentValue(
+          argDef,
+          args.arguments[i],
+        );
         if (!argValidation.valid) {
           errors.push(...argValidation.errors);
         }
@@ -234,7 +337,7 @@ export class ArgumentParser implements IArgumentParser {
     return {
       valid: errors.length === 0,
       errors,
-      warnings
+      warnings,
     };
   }
 
@@ -247,33 +350,28 @@ export class ArgumentParser implements IArgumentParser {
     commandArgs: string[];
   } {
     // Check for help flag first, before any parsing
-    if (args.includes('--help')) {
-      return { globalOptions: {}, commandName: 'help', commandArgs: [] };
+    if (args.includes("--help")) {
+      return { globalOptions: {}, commandName: "help", commandArgs: [] };
     }
 
     const globalOptions: Record<string, unknown> = {};
-    let commandName = 'help';
+    let commandName = "help";
     let commandArgs: string[] = [];
     let i = 0;
 
-    // Global option definitions
-    const globalOptionDefs: OptionDefinition[] = [
-      { name: 'host', short: 'h', type: 'string', description: 'Chrome host address', default: 'localhost' },
-      { name: 'port', short: 'p', type: 'number', description: 'DevTools port', default: 9222 },
-      { name: 'format', short: 'f', type: 'string', description: 'Output format', choices: ['json', 'text'], default: 'text' },
-      { name: 'verbose', short: 'v', type: 'boolean', description: 'Enable verbose logging', default: false },
-      { name: 'quiet', short: 'q', type: 'boolean', description: 'Enable quiet mode', default: false },
-      { name: 'timeout', short: 't', type: 'number', description: 'Command timeout in milliseconds', default: 30000 },
-      { name: 'debug', short: 'd', type: 'boolean', description: 'Enable debug logging', default: false },
-      { name: 'config', short: 'c', type: 'string', description: 'Configuration file path' },
-      { name: 'target-index', type: 'number', description: 'Target page index (1-based, excludes DevTools windows)' }
-    ];
+    // Use class-level global option definitions
+    const globalOptionDefs = this.globalOptionDefs;
 
     while (i < args.length) {
       const arg = args[i];
 
-      if (arg.startsWith('--')) {
-        const { option, value, consumed } = this.parseLongOption(arg, args, i, globalOptionDefs);
+      if (arg.startsWith("--")) {
+        const { option, value, consumed } = this.parseLongOption(
+          arg,
+          args,
+          i,
+          globalOptionDefs,
+        );
         if (option) {
           globalOptions[option.name] = value;
           const validConsumed = Math.max(1, Math.min(consumed, 2));
@@ -289,8 +387,13 @@ export class ArgumentParser implements IArgumentParser {
           }
           break;
         }
-      } else if (arg.startsWith('-') && arg.length > 1) {
-        const { option, value, consumed } = this.parseShortOption(arg, args, i, globalOptionDefs);
+      } else if (arg.startsWith("-") && arg.length > 1) {
+        const { option, value, consumed } = this.parseShortOption(
+          arg,
+          args,
+          i,
+          globalOptionDefs,
+        );
         if (option) {
           globalOptions[option.name] = value;
           const validConsumed = Math.max(1, Math.min(consumed || 1, 2));
@@ -326,17 +429,17 @@ export class ArgumentParser implements IArgumentParser {
    * Parse long option (--option or --option=value or --no-option)
    */
   private parseLongOption(
-    arg: string, 
-    args: string[], 
-    index: number, 
-    optionDefs: OptionDefinition[]
+    arg: string,
+    args: string[],
+    index: number,
+    optionDefs: OptionDefinition[],
   ): { option: OptionDefinition | null; value: unknown; consumed: number } {
     let optionName = arg.substring(2);
     let value: unknown;
     let consumed = 1;
 
     // Handle --option=value format
-    const equalIndex = optionName.indexOf('=');
+    const equalIndex = optionName.indexOf("=");
     if (equalIndex !== -1) {
       value = optionName.substring(equalIndex + 1);
       optionName = optionName.substring(0, equalIndex);
@@ -344,23 +447,23 @@ export class ArgumentParser implements IArgumentParser {
 
     // Handle boolean negation (--no-option)
     let isNegated = false;
-    if (optionName.startsWith('no-')) {
+    if (optionName.startsWith("no-")) {
       isNegated = true;
       optionName = optionName.substring(3);
     }
 
     // Find option definition
-    const optionDef = optionDefs.find(opt => opt.name === optionName);
+    const optionDef = optionDefs.find((opt) => opt.name === optionName);
     if (!optionDef) {
       return { option: null, value: null, consumed: 0 };
     }
 
     // Handle boolean options
-    if (optionDef.type === 'boolean') {
+    if (optionDef.type === "boolean") {
       value = !isNegated;
     } else if (value === undefined) {
       // Get value from next argument
-      if (index + 1 < args.length && !args[index + 1].startsWith('-')) {
+      if (index + 1 < args.length && !args[index + 1].startsWith("-")) {
         value = args[index + 1];
         consumed = 2;
       } else {
@@ -378,20 +481,20 @@ export class ArgumentParser implements IArgumentParser {
    * Parse short option (-o or -o value)
    */
   private parseShortOption(
-    arg: string, 
-    args: string[], 
-    index: number, 
-    optionDefs: OptionDefinition[]
+    arg: string,
+    args: string[],
+    index: number,
+    optionDefs: OptionDefinition[],
   ): { option: OptionDefinition | null; value: unknown; consumed: number } {
     const shortName = arg.substring(1);
-    
+
     // Only match single character short options (e.g., -h, -p, not -help)
     if (shortName.length > 1) {
       return { option: null, value: null, consumed: 0 };
     }
-    
+
     // Find option definition by short name
-    const optionDef = optionDefs.find(opt => opt.short === shortName);
+    const optionDef = optionDefs.find((opt) => opt.short === shortName);
     if (!optionDef) {
       return { option: null, value: null, consumed: 0 };
     }
@@ -400,11 +503,11 @@ export class ArgumentParser implements IArgumentParser {
     let consumed = 1;
 
     // Handle boolean options
-    if (optionDef.type === 'boolean') {
+    if (optionDef.type === "boolean") {
       value = true;
     } else {
       // Get value from next argument
-      if (index + 1 < args.length && !args[index + 1].startsWith('-')) {
+      if (index + 1 < args.length && !args[index + 1].startsWith("-")) {
         value = args[index + 1];
         consumed = 2;
       } else {
@@ -416,7 +519,9 @@ export class ArgumentParser implements IArgumentParser {
     try {
       value = this.convertOptionValue(optionDef, value);
     } catch (error) {
-      throw new Error(`Invalid value for option -${shortName}: ${error instanceof Error ? error.message : String(error)}`);
+      throw new Error(
+        `Invalid value for option -${shortName}: ${error instanceof Error ? error.message : String(error)}`,
+      );
     }
 
     // Ensure consumed is valid
@@ -430,12 +535,17 @@ export class ArgumentParser implements IArgumentParser {
   /**
    * Parse command-specific arguments and options
    */
-  private parseCommandArguments(commandDef: CommandDefinition, args: string[]): {
+  private parseCommandArguments(
+    commandDef: CommandDefinition,
+    args: string[],
+  ): {
     options: Record<string, unknown>;
+    globalOptions: Record<string, unknown>;
     arguments: unknown[];
     errors: string[];
   } {
     const options: Record<string, unknown> = {};
+    const lateGlobalOptions: Record<string, unknown> = {};
     const arguments_: unknown[] = [];
     const errors: string[] = [];
     let i = 0;
@@ -443,37 +553,61 @@ export class ArgumentParser implements IArgumentParser {
     while (i < args.length) {
       const arg = args[i];
 
-      if (arg.startsWith('--')) {
+      if (arg.startsWith("--")) {
         try {
-          const { option, value, consumed } = this.parseLongOption(arg, args, i, commandDef.options);
+          const { option, value, consumed } = this.parseLongOption(
+            arg,
+            args,
+            i,
+            commandDef.options,
+          );
           if (option) {
             options[option.name] = value;
-            if (consumed > 0) {
-              i += consumed;
+            i += consumed > 0 ? consumed : 1;
+          } else {
+            // Unknown to command — check if it's a global option placed after command name
+            const {
+              option: gOpt,
+              value: gVal,
+              consumed: gConsumed,
+            } = this.parseLongOption(arg, args, i, this.globalOptionDefs);
+            if (gOpt) {
+              lateGlobalOptions[gOpt.name] = gVal;
+              i += gConsumed > 0 ? gConsumed : 1;
             } else {
+              errors.push(`Unknown option: ${arg}`);
               i++;
             }
-          } else {
-            errors.push(`Unknown option: ${arg}`);
-            i++;
           }
         } catch (error) {
           errors.push(error instanceof Error ? error.message : String(error));
           i++;
         }
-      } else if (arg.startsWith('-') && arg.length > 1) {
+      } else if (arg.startsWith("-") && arg.length > 1) {
         try {
-          const { option, value, consumed } = this.parseShortOption(arg, args, i, commandDef.options);
+          const { option, value, consumed } = this.parseShortOption(
+            arg,
+            args,
+            i,
+            commandDef.options,
+          );
           if (option) {
             options[option.name] = value;
-            if (consumed > 0) {
-              i += consumed;
+            i += consumed > 0 ? consumed : 1;
+          } else {
+            // Unknown to command — check if it's a global short option
+            const {
+              option: gOpt,
+              value: gVal,
+              consumed: gConsumed,
+            } = this.parseShortOption(arg, args, i, this.globalOptionDefs);
+            if (gOpt) {
+              lateGlobalOptions[gOpt.name] = gVal;
+              i += gConsumed > 0 ? gConsumed : 1;
             } else {
+              errors.push(`Unknown option: ${arg}`);
               i++;
             }
-          } else {
-            errors.push(`Unknown option: ${arg}`);
-            i++;
           }
         } catch (error) {
           errors.push(error instanceof Error ? error.message : String(error));
@@ -486,13 +620,21 @@ export class ArgumentParser implements IArgumentParser {
       }
     }
 
-    return { options, arguments: arguments_, errors };
+    return {
+      options,
+      globalOptions: lateGlobalOptions,
+      arguments: arguments_,
+      errors,
+    };
   }
 
   /**
    * Convert option value to appropriate type
    */
-  private convertOptionValue(optionDef: OptionDefinition, value: unknown): unknown {
+  private convertOptionValue(
+    optionDef: OptionDefinition,
+    value: unknown,
+  ): unknown {
     if (value === undefined || value === null) {
       return optionDef.default;
     }
@@ -500,35 +642,47 @@ export class ArgumentParser implements IArgumentParser {
     const stringValue = String(value);
 
     switch (optionDef.type) {
-      case 'number': {
+      case "number": {
         const numValue = Number(stringValue);
         if (isNaN(numValue)) {
-          throw new Error(`Option --${optionDef.name} must be a number, got: ${stringValue}`);
+          throw new Error(
+            `Option --${optionDef.name} must be a number, got: ${stringValue}`,
+          );
         }
         return numValue;
       }
 
-      case 'boolean': {
-        if (typeof value === 'boolean') {
+      case "boolean": {
+        if (typeof value === "boolean") {
           return value;
         }
         const lowerValue = stringValue.toLowerCase();
-        if (lowerValue === 'true' || lowerValue === '1' || lowerValue === 'yes') {
+        if (
+          lowerValue === "true" ||
+          lowerValue === "1" ||
+          lowerValue === "yes"
+        ) {
           return true;
         }
-        if (lowerValue === 'false' || lowerValue === '0' || lowerValue === 'no') {
+        if (
+          lowerValue === "false" ||
+          lowerValue === "0" ||
+          lowerValue === "no"
+        ) {
           return false;
         }
-        throw new Error(`Option --${optionDef.name} must be a boolean, got: ${stringValue}`);
+        throw new Error(
+          `Option --${optionDef.name} must be a boolean, got: ${stringValue}`,
+        );
       }
 
-      case 'array':
+      case "array":
         if (Array.isArray(value)) {
           return value;
         }
-        return stringValue.split(',').map(s => s.trim());
+        return stringValue.split(",").map((s) => s.trim());
 
-      case 'string':
+      case "string":
       default:
         return stringValue;
     }
@@ -537,14 +691,19 @@ export class ArgumentParser implements IArgumentParser {
   /**
    * Validate option value against definition constraints
    */
-  private validateOptionValue(optionDef: OptionDefinition, value: unknown): ValidationResult {
+  private validateOptionValue(
+    optionDef: OptionDefinition,
+    value: unknown,
+  ): ValidationResult {
     const errors: string[] = [];
     const warnings: string[] = [];
 
     // Check choices constraint
     if (optionDef.choices && optionDef.choices.length > 0) {
       if (!optionDef.choices.includes(String(value))) {
-        errors.push(`Option --${optionDef.name} must be one of: ${optionDef.choices.join(', ')}`);
+        errors.push(
+          `Option --${optionDef.name} must be one of: ${optionDef.choices.join(", ")}`,
+        );
       }
     }
 
@@ -560,31 +719,36 @@ export class ArgumentParser implements IArgumentParser {
     return {
       valid: errors.length === 0,
       errors,
-      warnings
+      warnings,
     };
   }
 
   /**
    * Validate argument value against definition constraints
    */
-  private validateArgumentValue(argDef: ArgumentDefinition, value: unknown): ValidationResult {
+  private validateArgumentValue(
+    argDef: ArgumentDefinition,
+    value: unknown,
+  ): ValidationResult {
     const errors: string[] = [];
     const warnings: string[] = [];
 
     // Type validation
     switch (argDef.type) {
-      case 'number':
+      case "number":
         if (isNaN(Number(value))) {
-          errors.push(`Argument ${argDef.name} must be a number, got: ${value}`);
+          errors.push(
+            `Argument ${argDef.name} must be a number, got: ${value}`,
+          );
         }
         break;
-      case 'file':
+      case "file":
         // Basic file path validation (more comprehensive validation would check file existence)
-        if (typeof value !== 'string' || value.trim().length === 0) {
+        if (typeof value !== "string" || value.trim().length === 0) {
           errors.push(`Argument ${argDef.name} must be a valid file path`);
         }
         break;
-      case 'url':
+      case "url":
         // Basic URL validation
         try {
           new URL(String(value));
@@ -606,7 +770,7 @@ export class ArgumentParser implements IArgumentParser {
     return {
       valid: errors.length === 0,
       errors,
-      warnings
+      warnings,
     };
   }
 
@@ -620,45 +784,47 @@ export class ArgumentParser implements IArgumentParser {
   /**
    * Validate command definition structure
    */
-  private validateCommandDefinition(command: CommandDefinition): ValidationResult {
+  private validateCommandDefinition(
+    command: CommandDefinition,
+  ): ValidationResult {
     const errors: string[] = [];
 
-    if (!command.name || typeof command.name !== 'string') {
-      errors.push('Command name is required and must be a string');
+    if (!command.name || typeof command.name !== "string") {
+      errors.push("Command name is required and must be a string");
     }
 
-    if (!command.description || typeof command.description !== 'string') {
-      errors.push('Command description is required and must be a string');
+    if (!command.description || typeof command.description !== "string") {
+      errors.push("Command description is required and must be a string");
     }
 
     if (!Array.isArray(command.aliases)) {
-      errors.push('Command aliases must be an array');
+      errors.push("Command aliases must be an array");
     }
 
     if (!Array.isArray(command.options)) {
-      errors.push('Command options must be an array');
+      errors.push("Command options must be an array");
     }
 
     if (!Array.isArray(command.arguments)) {
-      errors.push('Command arguments must be an array');
+      errors.push("Command arguments must be an array");
     }
 
     // Validate option definitions
     for (const option of command.options) {
-      if (!option.name || typeof option.name !== 'string') {
+      if (!option.name || typeof option.name !== "string") {
         errors.push(`Option name is required and must be a string`);
       }
-      if (!['string', 'number', 'boolean', 'array'].includes(option.type)) {
+      if (!["string", "number", "boolean", "array"].includes(option.type)) {
         errors.push(`Option ${option.name} has invalid type: ${option.type}`);
       }
     }
 
     // Validate argument definitions
     for (const arg of command.arguments) {
-      if (!arg.name || typeof arg.name !== 'string') {
+      if (!arg.name || typeof arg.name !== "string") {
         errors.push(`Argument name is required and must be a string`);
       }
-      if (!['string', 'number', 'file', 'url'].includes(arg.type)) {
+      if (!["string", "number", "file", "url"].includes(arg.type)) {
         errors.push(`Argument ${arg.name} has invalid type: ${arg.type}`);
       }
     }
@@ -666,7 +832,7 @@ export class ArgumentParser implements IArgumentParser {
     return {
       valid: errors.length === 0,
       errors,
-      warnings: []
+      warnings: [],
     };
   }
 
@@ -678,7 +844,7 @@ export class ArgumentParser implements IArgumentParser {
     options: Record<string, unknown>,
     errors: string[],
     success: boolean,
-    arguments_: unknown[] = []
+    arguments_: unknown[] = [],
   ): ParseResult {
     return {
       success,
@@ -686,7 +852,7 @@ export class ArgumentParser implements IArgumentParser {
       options,
       arguments: arguments_,
       errors,
-      warnings: []
+      warnings: [],
     };
   }
 
