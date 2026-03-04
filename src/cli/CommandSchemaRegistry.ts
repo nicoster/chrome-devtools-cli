@@ -626,7 +626,7 @@ export class CommandSchemaRegistry {
       name: "log",
       aliases: ["console"],
       description: "Follow console messages in real-time",
-      usage: "cdp log [options]",
+      usage: "cdp log [PATTERN] [options]",
       examples: [
         { command: "cdp log", description: "Follow all console messages" },
         {
@@ -634,8 +634,20 @@ export class CommandSchemaRegistry {
           description: "Follow only errors and warnings",
         },
         {
-          command: 'cdp log --textPattern "API"',
-          description: "Follow messages matching /API/i",
+          command: "cdp log '\\[AI'",
+          description: "Follow messages matching regex /\\[AI/i",
+        },
+        {
+          command: "cdp log -e error -e warn",
+          description: "Follow messages matching 'error' OR 'warn'",
+        },
+        {
+          command: "cdp log -F '[AI'",
+          description: "Follow messages containing literal string '[AI'",
+        },
+        {
+          command: "cdp log -v 'debug'",
+          description: "Follow messages NOT matching 'debug'",
         },
         {
           command: "cdp log --format json",
@@ -651,9 +663,29 @@ export class CommandSchemaRegistry {
           type: "string",
         },
         {
-          name: "textPattern",
-          description: "Filter by text pattern (regex, case-insensitive)",
+          name: "expression",
+          short: "e",
+          description:
+            "Pattern to match (regex by default). May be specified multiple times (OR logic).",
           type: "string",
+          multiple: true,
+        },
+        {
+          name: "fixed-strings",
+          short: "F",
+          description: "Treat pattern(s) as literal strings, not regexps",
+          type: "boolean",
+        },
+        {
+          name: "invert-match",
+          short: "v",
+          description: "Output messages that do NOT match the pattern",
+          type: "boolean",
+        },
+        {
+          name: "case-sensitive",
+          description: "Match is case-sensitive (default: case-insensitive)",
+          type: "boolean",
         },
         {
           name: "follow",
@@ -668,7 +700,14 @@ export class CommandSchemaRegistry {
           choices: ["text", "json", "pretty"],
         },
       ],
-      arguments: [],
+      arguments: [
+        {
+          name: "pattern",
+          description: "Pattern to match (regex by default, case-insensitive)",
+          type: "string",
+          required: false,
+        },
+      ],
     });
 
     // Network follow command

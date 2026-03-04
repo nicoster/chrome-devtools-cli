@@ -26,8 +26,10 @@ export interface OptionDefinition {
   name: string;
   short?: string;
   description: string;
-  type: 'string' | 'number' | 'boolean' | 'array';
+  type: "string" | "number" | "boolean" | "array";
   required?: boolean;
+  /** When true, the option may be specified multiple times; value is string[] */
+  multiple?: boolean;
   default?: unknown;
   choices?: string[];
   validator?: (value: unknown) => ValidationResult;
@@ -39,7 +41,7 @@ export interface OptionDefinition {
 export interface ArgumentDefinition {
   name: string;
   description: string;
-  type: 'string' | 'number' | 'file' | 'url';
+  type: "string" | "number" | "file" | "url";
   required?: boolean;
   variadic?: boolean;
   validator?: (value: unknown) => ValidationResult;

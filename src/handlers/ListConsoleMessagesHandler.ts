@@ -1,10 +1,27 @@
 import { ICommandHandler } from "../interfaces/CommandHandler";
 import { CDPClient, CommandResult } from "../types";
-import {
-  ConsoleMonitor,
-  ConsoleMessageFilter,
-} from "../monitors/ConsoleMonitor";
+import { ConsoleMonitor } from "../monitors/ConsoleMonitor";
 import { ConsoleMessage } from "../types";
+
+interface LogParams {
+  /** Positional argument — pattern to match */
+  pattern?: string;
+  /** -e / --expression: one or more patterns (OR logic) */
+  expression?: string | string[];
+  /** -F / --fixed-strings: treat patterns as literal strings */
+  fixedStrings?: boolean;
+  "fixed-strings"?: boolean;
+  /** -v / --invert-match: output messages that do NOT match */
+  invertMatch?: boolean;
+  "invert-match"?: boolean;
+  /** --case-sensitive: disable default case-insensitive matching */
+  caseSensitive?: boolean;
+  "case-sensitive"?: boolean;
+  types?: Array<"log" | "info" | "warn" | "error" | "debug">;
+  follow?: boolean;
+  f?: boolean;
+  format?: "text" | "json" | "pretty";
+}
 
 /**
  * Handler for real-time console log monitoring (follow-only mode)
@@ -16,14 +33,7 @@ export class ListConsoleMessagesHandler implements ICommandHandler {
 
   async execute(client: CDPClient, args: unknown): Promise<CommandResult> {
     try {
-      const params = args as {
-        types?: Array<"log" | "info" | "warn" | "error" | "debug">;
-        textPattern?: string;
-        follow?: boolean;
-        f?: boolean;
-        format?: "text" | "json" | "pretty";
-      };
-
+      const params = args as LogParams;
       return await this.executeFollowMode(client, params);
     } catch (error) {
       return {
@@ -35,11 +45,52 @@ export class ListConsoleMessagesHandler implements ICommandHandler {
   }
 
   /**
+   * Build a text-matching function from the grep-like filter flags.
+   * Returns a predicate that takes a message text and returns true if it
+   * should be output.
+   */
+  private buildMatcher(params: LogParams): (text: string) => boolean {
+    // Collect all patterns: positional arg + -e list
+    const rawExpressions = params.expression
+      ? Array.isArray(params.expression)
+        ? params.expression
+        : [params.expression]
+      : [];
+    const patterns = [
+      ...(params.pattern ? [params.pattern] : []),
+      ...rawExpressions,
+    ];
+
+    if (patterns.length === 0) return () => true;
+
+    const fixedStrings =
+      params.fixedStrings ?? params["fixed-strings"] ?? false;
+    const caseSensitive =
+      params.caseSensitive ?? params["case-sensitive"] ?? false;
+    const invertMatch = params.invertMatch ?? params["invert-match"] ?? false;
+    const flags = caseSensitive ? "" : "i";
+
+    const tests: Array<(text: string) => boolean> = patterns.map((p) => {
+      if (fixedStrings) {
+        return caseSensitive
+          ? (text) => text.includes(p)
+          : (text) => text.toLowerCase().includes(p.toLowerCase());
+      }
+      const re = new RegExp(p, flags);
+      return (text) => re.test(text);
+    });
+
+    // OR across multiple patterns
+    const anyMatch = (text: string) => tests.some((t) => t(text));
+    return invertMatch ? (text) => !anyMatch(text) : anyMatch;
+  }
+
+  /**
    * Execute in follow mode (real-time tail) — the only supported mode
    */
   private async executeFollowMode(
     client: CDPClient,
-    params: any,
+    params: LogParams,
   ): Promise<CommandResult> {
     if (!this.consoleMonitor) {
       this.consoleMonitor = new ConsoleMonitor(client);
@@ -47,18 +98,13 @@ export class ListConsoleMessagesHandler implements ICommandHandler {
 
     await this.consoleMonitor.startMonitoring();
 
-    const filter: ConsoleMessageFilter = {};
-    if (params.types && params.types.length > 0) {
-      filter.types = params.types;
-    }
-    if (params.textPattern) {
-      filter.textPattern = params.textPattern;
-    }
-
+    const typeFilter =
+      params.types && params.types.length > 0 ? params.types : null;
+    const matchText = this.buildMatcher(params);
     const outputFormat = params.format || "text";
 
     const messageCallback = (message: ConsoleMessage) => {
-      if (!this.shouldOutputMessage(message, filter)) {
+      if (!this.shouldOutputMessage(message, typeFilter, matchText)) {
         return;
       }
       this.outputMessage(message, outputFormat);
@@ -102,20 +148,13 @@ export class ListConsoleMessagesHandler implements ICommandHandler {
 
   private shouldOutputMessage(
     message: ConsoleMessage,
-    filter: ConsoleMessageFilter,
+    typeFilter: Array<string> | null,
+    matchText: (text: string) => boolean,
   ): boolean {
-    if (filter.types && filter.types.length > 0) {
-      if (!filter.types.includes(message.type)) {
-        return false;
-      }
+    if (typeFilter && !typeFilter.includes(message.type)) {
+      return false;
     }
-    if (filter.textPattern) {
-      const pattern = new RegExp(filter.textPattern, "i");
-      if (!pattern.test(message.text)) {
-        return false;
-      }
-    }
-    return true;
+    return matchText(message.text);
   }
 
   private outputMessage(
@@ -192,11 +231,15 @@ export class ListConsoleMessagesHandler implements ICommandHandler {
       }
     }
 
-    if (
-      params.textPattern !== undefined &&
-      typeof params.textPattern !== "string"
-    ) {
+    if (params.pattern !== undefined && typeof params.pattern !== "string") {
       return false;
+    }
+
+    if (params.expression !== undefined) {
+      const exprs = Array.isArray(params.expression)
+        ? params.expression
+        : [params.expression];
+      if (!exprs.every((e) => typeof e === "string")) return false;
     }
 
     if (params.format !== undefined) {
@@ -216,21 +259,30 @@ export class ListConsoleMessagesHandler implements ICommandHandler {
     return `log - Follow console messages in real-time
 
 Usage:
-  cdp log [options]
+  cdp log [PATTERN] [options]
+
+Arguments:
+  PATTERN                 Pattern to match (regex, case-insensitive by default)
 
 Options:
-  --types <types>         Filter by message types (comma-separated: log,info,warn,error,debug)
-  --textPattern <pattern> Filter by text pattern (regex, case-insensitive)
-  --format <format>       Output format: text, json, or pretty (default: text)
+  -e, --expression <pat>  Pattern to match; may be used multiple times (OR logic)
+  -F, --fixed-strings     Treat pattern(s) as literal strings, not regexps
+  -v, --invert-match      Output messages that do NOT match the pattern
+      --case-sensitive    Case-sensitive matching (default: case-insensitive)
+      --types <types>     Filter by message types (log,info,warn,error,debug)
+      --format <format>   Output format: text, json, or pretty (default: text)
   -f, --follow            Alias flag (follow mode is always active)
 
 Examples:
-  cdp log                                    # Follow all console messages
-  cdp log --types error,warn                 # Follow only errors and warnings
-  cdp log --textPattern "API"                # Follow messages matching /API/i
-  cdp log --format json                      # Output as JSON (one object per line)
-  cdp log --format pretty                    # Colorized output
-  cdp log --types error --textPattern "404"  # Combined filters
+  cdp log                          # Follow all console messages
+  cdp log '\\[AI'                  # Messages matching regex /\\[AI/i
+  cdp log -e error -e warn         # Messages containing 'error' OR 'warn'
+  cdp log -F '[AI'                 # Messages containing literal '[AI'
+  cdp log -v debug                 # Messages NOT containing 'debug'
+  cdp log '404' --case-sensitive   # Case-sensitive match
+  cdp log --types error,warn       # Filter by type
+  cdp log --format json            # Output as JSON (one object per line)
+  cdp log --format pretty          # Colorized output
 
 Note:
   This command runs continuously and streams console messages in real-time.
