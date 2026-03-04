@@ -1,66 +1,70 @@
-import { Logger, LogLevel } from './logger';
+import { Logger, LogLevel } from "./logger";
 
-describe('Logger', () => {
+describe("Logger", () => {
   let logger: Logger;
+  let stderrWrite: jest.SpyInstance;
 
   beforeEach(() => {
     logger = new Logger();
     jest.clearAllMocks();
-    jest.spyOn(console, 'error').mockImplementation();
-    jest.spyOn(console, 'warn').mockImplementation();
-    jest.spyOn(console, 'info').mockImplementation();
-    jest.spyOn(console, 'debug').mockImplementation();
+    stderrWrite = jest
+      .spyOn(process.stderr, "write")
+      .mockImplementation(() => true);
   });
 
   afterEach(() => {
     jest.restoreAllMocks();
   });
 
-  describe('Log levels', () => {
-    it('should log error messages at ERROR level', () => {
+  const written = () =>
+    stderrWrite.mock.calls.map((c) => String(c[0])).join("");
+
+  describe("Log levels", () => {
+    it("should log error messages at ERROR level", () => {
       logger.setLevel(LogLevel.ERROR);
-      logger.error('test error');
-      logger.warn('test warn');
-      logger.info('test info');
+      logger.error("test error");
+      logger.warn("test warn");
+      logger.info("test info");
 
-      expect(console.error).toHaveBeenCalledWith(expect.stringContaining('ERROR'));
-      expect(console.error).toHaveBeenCalledWith(expect.stringContaining('test error'));
-      expect(console.warn).not.toHaveBeenCalled();
-      expect(console.info).not.toHaveBeenCalled();
+      const out = written();
+      expect(out).toContain("ERROR");
+      expect(out).toContain("test error");
+      expect(out).not.toContain("WARN");
+      expect(out).not.toContain("test info");
     });
 
-    it('should log warn and error messages at WARN level', () => {
+    it("should log warn and error messages at WARN level", () => {
       logger.setLevel(LogLevel.WARN);
-      logger.error('test error');
-      logger.warn('test warn');
-      logger.info('test info');
+      logger.error("test error");
+      logger.warn("test warn");
+      logger.info("test info");
 
-      expect(console.error).toHaveBeenCalledWith(expect.stringContaining('ERROR'));
-      expect(console.error).toHaveBeenCalledWith(expect.stringContaining('test error'));
-      expect(console.warn).toHaveBeenCalledWith(expect.stringContaining('WARN'));
-      expect(console.warn).toHaveBeenCalledWith(expect.stringContaining('test warn'));
-      expect(console.info).not.toHaveBeenCalled();
+      const out = written();
+      expect(out).toContain("ERROR");
+      expect(out).toContain("test error");
+      expect(out).toContain("WARN");
+      expect(out).toContain("test warn");
+      expect(out).not.toContain("test info");
     });
 
-    it('should respect quiet mode', () => {
+    it("should respect quiet mode", () => {
       logger.setQuiet(true);
-      logger.error('test error');
-      logger.warn('test warn');
-      logger.info('test info');
+      logger.error("test error");
+      logger.warn("test warn");
+      logger.info("test info");
 
-      expect(console.error).not.toHaveBeenCalled();
-      expect(console.warn).not.toHaveBeenCalled();
-      expect(console.info).not.toHaveBeenCalled();
+      expect(stderrWrite).not.toHaveBeenCalled();
     });
   });
 
-  describe('Message formatting', () => {
-    it('should format messages with additional arguments', () => {
-      logger.error('test error', { data: 'value' });
-      expect(console.error).toHaveBeenCalledWith(expect.stringContaining('ERROR'));
-      expect(console.error).toHaveBeenCalledWith(expect.stringContaining('test error'));
-      expect(console.error).toHaveBeenCalledWith(expect.stringContaining('Data:'));
-      expect(console.error).toHaveBeenCalledWith(expect.stringContaining('"data":"value"'));
+  describe("Message formatting", () => {
+    it("should format messages with additional arguments", () => {
+      logger.error("test error", { data: "value" });
+      const out = written();
+      expect(out).toContain("ERROR");
+      expect(out).toContain("test error");
+      expect(out).toContain("Data:");
+      expect(out).toContain('"data":"value"');
     });
   });
 });
