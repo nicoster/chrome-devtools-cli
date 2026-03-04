@@ -271,18 +271,15 @@ export class CLIApplication {
       const CYAN = "\x1b[36m";
       const DIM = "\x1b[2m";
       const CLEAR_LINE = "\x1b[2K\x1b[G";
-      // Save / restore cursor position — avoids counting wrapped lines
-      const SAVE = "\x1b[s";
-      const RESTORE = "\x1b[u";
+      // 1 header + 1 top-sep + N*2 items + 1 bot-sep + 2 tips = N*2 + 5 lines per render
+      const TOTAL_LINES = targets.length * 2 + 5;
 
       const truncate = (s: string, max: number) =>
         s.length > max ? s.substring(0, max - 1) + "…" : s;
 
       const render = (first: boolean) => {
-        if (first) {
-          process.stderr.write(SAVE);
-        } else {
-          process.stderr.write(RESTORE);
+        if (!first) {
+          process.stderr.write(`\x1b[${TOTAL_LINES}A`);
         }
         process.stderr.write(
           `${CLEAR_LINE}${BOLD}Select a Chrome page${RESET}  (↑↓ navigate, Enter select, q quit)\n`,
@@ -290,9 +287,8 @@ export class CLIApplication {
         process.stderr.write(`${CLEAR_LINE}${"─".repeat(54)}\n`);
         targets.forEach((t, i) => {
           const num = `[${i + 1}]`;
-          const rawTitle = t.title || "(Untitled)";
-          const title = truncate(rawTitle, 52);
-          const url = truncate(t.url, 60);
+          const title = truncate(t.title || "(Untitled)", 50);
+          const url = truncate(t.url, 58);
           const selected = i === cursor;
           if (selected) {
             process.stderr.write(
@@ -306,8 +302,10 @@ export class CLIApplication {
         });
         process.stderr.write(`${CLEAR_LINE}${"─".repeat(54)}\n`);
         process.stderr.write(
-          `${CLEAR_LINE}${DIM}Tip: skip this prompt with  cdp -i <number> <command>${RESET}\n` +
-            `${CLEAR_LINE}${DIM}     or close other tabs until only one remains.${RESET}\n`,
+          `${CLEAR_LINE}${DIM}Tip: skip this prompt with  cdp -i <number> <command>${RESET}\n`,
+        );
+        process.stderr.write(
+          `${CLEAR_LINE}${DIM}     or close other tabs until only one remains.${RESET}\n`,
         );
       };
 
